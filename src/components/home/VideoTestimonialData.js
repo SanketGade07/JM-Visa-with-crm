@@ -1,5 +1,7 @@
 // VideoTestimonialData.js
 const testimonials = [
+  // New video
+  { id: 42, type: "video", mediaUrl: "/videos/jm%20visa%20video/1000242146.mp4", description: "Client Testimonial 0" },
   // Existing videos
   { id: 1, type: "video", mediaUrl: "/videos/vid1.mp4", description: "Client Testimonial 1" },
   { id: 2, type: "video", mediaUrl: "/videos/vid2.mov", description: "Client Testimonial 2" },

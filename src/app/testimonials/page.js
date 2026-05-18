@@ -11,7 +11,7 @@ const TestimonialsPage = () => {
   return (
     <section className="bg-white py-16 min-h-screen">
       <div className="container mx-auto px-6">
-        <h2 className="text-3xl font-bold text-gray-800 mb-8 mt-12">
+        <h2 className="text-3xl font-bold text-gray-800 mb-8 mt-24">
           All <span className="text-blue-500">Testimonials</span>
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

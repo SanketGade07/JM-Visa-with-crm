@@ -51,7 +51,7 @@ const MediaTestimonials = () => {
     testimonials.findIndex((item) => item.id === testimonialId);
 
   return (
-    <section ref={sectionRef} className="relative pb-16">
+    <section ref={sectionRef} className="relative pt-16 pb-16">
       {!isVisible ? (
         <div className="container mx-auto px-5 sm:px-6 lg:px-12">
           <div className="h-[360px] w-full rounded-2xl bg-gray-100 animate-pulse" />
