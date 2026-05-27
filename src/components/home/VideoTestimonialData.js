@@ -2,6 +2,7 @@
 const testimonials = [
   // New video
   { id: 42, type: "video", mediaUrl: "/videos/jm%20visa%20video/1000242146.mp4", description: "Client Testimonial 0" },
+  { id: 43, type: "video", mediaUrl: "/videos/jm%20visa%20video/ranmandeep-kaur.mp4", description: "Client Testimonial - Ranmandeep Kaur" },
   // Existing videos
   { id: 1, type: "video", mediaUrl: "/videos/vid1.mp4", description: "Client Testimonial 1" },
   { id: 2, type: "video", mediaUrl: "/videos/vid2.mov", description: "Client Testimonial 2" },
@@ -21,6 +22,8 @@ const testimonials = [
   { id: 15, type: "video", mediaUrl: "/videos/jm%20visa%20video/WhatsApp%20Video%202025-07-09%20at%203.57.12%20PM.mp4", description: "Client Testimonial 15" },
   // New testimonial image (first after videos)
   { id: 16, type: "image", mediaUrl: "/images/testimonials/1000178410.jpeg", description: "Client Review 1" },
+  { id: 44, type: "image", mediaUrl: "/videos/1000245739.jpeg", description: "Client Review - Testimonial Photo 1" },
+  { id: 45, type: "image", mediaUrl: "/videos/1000245745.jpeg", description: "Client Review - Testimonial Photo 2" },
   // Existing images (first batch)
   { id: 17, type: "image", mediaUrl: "/images/testimonials/11.jpg", description: "Client Review 2" },
   { id: 17, type: "image", mediaUrl: "/images/testimonials/3.png", description: "Client Review 2" },
