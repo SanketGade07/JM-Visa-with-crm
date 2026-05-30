@@ -198,6 +198,30 @@ export const POST = async (req) => {
       console.error('Error sending contact-us data to Google Sheets:', sheetError);
     }
 
+    // Send to CRM Webhook
+    try {
+      const webhookUrl = process.env.CRM_WEBHOOK_URL || 'http://localhost:3001/api/webhook/website';
+      const webhookSecret = process.env.CRM_WEBHOOK_SECRET || 'test_webhook_secret';
+
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret: webhookSecret,
+          name: name || '',
+          email: email || '',
+          phone: phone || '',
+          countryInterest: 'UK',
+          service: 'Contact Inquiry',
+          source: 'WEBSITE',
+          message: `${message || ''} [Location: ${userLocation || 'Unknown'} | Pincode: ${userPincode || 'Unknown'} | IP: ${userIp || 'Unknown'}]`
+        }),
+      });
+      console.log('Contact-us data sent to CRM Webhook successfully');
+    } catch (crmError) {
+      console.error('Error sending contact-us data to CRM Webhook:', crmError);
+    }
+
     const response = new Response(
       JSON.stringify({ success: true, message: 'Email sent successfully!' }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }

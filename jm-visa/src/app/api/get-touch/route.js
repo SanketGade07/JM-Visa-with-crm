@@ -213,6 +213,31 @@ export const POST = async (req) => {
       console.error('Error sending data to Google Sheets:', sheetError);
     }
 
+    // Send to CRM Webhook
+    try {
+      const cleanPhone = phone ? phone.replace(/\+/g, '') : '';
+      const webhookUrl = process.env.CRM_WEBHOOK_URL || 'http://localhost:3001/api/webhook/website';
+      const webhookSecret = process.env.CRM_WEBHOOK_SECRET || 'test_webhook_secret';
+
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret: webhookSecret,
+          name: name || '',
+          email: email || '',
+          phone: cleanPhone,
+          countryInterest: 'UK', // Default country department
+          service: other || 'General Inquiry', // Visa category or inquiry interest
+          source: 'WEBSITE',
+          message: `Get-in-Touch request - Inquiry about: ${other || 'N/A'} [Location: ${userLocation || 'Unknown'} | Pincode: ${userPincode || 'Unknown'} | IP: ${userIp || 'Unknown'}]`
+        }),
+      });
+      console.log('Get-touch data sent to CRM Webhook successfully');
+    } catch (crmError) {
+      console.error('Error sending get-touch data to CRM Webhook:', crmError);
+    }
+
     // Success response
     const response = new Response(
       JSON.stringify({

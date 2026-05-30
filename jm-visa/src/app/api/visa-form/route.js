@@ -200,6 +200,30 @@ export const POST = async (req) => {
       console.error('Error sending visa form data to Google Sheets:', sheetError);
     }
 
+    // Send to CRM Webhook
+    try {
+      const webhookUrl = process.env.CRM_WEBHOOK_URL || 'http://localhost:3001/api/webhook/website';
+      const webhookSecret = process.env.CRM_WEBHOOK_SECRET || 'test_webhook_secret';
+
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret: webhookSecret,
+          name: firstName || '',
+          email: email || '',
+          phone: phoneNumber || '',
+          countryInterest: travellingTo || '', // The webhook endpoint handles normalization
+          service: category || 'Visa Application',
+          source: 'WEBSITE',
+          message: `Visa application for travelling to: ${travellingTo} (Citizen of: ${citizen || 'N/A'}) [Location: ${userLocation || 'Unknown'} | Pincode: ${userPincode || 'Unknown'} | IP: ${userIp || 'Unknown'}]`
+        }),
+      });
+      console.log('Visa form data sent to CRM Webhook successfully');
+    } catch (crmError) {
+      console.error('Error sending visa form data to CRM Webhook:', crmError);
+    }
+
     const response = new Response(
       JSON.stringify({ success: true, message: "Form submitted successfully!" }),
       { status: 200, headers: { "Content-Type": "application/json" } }

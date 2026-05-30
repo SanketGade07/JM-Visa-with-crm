@@ -1,0 +1,34 @@
+[
+  {
+    "id": "lead-1780074659048",
+    "name": "test1 test1",
+    "email": "test1@gmail.com",
+    "phone": "91 7777777777",
+    "country": "UK",
+    "visaType": "Business Visa (Homepage Popup)",
+    "status": "New Lead",
+    "source": "WEBSITE",
+    "counselor": "Rohit Verma",
+    "dateCreated": "2026-05-29",
+    "lastUpdated": "2026-05-29",
+    "isDeleted": false,
+    "checklist": {
+      "passport": false,
+      "visaForm": false,
+      "businessDocs": false,
+      "salarySlips": false,
+      "bankStatement": false,
+      "itr": false,
+      "offerLetter": false,
+      "casOrI20": false,
+      "travelHistory": false,
+      "sopOrCoverLetter": false,
+      "photos": false,
+      "insurance": false,
+      "biometricsCompleted": false,
+      "visaFeesPaid": false
+    },
+    "payments": [],
+    "notes": "Received via website form\nSource: WEBSITE\nService: Business Visa (Homepage Popup)\n\nGet-in-Touch request - Inquiry about: Business Visa (Homepage Popup) [Location: Airoli, Maharashtra, India | Pincode: 400708 | IP: 103.181.208.198]"
+  }
+]

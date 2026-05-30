@@ -1,0 +1,154 @@
+[
+  {
+    "id": "act-1780072525797",
+    "leadId": "lead-1780056670483",
+    "type": "document",
+    "content": "Document \"salary Slips\" marked verified",
+    "createdAt": "2026-05-29T16:35:25.797Z",
+    "createdBy": "VISA TEAM"
+  },
+  {
+    "id": "act-1780072528870",
+    "leadId": "lead-1780056670483",
+    "type": "document",
+    "content": "Document \"insurance\" marked verified",
+    "createdAt": "2026-05-29T16:35:28.870Z",
+    "createdBy": "VISA TEAM"
+  },
+  {
+    "id": "act-1780072530079",
+    "leadId": "lead-1780056670483",
+    "type": "document",
+    "content": "Document \"photos\" marked verified",
+    "createdAt": "2026-05-29T16:35:30.079Z",
+    "createdBy": "VISA TEAM"
+  },
+  {
+    "id": "act-1780072533636",
+    "leadId": "lead-1780056670483",
+    "type": "document",
+    "content": "Document \"sop Or Cover Letter\" marked verified",
+    "createdAt": "2026-05-29T16:35:33.636Z",
+    "createdBy": "VISA TEAM"
+  },
+  {
+    "id": "act-1780072534911",
+    "leadId": "lead-1780056670483",
+    "type": "document",
+    "content": "Document \"travel History\" marked verified",
+    "createdAt": "2026-05-29T16:35:34.911Z",
+    "createdBy": "VISA TEAM"
+  },
+  {
+    "id": "act-1780072538728",
+    "leadId": "lead-1780056670483",
+    "type": "document",
+    "content": "Document \"cas Or I20\" marked verified",
+    "createdAt": "2026-05-29T16:35:38.728Z",
+    "createdBy": "VISA TEAM"
+  },
+  {
+    "id": "act-1780074408495",
+    "leadId": "lead-1780056670483",
+    "type": "status_change",
+    "content": "Status changed from \"New Lead\" to \"Closed\"",
+    "createdAt": "2026-05-29T17:06:48.495Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780074428535",
+    "leadId": "lead-1780056670483",
+    "type": "status_change",
+    "content": "Status changed from \"Closed\" to \"Follow-Up\"",
+    "createdAt": "2026-05-29T17:07:08.535Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780074432904",
+    "leadId": "lead-1780056670483",
+    "type": "status_change",
+    "content": "Status changed from \"Follow-Up\" to \"Contacted\"",
+    "createdAt": "2026-05-29T17:07:12.904Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780074435462",
+    "leadId": "lead-1780056670483",
+    "type": "status_change",
+    "content": "Status changed from \"Contacted\" to \"Interested\"",
+    "createdAt": "2026-05-29T17:07:15.462Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780074437820",
+    "leadId": "lead-1780056670483",
+    "type": "status_change",
+    "content": "Status changed from \"Interested\" to \"Documents Pending\"",
+    "createdAt": "2026-05-29T17:07:17.820Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780074440543",
+    "leadId": "lead-1780056670483",
+    "type": "status_change",
+    "content": "Status changed from \"Documents Pending\" to \"Documents Received\"",
+    "createdAt": "2026-05-29T17:07:20.543Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780074443222",
+    "leadId": "lead-1780056670483",
+    "type": "status_change",
+    "content": "Status changed from \"Documents Received\" to \"Ready For Submission\"",
+    "createdAt": "2026-05-29T17:07:23.222Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780074446619",
+    "leadId": "lead-1780056670483",
+    "type": "status_change",
+    "content": "Status changed from \"Ready For Submission\" to \"Visa Submitted\"",
+    "createdAt": "2026-05-29T17:07:26.619Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780074452480",
+    "leadId": "lead-1780056670483",
+    "type": "status_change",
+    "content": "Status changed from \"Visa Submitted\" to \"Approved / Rejected\"",
+    "createdAt": "2026-05-29T17:07:32.480Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780074459348",
+    "leadId": "lead-1780056670483",
+    "type": "status_change",
+    "content": "Lead marked as Dropped (soft-deleted)",
+    "createdAt": "2026-05-29T17:07:39.348Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780074659051",
+    "leadId": "lead-1780074659048",
+    "type": "lead_created",
+    "content": "Lead received from website form",
+    "createdAt": "2026-05-29T17:10:59.051Z",
+    "createdBy": "SYSTEM"
+  },
+  {
+    "id": "act-1780074725671",
+    "leadId": "lead-1780074659048",
+    "type": "note",
+    "content": "Counselor changed from \"Unassigned\" to \"Priya Mehta\"",
+    "createdAt": "2026-05-29T17:12:05.671Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780074730413",
+    "leadId": "lead-1780074659048",
+    "type": "note",
+    "content": "Counselor changed from \"Priya Mehta\" to \"Rohit Verma\"",
+    "createdAt": "2026-05-29T17:12:10.413Z",
+    "createdBy": "ADMIN"
+  }
+]
