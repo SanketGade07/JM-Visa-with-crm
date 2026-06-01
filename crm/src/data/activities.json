@@ -150,5 +150,125 @@
     "content": "Counselor changed from \"Priya Mehta\" to \"Rohit Verma\"",
     "createdAt": "2026-05-29T17:12:10.413Z",
     "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780314766277",
+    "leadId": "lead-1780074659048",
+    "type": "status_change",
+    "content": "Status changed from \"New Lead\" to \"Interested\"",
+    "createdAt": "2026-06-01T11:52:46.277Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780314769448",
+    "leadId": "lead-1780074659048",
+    "type": "note",
+    "content": "Counselor changed from \"Rohit Verma\" to \"Simran Kaur\"",
+    "createdAt": "2026-06-01T11:52:49.448Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780314772567",
+    "leadId": "lead-1780074659048",
+    "type": "status_change",
+    "content": "Status changed from \"Interested\" to \"Follow-Up\"",
+    "createdAt": "2026-06-01T11:52:52.567Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780314777182",
+    "leadId": "lead-1780074659048",
+    "type": "status_change",
+    "content": "Status changed from \"Follow-Up\" to \"Contacted\"",
+    "createdAt": "2026-06-01T11:52:57.182Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780314836524",
+    "leadId": "lead-1780314836523",
+    "type": "lead_created",
+    "content": "Lead created manually by ADMIN",
+    "createdAt": "2026-06-01T11:53:56.524Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780314845488",
+    "leadId": "lead-1780074659048",
+    "type": "status_change",
+    "content": "Status changed from \"Contacted\" to \"New Lead\"",
+    "createdAt": "2026-06-01T11:54:05.488Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780315570383",
+    "leadId": "lead-1780074659048",
+    "type": "status_change",
+    "content": "Status changed from \"New Lead\" to \"Follow-Up\"",
+    "createdAt": "2026-06-01T12:06:10.383Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780315747473",
+    "leadId": "lead-1780074659048",
+    "type": "status_change",
+    "content": "Status changed from \"Follow-Up\" to \"Interested\"",
+    "createdAt": "2026-06-01T12:09:07.473Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780315818509",
+    "leadId": "lead-1780074659048",
+    "type": "payment",
+    "content": "Payment of ₹10,000 recorded (INV-2026-394) via UPI",
+    "createdAt": "2026-06-01T12:10:18.509Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780315922728",
+    "leadId": "lead-1780315922726",
+    "type": "lead_created",
+    "content": "Lead created manually by ADMIN",
+    "createdAt": "2026-06-01T12:12:02.728Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780316634143",
+    "leadId": "lead-1780074659048",
+    "type": "payment",
+    "content": "Payment of ₹0 recorded (INV-2026-948) via UPI",
+    "createdAt": "2026-06-01T12:23:54.143Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780317403097",
+    "leadId": "lead-1780315922726",
+    "type": "payment",
+    "content": "Payment of ₹60,000 recorded (INV-2026-249) via UPI",
+    "createdAt": "2026-06-01T12:36:43.097Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780317426800",
+    "leadId": "lead-1780315922726",
+    "type": "payment",
+    "content": "Invoice INV-2026-249 attachment removed",
+    "createdAt": "2026-06-01T12:37:06.800Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780317437298",
+    "leadId": "lead-1780315922726",
+    "type": "payment",
+    "content": "Invoice INV-2026-249 attached via URL link",
+    "createdAt": "2026-06-01T12:37:17.298Z",
+    "createdBy": "ADMIN"
+  },
+  {
+    "id": "act-1780317439809",
+    "leadId": "lead-1780315922726",
+    "type": "payment",
+    "content": "Invoice INV-2026-249 attachment removed",
+    "createdAt": "2026-06-01T12:37:19.809Z",
+    "createdBy": "ADMIN"
   }
 ]

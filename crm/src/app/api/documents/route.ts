@@ -23,53 +23,70 @@ export async function GET(req: NextRequest) {
 // POST /api/documents — staff uploads a file (multipart), stored in Supabase Storage
 export async function POST(req: NextRequest) {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json(
-        { error: "Supabase storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env" },
-        { status: 503 }
-      );
-    }
-
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
+    const fileUrl = formData.get("fileUrl") as string | null;
+    const fileName = formData.get("fileName") as string | null;
     const leadId = formData.get("leadId") as string | null;
     const docType = (formData.get("docType") as string) || "other";
     const uploadedBy = (formData.get("uploadedBy") as string) || "SYSTEM";
 
-    if (!file || !leadId) {
-      return NextResponse.json({ error: "file and leadId are required" }, { status: 400 });
+    if (!leadId) {
+      return NextResponse.json({ error: "leadId is required" }, { status: 400 });
     }
 
-    const supabase = getSupabase();
+    let finalFileUrl = "";
+    let finalFileName = "";
 
-    // Build a unique storage path: leads/<leadId>/<docType>-<timestamp>.<ext>
-    const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
-    const objectPath = `leads/${leadId}/${docType}-${Date.now()}.${ext}`;
+    if (fileUrl) {
+      finalFileUrl = fileUrl;
+      finalFileName = fileName || "Linked Document";
+    } else {
+      if (!file) {
+        return NextResponse.json({ error: "file or fileUrl is required" }, { status: 400 });
+      }
 
-    const arrayBuffer = await file.arrayBuffer();
-    const { error: uploadError } = await supabase.storage
-      .from(DOCUMENTS_BUCKET)
-      .upload(objectPath, arrayBuffer, {
-        contentType: file.type || "application/octet-stream",
-        upsert: false,
-      });
+      if (!isSupabaseConfigured()) {
+        return NextResponse.json(
+          { error: "Supabase storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env" },
+          { status: 503 }
+        );
+      }
 
-    if (uploadError) {
-      console.error("Supabase upload error:", uploadError);
-      return NextResponse.json({ error: `Storage upload failed: ${uploadError.message}` }, { status: 500 });
+      const supabase = getSupabase();
+
+      // Build a unique storage path: leads/<leadId>/<docType>-<timestamp>.<ext>
+      const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
+      const objectPath = `leads/${leadId}/${docType}-${Date.now()}.${ext}`;
+
+      const arrayBuffer = await file.arrayBuffer();
+      const { error: uploadError } = await supabase.storage
+        .from(DOCUMENTS_BUCKET)
+        .upload(objectPath, arrayBuffer, {
+          contentType: file.type || "application/octet-stream",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error("Supabase upload error:", uploadError);
+        return NextResponse.json({ error: `Storage upload failed: ${uploadError.message}` }, { status: 500 });
+      }
+
+      // Public URL (bucket must be public, or swap for a signed URL)
+      const { data: publicUrlData } = supabase.storage
+        .from(DOCUMENTS_BUCKET)
+        .getPublicUrl(objectPath);
+
+      finalFileUrl = publicUrlData.publicUrl;
+      finalFileName = file.name;
     }
-
-    // Public URL (bucket must be public, or swap for a signed URL)
-    const { data: publicUrlData } = supabase.storage
-      .from(DOCUMENTS_BUCKET)
-      .getPublicUrl(objectPath);
 
     const document: Document = {
       id: `doc-${Date.now()}`,
       leadId,
       docType,
-      fileName: file.name,
-      fileUrl: publicUrlData.publicUrl,
+      fileName: finalFileName,
+      fileUrl: finalFileUrl,
       status: "VERIFIED",
       uploadedBy,
       uploadedAt: new Date().toISOString(),
@@ -81,7 +98,7 @@ export async function POST(req: NextRequest) {
       id: `act-${Date.now()}`,
       leadId,
       type: "document",
-      content: `Document "${docType}" uploaded by ${uploadedBy} (${file.name})`,
+      content: `Document "${docType}" verified via ${fileUrl ? `URL link` : `upload (${finalFileName})`}`,
       createdAt: new Date().toISOString(),
       createdBy: uploadedBy,
     };

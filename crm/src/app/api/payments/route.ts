@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
       country: string;
     };
 
-    let rows: PaymentRow[] = [];
+    const rows: PaymentRow[] = [];
 
     for (const lead of leads) {
       if (leadId && lead.id !== leadId) continue;

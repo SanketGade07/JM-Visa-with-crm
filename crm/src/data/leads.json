@@ -6,11 +6,11 @@
     "phone": "91 7777777777",
     "country": "UK",
     "visaType": "Business Visa (Homepage Popup)",
-    "status": "New Lead",
+    "status": "Interested",
     "source": "WEBSITE",
-    "counselor": "Rohit Verma",
+    "counselor": "Simran Kaur",
     "dateCreated": "2026-05-29",
-    "lastUpdated": "2026-05-29",
+    "lastUpdated": "2026-06-01",
     "isDeleted": false,
     "checklist": {
       "passport": false,
@@ -30,5 +30,96 @@
     },
     "payments": [],
     "notes": "Received via website form\nSource: WEBSITE\nService: Business Visa (Homepage Popup)\n\nGet-in-Touch request - Inquiry about: Business Visa (Homepage Popup) [Location: Airoli, Maharashtra, India | Pincode: 400708 | IP: 103.181.208.198]"
+  },
+  {
+    "name": "test2",
+    "email": "test2@gmail.com",
+    "phone": "7777777777",
+    "country": "Europe",
+    "visaType": "tourist",
+    "status": "New Lead",
+    "source": "MANUAL",
+    "counselor": "Priya Mehta",
+    "notes": "",
+    "checklist": {
+      "passport": false,
+      "visaForm": false,
+      "businessDocs": false,
+      "salarySlips": false,
+      "bankStatement": false,
+      "itr": false,
+      "offerLetter": false,
+      "casOrI20": false,
+      "travelHistory": false,
+      "sopOrCoverLetter": false,
+      "photos": false,
+      "insurance": false,
+      "biometricsCompleted": false,
+      "visaFeesPaid": false
+    },
+    "payments": [],
+    "id": "lead-1780314836523",
+    "dateCreated": "2026-06-01",
+    "lastUpdated": "2026-06-01",
+    "isDeleted": false
+  },
+  {
+    "name": "test3",
+    "email": "test3@gmail.com",
+    "phone": "7777777777",
+    "country": "USA",
+    "visaType": "eduction",
+    "status": "New Lead",
+    "source": "REFERRAL",
+    "counselor": "Priya Mehta",
+    "notes": "",
+    "checklist": {
+      "passport": false,
+      "visaForm": false,
+      "businessDocs": false,
+      "salarySlips": false,
+      "bankStatement": false,
+      "itr": false,
+      "offerLetter": false,
+      "casOrI20": false,
+      "travelHistory": false,
+      "sopOrCoverLetter": false,
+      "photos": false,
+      "insurance": false,
+      "biometricsCompleted": false,
+      "visaFeesPaid": false
+    },
+    "payments": [
+      {
+        "totalPackage": 60000,
+        "amountPaid": 0,
+        "pendingAmount": 60000,
+        "paymentMethod": "Pending",
+        "invoiceNumber": "INV-2026-811",
+        "date": "2026-06-01"
+      },
+      {
+        "totalPackage": 60000,
+        "amountPaid": 60000,
+        "pendingAmount": 0,
+        "paymentMethod": "UPI",
+        "invoiceNumber": "INV-2026-249",
+        "date": "2026-06-01"
+      }
+    ],
+    "usaSlots": {
+      "credentialsProvided": false,
+      "slotsAvailable": false,
+      "slotsPaid": false,
+      "slotsBooked": false,
+      "ds160Submitted": false,
+      "interviewScheduled": false,
+      "interviewDate": "",
+      "slotLocation": "Delhi"
+    },
+    "id": "lead-1780315922726",
+    "dateCreated": "2026-06-01",
+    "lastUpdated": "2026-06-01",
+    "isDeleted": false
   }
 ]

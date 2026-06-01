@@ -61,6 +61,8 @@ export interface PaymentDetails {
   paymentMethod: string;
   invoiceNumber: string;
   date: string;
+  invoiceFile?: string;
+  invoiceUrl?: string;
 }
 
 export interface UsaSlotTracking {
@@ -155,7 +157,8 @@ interface CrmContextType {
   updateLeadNotes: (leadId: string, notes: string) => void;
   assignCounselor: (leadId: string, counselor: string) => void;
   getLeadActivities: (leadId: string) => Activity[];
-  uploadDocument: (leadId: string, docType: keyof DocumentChecklist, file: File) => Promise<{ ok: boolean; error?: string }>;
+  uploadDocument: (leadId: string, docType: keyof DocumentChecklist, fileOrUrl: File | string) => Promise<{ ok: boolean; error?: string }>;
+  uploadInvoice: (leadId: string, invoiceNumber: string, fileOrUrl: File | string) => Promise<{ ok: boolean; error?: string }>;
   getLeadDocuments: (leadId: string) => Document[];
 }
 
@@ -477,19 +480,30 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     syncLeads(updated);
   };
 
-  // Staff manually uploads a document file → stored in Supabase Storage,
-  // metadata persisted, and the matching checklist item marked verified.
   const uploadDocument = async (
     leadId: string,
     docType: keyof DocumentChecklist,
-    file: File
+    fileOrUrl: File | string
   ): Promise<{ ok: boolean; error?: string }> => {
     try {
       const form = new FormData();
-      form.append("file", file);
       form.append("leadId", leadId);
       form.append("docType", String(docType));
       form.append("uploadedBy", currentRole);
+
+      if (typeof fileOrUrl === "string") {
+        form.append("fileUrl", fileOrUrl);
+        let name = "Linked Document";
+        try {
+          const urlObj = new URL(fileOrUrl);
+          const pathname = urlObj.pathname;
+          const lastPart = pathname.substring(pathname.lastIndexOf('/') + 1);
+          if (lastPart) name = decodeURIComponent(lastPart);
+        } catch {}
+        form.append("fileName", name);
+      } else {
+        form.append("file", fileOrUrl);
+      }
 
       const res = await fetch("/api/documents", { method: "POST", body: form });
       const data = await res.json();
@@ -503,7 +517,81 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       logActivity({
         leadId,
         type: "document",
-        content: `Document "${String(docType).replace(/([A-Z])/g, " $1")}" uploaded & verified (${file.name})`,
+        content: `Document "${String(docType).replace(/([A-Z])/g, " $1")}" verified via ${typeof fileOrUrl === "string" ? "URL link" : `upload (${fileOrUrl.name})`}`,
+        createdBy: currentRole,
+      });
+
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Network error during upload" };
+    }
+  };
+
+  const uploadInvoice = async (
+    leadId: string,
+    invoiceNumber: string,
+    fileOrUrl: File | string
+  ): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      let finalUrl = "";
+      let finalName = "";
+
+      if (typeof fileOrUrl === "string") {
+        if (fileOrUrl === "") {
+          finalUrl = "";
+          finalName = "";
+        } else {
+          finalUrl = fileOrUrl;
+          let name = "Linked Invoice";
+          try {
+            const urlObj = new URL(fileOrUrl);
+            const pathname = urlObj.pathname;
+            const lastPart = pathname.substring(pathname.lastIndexOf('/') + 1);
+            if (lastPart) name = decodeURIComponent(lastPart);
+          } catch {}
+          finalName = name;
+        }
+      } else {
+        const form = new FormData();
+        form.append("leadId", leadId);
+        form.append("docType", `invoice-${invoiceNumber}`);
+        form.append("uploadedBy", currentRole);
+        form.append("file", fileOrUrl);
+
+        const res = await fetch("/api/documents", { method: "POST", body: form });
+        const data = await res.json();
+
+        if (!res.ok) {
+          return { ok: false, error: data.error || "Upload failed" };
+        }
+        finalUrl = data.document.fileUrl;
+        finalName = data.document.fileName;
+      }
+
+      // Now update the lead's payment array
+      const today = new Date().toISOString().split("T")[0];
+      const updated = leads.map((lead) => {
+        if (lead.id !== leadId) return lead;
+        const updatedPayments = (lead.payments || []).map((pay) => {
+          if (pay.invoiceNumber === invoiceNumber) {
+            return {
+              ...pay,
+              invoiceFile: finalName || undefined,
+              invoiceUrl: finalUrl || undefined,
+            };
+          }
+          return pay;
+        });
+        return { ...lead, payments: updatedPayments, lastUpdated: today };
+      });
+
+      await syncLeads(updated);
+      logActivity({
+        leadId,
+        type: "payment",
+        content: fileOrUrl === ""
+          ? `Invoice ${invoiceNumber} attachment removed`
+          : `Invoice ${invoiceNumber} attached via ${typeof fileOrUrl === "string" ? "URL link" : `upload (${finalName})`}`,
         createdBy: currentRole,
       });
 
@@ -541,6 +629,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         assignCounselor,
         getLeadActivities,
         uploadDocument,
+        uploadInvoice,
         getLeadDocuments,
       }}
     >

@@ -17,7 +17,8 @@ import {
   FaUserFriends, FaGlobe, FaCheckSquare, FaCalendarAlt, FaHistory,
   FaPassport, FaFileInvoiceDollar, FaChartBar, FaUserLock, FaPlus,
   FaTrash, FaUndo, FaSearch, FaTimes, FaCoins, FaCheckCircle,
-  FaInfoCircle, FaFileDownload, FaFileUpload, FaPaperPlane
+  FaInfoCircle, FaFileDownload, FaFileUpload, FaPaperPlane,
+  FaSun, FaMoon
 } from "react-icons/fa";
 
 export default function CrmLayout() {
@@ -38,13 +39,57 @@ export default function CrmLayout() {
     updateLeadNotes,
     assignCounselor,
     uploadDocument,
+    uploadInvoice,
     getLeadDocuments
   } = useCrm();
 
   // Search & Filters State
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Theme State
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  useEffect(() => {
+    const currentTheme = document.documentElement.classList.contains("light") ? "light" : "dark";
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTheme(currentTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("crm-theme", nextTheme);
+    document.documentElement.classList.remove("light", "dark");
+    document.documentElement.classList.add(nextTheme);
+  };
+
+  // Toast Notification State
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+  };
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  // URL Link Modal State
+  const [urlModalData, setUrlModalData] = useState<{ leadId: string; docType: keyof DocumentChecklist; title: string } | null>(null);
+  const [pastedUrl, setPastedUrl] = useState("");
   const [uploadError, setUploadError] = useState<string>("");
+
+  // Invoice Manager Modal State
+  const [invoiceLeadId, setInvoiceLeadId] = useState<string | null>(null);
+  const [urlInvoiceData, setUrlInvoiceData] = useState<{ leadId: string; invoiceNumber: string } | null>(null);
+  const [pastedInvoiceUrl, setPastedInvoiceUrl] = useState("");
+  const [uploadInvoiceError, setUploadInvoiceError] = useState<string>("");
+  const [uploadingInvoiceKey, setUploadingInvoiceKey] = useState<string | null>(null);
+
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [countryFilter, setCountryFilter] = useState<string>("All");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -57,6 +102,25 @@ export default function CrmLayout() {
   // Revenue Date Filters
   const [startDate, setStartDate] = useState("2026-05-01");
   const [endDate, setEndDate] = useState("2026-05-31");
+
+  // Deposit Upload State
+  const [depositLeadId, setDepositLeadId] = useState("");
+  const [tempInvoiceFile, setTempInvoiceFile] = useState("");
+  const [tempInvoiceUrl, setTempInvoiceUrl] = useState("");
+  const [isUploadingTempInvoice, setIsUploadingTempInvoice] = useState(false);
+
+  useEffect(() => {
+    if (isAddPaymentOpen) {
+      const filtered = leads.filter(l => l.status !== "Dropped" && (l.payments[0]?.totalPackage || 0) > 0);
+      if (filtered.length > 0) {
+        setDepositLeadId(filtered[0].id);
+      } else {
+        setDepositLeadId("");
+      }
+      setTempInvoiceFile("");
+      setTempInvoiceUrl("");
+    }
+  }, [isAddPaymentOpen, leads]);
 
   // Role SWITCH permission checks
   const canModifyLeads = ["ADMIN", "COUNSELOR", "MANAGER"].includes(currentRole);
@@ -206,7 +270,20 @@ export default function CrmLayout() {
                 className="w-full bg-slate-900 border border-slate-800/80 text-xs pl-9 pr-4 py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 text-slate-200 placeholder-slate-500"
               />
             </div>
-            
+
+            {/* Theme Toggle Switch */}
+            <button
+              onClick={toggleTheme}
+              title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800/80 text-slate-400 hover:text-violet-400 hover:border-violet-500/30 transition-all flex items-center justify-center shadow-md cursor-pointer group"
+            >
+              {theme === "dark" ? (
+                <FaSun className="text-sm text-amber-400 transition-transform duration-500 group-hover:rotate-45" />
+              ) : (
+                <FaMoon className="text-sm text-indigo-600 transition-transform duration-500 group-hover:-rotate-12" />
+              )}
+            </button>
+
             <button
               onClick={() => {
                 if (!canModifyLeads) return;
@@ -454,11 +531,17 @@ export default function CrmLayout() {
                     >
                       <option value="All">All Statuses</option>
                       <option value="New Lead">New Lead</option>
+                      <option value="Contacted">Contacted</option>
                       <option value="Follow-Up">Follow-Up</option>
+                      <option value="Interested">Interested</option>
                       <option value="Documents Pending">Documents Pending</option>
+                      <option value="Documents Received">Documents Received</option>
+                      <option value="Under Verification">Under Verification</option>
                       <option value="Ready For Submission">Ready For Submission</option>
                       <option value="Visa Submitted">Visa Submitted</option>
                       <option value="Approved / Rejected">Approved / Rejected</option>
+                      <option value="Closed">Closed</option>
+                      <option value="Dropped">Dropped</option>
                     </select>
                   </div>
 
@@ -481,7 +564,7 @@ export default function CrmLayout() {
                 <div className="text-xs font-semibold text-slate-400">
                   Showing <span className="text-violet-400 font-bold">{
                     leads.filter(l => 
-                      l.status !== "Dropped" &&
+                      (statusFilter === "Dropped" ? l.status === "Dropped" : l.status !== "Dropped") &&
                       (statusFilter === "All" || l.status === statusFilter) &&
                       (countryFilter === "All" || l.country === countryFilter) &&
                       (l.name.toLowerCase().includes(searchTerm.toLowerCase()) || l.phone.includes(searchTerm))
@@ -510,7 +593,7 @@ export default function CrmLayout() {
                       <tbody>
                         {leads
                           .filter(l => 
-                            l.status !== "Dropped" &&
+                            (statusFilter === "Dropped" ? l.status === "Dropped" : l.status !== "Dropped") &&
                             (statusFilter === "All" || l.status === statusFilter) &&
                             (countryFilter === "All" || l.country === countryFilter) &&
                             (l.name.toLowerCase().includes(searchTerm.toLowerCase()) || l.phone.includes(searchTerm))
@@ -529,12 +612,40 @@ export default function CrmLayout() {
                               </td>
                               <td className="py-3 font-semibold text-slate-300">{lead.country}</td>
                               <td className="py-3 text-slate-400">{lead.visaType}</td>
-                              <td className="py-3">
-                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-lg ${getStatusColor(lead.status)}`}>
-                                  {lead.status}
-                                </span>
+                              <td className="py-3" onClick={(e) => e.stopPropagation()}>
+                                <select
+                                  value={lead.status}
+                                  onChange={(e) => updateLeadStatus(lead.id, e.target.value as VisaStatus)}
+                                  disabled={!canModifyLeads}
+                                  className={`w-[135px] py-1 px-2 text-[11px] font-bold rounded-lg ${getStatusColor(lead.status)} focus:outline-none cursor-pointer border`}
+                                >
+                                  <option value="New Lead">New Lead</option>
+                                  <option value="Contacted">Contacted</option>
+                                  <option value="Follow-Up">Follow-Up</option>
+                                  <option value="Interested">Interested</option>
+                                  <option value="Documents Pending">Documents Pending</option>
+                                  <option value="Documents Received">Documents Received</option>
+                                  <option value="Under Verification">Under Verification</option>
+                                  <option value="Ready For Submission">Ready For Submission</option>
+                                  <option value="Visa Submitted">Visa Submitted</option>
+                                  <option value="Approved / Rejected">Approved / Rejected</option>
+                                  <option value="Closed">Closed</option>
+                                  <option value="Dropped">Dropped</option>
+                                </select>
                               </td>
-                              <td className="py-3 text-slate-300 font-semibold">{lead.counselor}</td>
+                              <td className="py-3" onClick={(e) => e.stopPropagation()}>
+                                <select
+                                  value={lead.counselor}
+                                  onChange={(e) => assignCounselor(lead.id, e.target.value)}
+                                  disabled={!canModifyLeads}
+                                  className="w-[135px] py-1 px-2 text-[11px] font-bold rounded-lg bg-slate-950 border border-slate-800 focus:outline-none text-slate-200 cursor-pointer"
+                                >
+                                  <option value="Unassigned">Unassigned</option>
+                                  <option value="Priya Mehta">Priya Mehta</option>
+                                  <option value="Rohit Verma">Rohit Verma</option>
+                                  <option value="Simran Kaur">Simran Kaur</option>
+                                </select>
+                              </td>
                               <td className="py-3 text-right">
                                 <div className="flex items-center justify-end space-x-1">
                                   <button
@@ -1106,31 +1217,61 @@ export default function CrmLayout() {
                                   <span>Verified</span>
                                 </span>
                               ) : (
-                                <label
-                                  className={`inline-flex items-center space-x-1.5 text-[10px] font-bold rounded-lg px-2.5 py-1.5 border cursor-pointer transition-all ${
-                                    !canVerifyDocs
-                                      ? "opacity-40 cursor-not-allowed border-slate-800 text-slate-600"
-                                      : "border-violet-500/40 text-violet-400 hover:bg-violet-500/10"
-                                  }`}
-                                >
-                                  <FaFileUpload className="text-[10px]" />
-                                  <span>{isUploading ? "Uploading…" : "Upload File"}</span>
-                                  <input
-                                    type="file"
-                                    className="hidden"
-                                    disabled={!canVerifyDocs || isUploading}
-                                    onChange={async (e) => {
-                                      const file = e.target.files?.[0];
-                                      if (!file) return;
-                                      setUploadError("");
-                                      setUploadingKey(rowKey);
-                                      const res = await uploadDocument(selectedLead.id, key, file);
-                                      setUploadingKey(null);
-                                      if (!res.ok) setUploadError(res.error || "Upload failed");
-                                      e.target.value = "";
+                                <div className="flex items-center space-x-2">
+                                  <label
+                                    className={`inline-flex items-center space-x-1 text-[10px] font-bold rounded-lg px-2.5 py-1.5 border cursor-pointer transition-all ${
+                                      !canVerifyDocs || isUploading
+                                        ? "opacity-40 cursor-not-allowed border-slate-800 text-slate-600"
+                                        : "border-violet-500/40 text-violet-400 hover:bg-violet-500/10"
+                                    }`}
+                                    title="Upload local file"
+                                  >
+                                    <FaFileUpload className="text-[9px]" />
+                                    <span>{isUploading ? "..." : "File"}</span>
+                                    <input
+                                      type="file"
+                                      className="hidden"
+                                      disabled={!canVerifyDocs || isUploading}
+                                      onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+                                        setUploadError("");
+                                        setUploadingKey(rowKey);
+                                        const res = await uploadDocument(selectedLead.id, key, file);
+                                        setUploadingKey(null);
+                                        if (res.ok) {
+                                          showToast("Document verified successfully!");
+                                        } else {
+                                          setUploadError(res.error || "Upload failed");
+                                          showToast(res.error || "Upload failed", "error");
+                                        }
+                                        e.target.value = "";
+                                      }}
+                                    />
+                                  </label>
+
+                                  <button
+                                    onClick={() => {
+                                      if (!canVerifyDocs || isUploading) return;
+                                      setPastedUrl("");
+                                      setUrlModalData({
+                                        leadId: selectedLead.id,
+                                        docType: key,
+                                        title: key.replace(/([A-Z])/g, ' $1'),
+                                      });
                                     }}
-                                  />
-                                </label>
+                                    disabled={!canVerifyDocs || isUploading}
+                                    title="Add external link URL"
+                                    className={`inline-flex items-center space-x-1 text-[10px] font-bold rounded-lg px-2.5 py-1.5 border cursor-pointer transition-all ${
+                                      !canVerifyDocs || isUploading
+                                        ? "opacity-40 cursor-not-allowed border-slate-800 text-slate-600"
+                                        : "border-violet-500/40 text-violet-400 hover:bg-violet-500/10"
+                                    }`}
+                                  >
+                                    <FaGlobe className="text-[9px]" />
+                                    <span>Link</span>
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -1291,7 +1432,7 @@ export default function CrmLayout() {
                   {
                     label: "Gross Invoiced Revenue",
                     value: `₹${leads
-                      .reduce((acc, lead) => acc + lead.payments.reduce((a, p) => a + p.totalPackage, 0), 0)
+                      .reduce((acc, lead) => acc + (lead.payments[0]?.totalPackage || 0), 0)
                       .toLocaleString()}`,
                     desc: "Total value of all packaged contracts"
                   },
@@ -1308,7 +1449,8 @@ export default function CrmLayout() {
                       .reduce((acc, lead) => {
                         const total = lead.payments[0]?.totalPackage || 0;
                         const paid = lead.payments.reduce((a, p) => a + p.amountPaid, 0);
-                        return acc + (total - paid);
+                        const balance = total > 0 ? Math.max(0, total - paid) : 0;
+                        return acc + balance;
                       }, 0)
                       .toLocaleString()}`,
                     desc: "Outstanding credit from client packages"
@@ -1358,12 +1500,14 @@ export default function CrmLayout() {
                           .map((lead) => {
                             const total = lead.payments[0]?.totalPackage || 0;
                             const paid = lead.payments.reduce((acc, pay) => acc + pay.amountPaid, 0);
-                            const balance = total - paid;
+                            const balance = total > 0 ? Math.max(0, total - paid) : 0;
                             return (
                               <tr key={lead.id} className="border-b border-slate-900/50 hover:bg-slate-900/20 text-slate-300">
                                 <td className="py-3 font-semibold text-slate-200">{lead.name}</td>
                                 <td className="py-3">{lead.country}</td>
-                                <td className="py-3 font-bold text-slate-400">₹{total.toLocaleString()}</td>
+                                <td className="py-3 font-bold text-slate-400">
+                                  {total > 0 ? `₹${total.toLocaleString()}` : "Not Decided"}
+                                </td>
                                 <td className="py-3 text-emerald-400 font-bold">₹{paid.toLocaleString()}</td>
                                 <td className={`py-3 font-bold ${balance > 0 ? "text-rose-400" : "text-emerald-400"}`}>
                                   ₹{balance.toLocaleString()}
@@ -1371,10 +1515,9 @@ export default function CrmLayout() {
                                 <td className="py-3 text-right">
                                   <button
                                     onClick={() => {
-                                      setCurrentTab("Leads");
-                                      setSelectedLeadId(lead.id);
+                                      setInvoiceLeadId(lead.id);
                                     }}
-                                    className="text-violet-400 hover:text-violet-300 font-bold hover:underline"
+                                    className="text-violet-400 hover:text-violet-300 font-bold hover:underline cursor-pointer"
                                   >
                                     Invoices
                                   </button>
@@ -1660,6 +1803,7 @@ export default function CrmLayout() {
                   } : undefined
                 });
 
+                showToast("Lead initialized successfully!");
                 setIsAddLeadOpen(false);
               }}
               className="space-y-4 text-xs"
@@ -1667,7 +1811,7 @@ export default function CrmLayout() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-slate-400 font-bold block">Client Full Name</label>
-                  <input required name="name" type="text" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none" />
+                  <input required name="name" placeholder="e.g. John Doe" type="text" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-slate-400 font-bold block">Contact Number</label>
@@ -1677,7 +1821,7 @@ export default function CrmLayout() {
 
               <div className="space-y-1">
                 <label className="text-slate-400 font-bold block">Email Address</label>
-                <input required name="email" type="email" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none" />
+                <input required name="email" placeholder="e.g. john.doe@example.com" type="email" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -1720,7 +1864,7 @@ export default function CrmLayout() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-slate-400 font-bold block">Initial Invoiced Package (INR)</label>
-                  <input name="totalPackage" placeholder="50000" type="number" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none" />
+                  <input min="0" name="totalPackage" placeholder="50000 (optional)" type="number" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none" />
                 </div>
               </div>
 
@@ -1757,7 +1901,7 @@ export default function CrmLayout() {
               onSubmit={(e) => {
                 e.preventDefault();
                 const fd = new FormData(e.currentTarget);
-                const leadId = fd.get("leadId") as string;
+                const leadId = depositLeadId;
                 const amountPaid = parseFloat(fd.get("amountPaid") as string) || 0;
                 const paymentMethod = fd.get("paymentMethod") as string;
 
@@ -1772,7 +1916,10 @@ export default function CrmLayout() {
                     amountPaid,
                     pendingAmount: newPending,
                     paymentMethod,
+                    invoiceFile: tempInvoiceFile || undefined,
+                    invoiceUrl: tempInvoiceUrl || undefined,
                   });
+                  showToast("Payment recorded successfully!");
                 }
 
                 setIsAddPaymentOpen(false);
@@ -1781,10 +1928,25 @@ export default function CrmLayout() {
             >
               <div className="space-y-1">
                 <label className="text-slate-400 font-bold block">Select Client File</label>
-                <select name="leadId" className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none">
-                  {leads.filter(l => l.status !== "Dropped").map(l => (
-                    <option key={l.id} value={l.id}>{l.name} ({l.country} - ₹{(l.payments[0]?.totalPackage - l.payments.reduce((a, p) => a + p.amountPaid, 0))?.toLocaleString()} outstanding)</option>
-                  ))}
+                <select 
+                  name="leadId" 
+                  value={depositLeadId}
+                  onChange={(e) => setDepositLeadId(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none"
+                >
+                  {leads.filter(l => l.status !== "Dropped" && (l.payments[0]?.totalPackage || 0) > 0).map(l => {
+                    const total = l.payments[0]?.totalPackage || 0;
+                    const paid = l.payments.reduce((a, p) => a + p.amountPaid, 0);
+                    const outstanding = total > 0 ? Math.max(0, total - paid) : 0;
+                    const labelSuffix = total > 0 
+                      ? `₹${outstanding.toLocaleString()} outstanding` 
+                      : "package not decided";
+                    return (
+                      <option key={l.id} value={l.id}>
+                        {l.name} ({l.country} - {labelSuffix})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -1801,6 +1963,98 @@ export default function CrmLayout() {
                     <option value="Credit Card">Credit Card</option>
                     <option value="Cash">Cash Depot</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Invoice Attachment Options */}
+              <div className="space-y-2 border-t border-slate-900 pt-3">
+                <label className="text-slate-400 font-bold block">Invoice Document (Optional)</label>
+                <div className="grid grid-cols-2 gap-4">
+                  
+                  {/* File Upload Option */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-500 font-bold block">Upload Invoice PDF/Image</span>
+                    {tempInvoiceFile ? (
+                      <div className="flex items-center justify-between bg-slate-950 border border-slate-900 px-3 py-2 rounded-xl text-[11px] text-slate-300">
+                        <span className="truncate max-w-[120px]">{tempInvoiceFile}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTempInvoiceFile("");
+                            setTempInvoiceUrl("");
+                          }}
+                          className="text-rose-400 hover:text-rose-300 cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="w-full flex items-center justify-center space-x-2 py-2 bg-slate-950 border border-slate-800 border-dashed hover:border-violet-500/50 hover:text-violet-400 rounded-xl cursor-pointer text-slate-400 text-xs transition-all">
+                        <FaFileUpload className="text-[11px]" />
+                        <span>{isUploadingTempInvoice ? "Uploading..." : "Upload File"}</span>
+                        <input
+                          type="file"
+                          className="hidden"
+                          disabled={isUploadingTempInvoice}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            
+                            if (!depositLeadId) {
+                              showToast("Please select a client file first", "error");
+                              return;
+                            }
+                            
+                            setIsUploadingTempInvoice(true);
+                            const form = new FormData();
+                            form.append("leadId", depositLeadId);
+                            form.append("docType", "invoice-deposit");
+                            form.append("uploadedBy", currentRole);
+                            form.append("file", file);
+
+                            try {
+                              const res = await fetch("/api/documents", { method: "POST", body: form });
+                              const data = await res.json();
+                              if (res.ok) {
+                                setTempInvoiceFile(data.document.fileName);
+                                setTempInvoiceUrl(data.document.fileUrl);
+                                showToast("Invoice uploaded successfully!");
+                              } else {
+                                showToast(data.error || "Upload failed", "error");
+                              }
+                            } catch {
+                              showToast("Network error during upload", "error");
+                            } finally {
+                              setIsUploadingTempInvoice(false);
+                            }
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {/* URL Link Option */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-slate-500 font-bold block">Or Paste Invoice URL</span>
+                    <input
+                      type="url"
+                      placeholder="https://drive.google.com/..."
+                      value={tempInvoiceUrl && tempInvoiceFile === "Linked Invoice" ? tempInvoiceUrl : ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val) {
+                          setTempInvoiceUrl(val);
+                          setTempInvoiceFile("Linked Invoice");
+                        } else {
+                          setTempInvoiceUrl("");
+                          setTempInvoiceFile("");
+                        }
+                      }}
+                      className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none placeholder-slate-600 text-slate-300"
+                    />
+                  </div>
+
                 </div>
               </div>
 
@@ -1846,6 +2100,7 @@ export default function CrmLayout() {
                   notes,
                 });
 
+                showToast("Consultation meeting scheduled!");
                 setIsAddMeetingOpen(false);
               }}
               className="space-y-4 text-xs"
@@ -1888,6 +2143,296 @@ export default function CrmLayout() {
               </button>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* D. PASTE URL MODAL */}
+      {urlModalData && (
+        <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5">
+            <button 
+              onClick={() => setUrlModalData(null)}
+              className="absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-200 rounded-lg"
+            >
+              <FaTimes />
+            </button>
+
+            <h3 className="text-sm font-bold text-white border-b border-slate-900 pb-3 text-left">
+              Link Document URL: <span className="capitalize">{urlModalData.title}</span>
+            </h3>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const url = pastedUrl.trim();
+                if (!url) return;
+                
+                setUploadError("");
+                const rowKey = `${urlModalData.leadId}-${urlModalData.docType}`;
+                setUploadingKey(rowKey);
+                setUrlModalData(null);
+                
+                const res = await uploadDocument(urlModalData.leadId, urlModalData.docType, url);
+                setUploadingKey(null);
+                if (res.ok) {
+                  showToast("Document link verified successfully!");
+                } else {
+                  setUploadError(res.error || "Saving link failed");
+                  showToast(res.error || "Saving link failed", "error");
+                }
+              }}
+              className="space-y-4 text-xs text-left"
+            >
+              <div className="space-y-1">
+                <label className="text-slate-400 font-bold block">Document URL Link</label>
+                <input
+                  required
+                  type="url"
+                  value={pastedUrl}
+                  onChange={(e) => setPastedUrl(e.target.value)}
+                  placeholder="https://drive.google.com/... or OneDrive/Dropbox link"
+                  className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none"
+                />
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-bold text-white rounded-xl shadow-lg"
+              >
+                Attach & Verify Link
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* E. INVOICES MANAGER MODAL */}
+      {invoiceLeadId && (
+        <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5">
+            <button 
+              onClick={() => {
+                setInvoiceLeadId(null);
+                setUploadInvoiceError("");
+              }}
+              className="absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-200 rounded-lg cursor-pointer"
+            >
+              <FaTimes />
+            </button>
+
+            {(() => {
+              const lead = leads.find(l => l.id === invoiceLeadId);
+              if (!lead) return null;
+              return (
+                <>
+                  <div>
+                    <h3 className="text-sm font-bold text-white mb-1">
+                      Billing Invoices: {lead.name}
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      View, upload, or attach external document URLs (such as Google Drive or Dropbox links) to individual payment invoices.
+                    </p>
+                  </div>
+
+                  {uploadInvoiceError && (
+                    <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl text-[10px] font-semibold flex items-center space-x-2">
+                      <FaInfoCircle className="text-xs shrink-0" />
+                      <span>{uploadInvoiceError}</span>
+                    </div>
+                  )}
+
+                  <div className="max-h-80 overflow-y-auto space-y-3 pr-1">
+                    {lead.payments.length === 0 ? (
+                      <p className="text-center py-6 text-slate-500 font-semibold text-xs">
+                        No transactions recorded for this client. Log a deposit first.
+                      </p>
+                    ) : (
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="border-b border-slate-800/60 text-slate-500 font-bold">
+                            <th className="pb-2">Invoice #</th>
+                            <th className="pb-2">Date</th>
+                            <th className="pb-2">Amount</th>
+                            <th className="pb-2">Method</th>
+                            <th className="pb-2 text-right">Invoice Document</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lead.payments.map((pay) => {
+                            const isUploading = uploadingInvoiceKey === `${lead.id}-${pay.invoiceNumber}`;
+                            return (
+                              <tr key={pay.invoiceNumber} className="border-b border-slate-900 last:border-0 text-slate-300">
+                                <td className="py-3 font-semibold text-slate-100">{pay.invoiceNumber}</td>
+                                <td className="py-3 text-slate-400">{pay.date}</td>
+                                <td className="py-3 text-emerald-400 font-bold">₹{pay.amountPaid.toLocaleString()}</td>
+                                <td className="py-3 font-medium text-slate-400">{pay.paymentMethod}</td>
+                                <td className="py-3 text-right">
+                                  {pay.invoiceUrl ? (
+                                    <div className="flex items-center justify-end space-x-2">
+                                      <a
+                                        href={pay.invoiceUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center space-x-1 text-[10px] font-bold text-violet-400 hover:text-violet-300 hover:underline"
+                                      >
+                                        <FaFileDownload className="text-[9px]" />
+                                        <span className="truncate max-w-[120px]">{pay.invoiceFile || "Open"}</span>
+                                      </a>
+                                      <button
+                                        onClick={async () => {
+                                          if (isUploading) return;
+                                          setUploadInvoiceError("");
+                                          const key = `${lead.id}-${pay.invoiceNumber}`;
+                                          setUploadingInvoiceKey(key);
+                                          const res = await uploadInvoice(lead.id, pay.invoiceNumber, "");
+                                          setUploadingInvoiceKey(null);
+                                          if (res.ok) {
+                                            showToast("Invoice attachment removed successfully!");
+                                          } else {
+                                            setUploadInvoiceError(res.error || "Removal failed");
+                                            showToast(res.error || "Removal failed", "error");
+                                          }
+                                        }}
+                                        className="p-1 text-slate-500 hover:text-rose-400 cursor-pointer"
+                                        title="Remove attachment"
+                                      >
+                                        <FaTrash className="text-[10px]" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-end space-x-1.5">
+                                      <label
+                                        className="inline-flex items-center space-x-1 text-[10px] font-bold rounded-lg px-2 py-1 bg-slate-900 border border-slate-800 text-slate-300 hover:text-violet-400 hover:border-violet-500/30 cursor-pointer transition-all"
+                                      >
+                                        <FaFileUpload className="text-[9px]" />
+                                        <span>{isUploading ? "..." : "File"}</span>
+                                        <input
+                                          type="file"
+                                          className="hidden"
+                                          disabled={isUploading}
+                                          onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+                                            setUploadInvoiceError("");
+                                            const key = `${lead.id}-${pay.invoiceNumber}`;
+                                            setUploadingInvoiceKey(key);
+                                            
+                                            const res = await uploadInvoice(lead.id, pay.invoiceNumber, file);
+                                            setUploadingInvoiceKey(null);
+                                            if (res.ok) {
+                                              showToast("Invoice file uploaded successfully!");
+                                            } else {
+                                              setUploadInvoiceError(res.error || "Upload failed");
+                                              showToast(res.error || "Upload failed", "error");
+                                            }
+                                            e.target.value = "";
+                                          }}
+                                        />
+                                      </label>
+
+                                      <button
+                                        onClick={() => {
+                                          setPastedInvoiceUrl("");
+                                          setUrlInvoiceData({
+                                            leadId: lead.id,
+                                            invoiceNumber: pay.invoiceNumber,
+                                          });
+                                        }}
+                                        className="inline-flex items-center space-x-1 text-[10px] font-bold rounded-lg px-2 py-1 bg-slate-900 border border-slate-800 text-slate-300 hover:text-violet-400 hover:border-violet-500/30 cursor-pointer transition-all"
+                                      >
+                                        <FaGlobe className="text-[9px]" />
+                                        <span>Link</span>
+                                      </button>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* F. PASTE INVOICE URL MODAL */}
+      {urlInvoiceData && (
+        <div className="fixed inset-0 z-[60] bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5">
+            <button 
+              onClick={() => setUrlInvoiceData(null)}
+              className="absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-200 rounded-lg cursor-pointer"
+            >
+              <FaTimes />
+            </button>
+
+            <h3 className="text-sm font-bold text-white border-b border-slate-900 pb-3 text-left">
+              Link Invoice URL: {urlInvoiceData.invoiceNumber}
+            </h3>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const url = pastedInvoiceUrl.trim();
+                if (!url) return;
+                
+                setUploadInvoiceError("");
+                const key = `${urlInvoiceData.leadId}-${urlInvoiceData.invoiceNumber}`;
+                setUploadingInvoiceKey(key);
+                setUrlInvoiceData(null);
+                
+                const res = await uploadInvoice(urlInvoiceData.leadId, urlInvoiceData.invoiceNumber, url);
+                setUploadingInvoiceKey(null);
+                if (res.ok) {
+                  showToast("Invoice link attached successfully!");
+                } else {
+                  setUploadInvoiceError(res.error || "Saving link failed");
+                  showToast(res.error || "Saving link failed", "error");
+                }
+              }}
+              className="space-y-4 text-xs text-left"
+            >
+              <div className="space-y-1">
+                <label className="text-slate-400 font-bold block">Invoice URL Link</label>
+                <input
+                  required
+                  type="url"
+                  value={pastedInvoiceUrl}
+                  onChange={(e) => setPastedInvoiceUrl(e.target.value)}
+                  placeholder="https://drive.google.com/... or OneDrive/Dropbox link"
+                  className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none"
+                />
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-bold text-white rounded-xl shadow-lg"
+              >
+                Attach & Verify Invoice Link
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-[100] flex items-center space-x-2.5 px-4 py-3 rounded-xl border shadow-2xl transition-all duration-300 animate-fade-in ${
+          toast.type === "success"
+            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+            : "bg-rose-500/10 border-rose-500/30 text-rose-400"
+        }`}>
+          {toast.type === "success" ? (
+            <FaCheckCircle className="text-base shrink-0" />
+          ) : (
+            <FaInfoCircle className="text-base shrink-0" />
+          )}
+          <span className="text-xs font-bold">{toast.message}</span>
         </div>
       )}
 
