@@ -4,7 +4,7 @@ import { Meeting } from "@/context/CrmContext";
 
 export async function GET() {
   try {
-    const meetings = readMeetings();
+    const meetings = await readMeetings();
     return NextResponse.json(meetings, {
       headers: {
         "Access-Control-Allow-Origin": "*",
@@ -21,11 +21,11 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const existingMeetings = readMeetings();
+    const existingMeetings = await readMeetings();
 
     // 1. Sync full state from the CRM frontend
     if (body && Array.isArray(body.meetings)) {
-      const success = writeMeetings(body.meetings);
+      const success = await writeMeetings(body.meetings);
       if (success) {
         return NextResponse.json({ success: true, message: "Meetings synchronized successfully" });
       } else {
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     };
 
     const updatedMeetings = [...existingMeetings, newMeeting];
-    const success = writeMeetings(updatedMeetings);
+    const success = await writeMeetings(updatedMeetings);
 
     if (success) {
       return NextResponse.json({ success: true, meeting: newMeeting }, {

@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50", 10)));
 
-    let leads = readLeads();
+    let leads = await readLeads();
 
     // Exclude soft-deleted leads by default
     if (!includeDeleted) {
@@ -49,11 +49,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const existingLeads = readLeads();
+    const existingLeads = await readLeads();
 
     // Bulk sync from CRM frontend
     if (Array.isArray(body.leads)) {
-      const ok = writeLeads(body.leads);
+      const ok = await writeLeads(body.leads);
       return ok
         ? NextResponse.json({ success: true })
         : NextResponse.json({ error: "Failed to write leads" }, { status: 500 });
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    const ok = writeLeads([...existingLeads, newLead]);
+    const ok = await writeLeads([...existingLeads, newLead]);
     if (!ok) return NextResponse.json({ error: "Failed to save lead" }, { status: 500 });
 
     const activity: Activity = {
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
       createdBy: body.createdBy || "SYSTEM",
     };
-    appendActivity(activity);
+    await appendActivity(activity);
 
     return NextResponse.json({ success: true, lead: newLead }, { status: 201 });
   } catch (error) {

@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const from = searchParams.get("from");
     const to = searchParams.get("to");
 
-    let expenses = readExpenses();
+    let expenses = await readExpenses();
     if (category) expenses = expenses.filter((e) => e.category === category);
     if (from) expenses = expenses.filter((e) => e.date >= from);
     if (to) expenses = expenses.filter((e) => e.date <= to);
@@ -47,8 +47,8 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    const existing = readExpenses();
-    const ok = writeExpenses([...existing, expense]);
+    const existing = await readExpenses();
+    const ok = await writeExpenses([...existing, expense]);
     if (!ok) return NextResponse.json({ error: "Failed to save expense" }, { status: 500 });
 
     return NextResponse.json({ success: true, expense }, { status: 201 });

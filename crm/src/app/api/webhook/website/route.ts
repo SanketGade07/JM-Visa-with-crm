@@ -74,8 +74,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Atomic: save lead + activity log together (guide §13 rule 3)
-    const existingLeads = readLeads();
-    const leadsOk = writeLeads([...existingLeads, newLead]);
+    const existingLeads = await readLeads();
+    const leadsOk = await writeLeads([...existingLeads, newLead]);
 
     const activityEntry: Activity = {
       id: `act-${Date.now()}`,
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
       createdBy: "SYSTEM",
     };
-    appendActivity(activityEntry);
+    await appendActivity(activityEntry);
 
     if (!leadsOk) {
       return NextResponse.json({ error: "Failed to save lead" }, { status: 500 });

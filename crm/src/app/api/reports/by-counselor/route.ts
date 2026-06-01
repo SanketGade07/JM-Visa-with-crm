@@ -4,8 +4,8 @@ import { readLeads, readMeetings } from "@/utils/db";
 // GET /api/reports/by-counselor — per-staff performance metrics
 export async function GET() {
   try {
-    const leads = readLeads().filter((l) => !l.isDeleted);
-    const meetings = readMeetings();
+    const leads = (await readLeads()).filter((l) => !l.isDeleted);
+    const meetings = await readMeetings();
 
     const counselorMap = new Map<string, {
       total: number;

@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const leadId = searchParams.get("leadId");
 
-    let activities = readActivities();
+    let activities = await readActivities();
     if (leadId) activities = activities.filter((a) => a.leadId === leadId);
 
     // Always return newest-first
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "leadId is required" }, { status: 400 });
     }
 
-    appendActivity(activity);
+    await appendActivity(activity);
     return NextResponse.json({ success: true, activity }, { status: 201 });
   } catch (error) {
     console.error("POST /api/activities error:", error);

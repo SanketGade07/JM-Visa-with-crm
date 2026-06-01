@@ -7,14 +7,14 @@ type Params = { params: Promise<{ id: string }> };
 // GET /api/leads/:id — full lead profile with activity timeline
 export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
-  const leads = readLeads();
+  const leads = await readLeads();
   const lead = leads.find((l) => l.id === id);
 
   if (!lead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
-  const activities = readActivities().filter((a) => a.leadId === id);
+  const activities = (await readActivities()).filter((a) => a.leadId === id);
   return NextResponse.json({ lead, activities });
 }
 
@@ -22,7 +22,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const body = await req.json();
-  const leads = readLeads();
+  const leads = await readLeads();
   const index = leads.findIndex((l) => l.id === id);
 
   if (index === -1) {
@@ -44,7 +44,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   };
 
   leads[index] = updated;
-  const ok = writeLeads(leads);
+  const ok = await writeLeads(leads);
   if (!ok) return NextResponse.json({ error: "Failed to update lead" }, { status: 500 });
 
   // Log status change activity if status changed
@@ -57,7 +57,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       createdAt: new Date().toISOString(),
       createdBy: body.updatedBy || "SYSTEM",
     };
-    appendActivity(activity);
+    await appendActivity(activity);
   }
 
   return NextResponse.json({ success: true, lead: updated });
@@ -66,7 +66,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 // DELETE /api/leads/:id — soft delete only (guide §13 rule 5)
 export async function DELETE(req: NextRequest, { params }: Params) {
   const { id } = await params;
-  const leads = readLeads();
+  const leads = await readLeads();
   const index = leads.findIndex((l) => l.id === id);
 
   if (index === -1) {
@@ -80,7 +80,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     lastUpdated: new Date().toISOString().split("T")[0],
   };
 
-  const ok = writeLeads(leads);
+  const ok = await writeLeads(leads);
   if (!ok) return NextResponse.json({ error: "Failed to delete lead" }, { status: 500 });
 
   const activity: Activity = {
@@ -91,7 +91,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     createdAt: new Date().toISOString(),
     createdBy: "SYSTEM",
   };
-  appendActivity(activity);
+  await appendActivity(activity);
 
   return NextResponse.json({ success: true });
 }

@@ -4,7 +4,7 @@ import { readLeads } from "@/utils/db";
 // GET /api/reports/by-country — breakdown per destination country
 export async function GET() {
   try {
-    const leads = readLeads().filter((l) => !l.isDeleted);
+    const leads = (await readLeads()).filter((l) => !l.isDeleted);
     const countries = ["UK", "USA", "Canada", "Europe"] as const;
 
     const report = countries.map((country) => {

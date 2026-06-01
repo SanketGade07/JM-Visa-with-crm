@@ -4,8 +4,8 @@ import { readLeads, readExpenses } from "@/utils/db";
 // GET /api/reports/summary — dashboard-level KPIs
 export async function GET() {
   try {
-    const leads = readLeads().filter((l) => !l.isDeleted);
-    const expenses = readExpenses();
+    const leads = (await readLeads()).filter((l) => !l.isDeleted);
+    const expenses = await readExpenses();
 
     // Lead counts by status
     const byStatus: Record<string, number> = {};

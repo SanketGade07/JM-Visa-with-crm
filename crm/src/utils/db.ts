@@ -1,85 +1,127 @@
-import fs from "fs";
-import path from "path";
+import { getSupabase } from "@/utils/supabase";
 import { Lead, Meeting, Activity, Expense, Document } from "@/context/CrmContext";
 
-const DATA_DIR = path.join(process.cwd(), "src", "data");
-const LEADS_FILE = path.join(DATA_DIR, "leads.json");
-const MEETINGS_FILE = path.join(DATA_DIR, "meetings.json");
-const ACTIVITIES_FILE = path.join(DATA_DIR, "activities.json");
-const EXPENSES_FILE = path.join(DATA_DIR, "expenses.json");
-const DOCUMENTS_FILE = path.join(DATA_DIR, "documents.json");
-
-const ensureDirectoryAndFiles = () => {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-  if (!fs.existsSync(LEADS_FILE)) {
-    fs.writeFileSync(LEADS_FILE, "[]", "utf-8");
-  }
-  if (!fs.existsSync(MEETINGS_FILE)) {
-    fs.writeFileSync(MEETINGS_FILE, "[]", "utf-8");
-  }
-  if (!fs.existsSync(ACTIVITIES_FILE)) {
-    fs.writeFileSync(ACTIVITIES_FILE, "[]", "utf-8");
-  }
-  if (!fs.existsSync(EXPENSES_FILE)) {
-    fs.writeFileSync(EXPENSES_FILE, "[]", "utf-8");
-  }
-  if (!fs.existsSync(DOCUMENTS_FILE)) {
-    fs.writeFileSync(DOCUMENTS_FILE, "[]", "utf-8");
-  }
-};
-
-const readJson = <T>(filePath: string): T[] => {
-  ensureDirectoryAndFiles();
-  try {
-    return JSON.parse(fs.readFileSync(filePath, "utf-8")) as T[];
-  } catch {
+// ── Leads ────────────────────────────────────────────────────────────────────
+export const readLeads = async (): Promise<Lead[]> => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from("leads").select("*");
+  if (error) {
+    console.error("Error reading leads from Supabase:", error);
     return [];
   }
+  return (data || []) as Lead[];
 };
 
-const writeJson = <T>(filePath: string, data: T[]): boolean => {
-  ensureDirectoryAndFiles();
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
-    return true;
-  } catch (error) {
-    console.error(`Error writing ${filePath}:`, error);
+export const writeLeads = async (leads: Lead[]): Promise<boolean> => {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("leads").upsert(leads);
+  if (error) {
+    console.error("Error writing leads to Supabase:", error);
     return false;
   }
+  return true;
 };
 
-// ── Leads ────────────────────────────────────────────────────────────────────
-export const readLeads = (): Lead[] => readJson<Lead>(LEADS_FILE);
-export const writeLeads = (leads: Lead[]): boolean => writeJson(LEADS_FILE, leads);
-
 // ── Meetings ─────────────────────────────────────────────────────────────────
-export const readMeetings = (): Meeting[] => readJson<Meeting>(MEETINGS_FILE);
-export const writeMeetings = (meetings: Meeting[]): boolean =>
-  writeJson(MEETINGS_FILE, meetings);
+export const readMeetings = async (): Promise<Meeting[]> => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from("meetings").select("*");
+  if (error) {
+    console.error("Error reading meetings from Supabase:", error);
+    return [];
+  }
+  return (data || []) as Meeting[];
+};
+
+export const writeMeetings = async (meetings: Meeting[]): Promise<boolean> => {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("meetings").upsert(meetings);
+  if (error) {
+    console.error("Error writing meetings to Supabase:", error);
+    return false;
+  }
+  return true;
+};
 
 // ── Activity Log ──────────────────────────────────────────────────────────────
-export const readActivities = (): Activity[] => readJson<Activity>(ACTIVITIES_FILE);
-export const writeActivities = (activities: Activity[]): boolean =>
-  writeJson(ACTIVITIES_FILE, activities);
+export const readActivities = async (): Promise<Activity[]> => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from("activities").select("*");
+  if (error) {
+    console.error("Error reading activities from Supabase:", error);
+    return [];
+  }
+  return (data || []) as Activity[];
+};
 
-export const appendActivity = (activity: Activity): boolean => {
-  const existing = readActivities();
-  return writeActivities([...existing, activity]);
+export const writeActivities = async (activities: Activity[]): Promise<boolean> => {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("activities").upsert(activities);
+  if (error) {
+    console.error("Error writing activities to Supabase:", error);
+    return false;
+  }
+  return true;
+};
+
+export const appendActivity = async (activity: Activity): Promise<boolean> => {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("activities").insert(activity);
+  if (error) {
+    console.error("Error appending activity to Supabase:", error);
+    return false;
+  }
+  return true;
 };
 
 // ── Expenses ──────────────────────────────────────────────────────────────────
-export const readExpenses = (): Expense[] => readJson<Expense>(EXPENSES_FILE);
-export const writeExpenses = (expenses: Expense[]): boolean =>
-  writeJson(EXPENSES_FILE, expenses);
+export const readExpenses = async (): Promise<Expense[]> => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from("expenses").select("*");
+  if (error) {
+    console.error("Error reading expenses from Supabase:", error);
+    return [];
+  }
+  return (data || []) as Expense[];
+};
+
+export const writeExpenses = async (expenses: Expense[]): Promise<boolean> => {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("expenses").upsert(expenses);
+  if (error) {
+    console.error("Error writing expenses to Supabase:", error);
+    return false;
+  }
+  return true;
+};
 
 // ── Documents ─────────────────────────────────────────────────────────────────
-export const readDocuments = (): Document[] => readJson<Document>(DOCUMENTS_FILE);
-export const writeDocuments = (documents: Document[]): boolean =>
-  writeJson(DOCUMENTS_FILE, documents);
+export const readDocuments = async (): Promise<Document[]> => {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from("documents").select("*");
+  if (error) {
+    console.error("Error reading documents from Supabase:", error);
+    return [];
+  }
+  return (data || []) as Document[];
+};
 
-export const appendDocument = (doc: Document): boolean => {
-  const existing = readDocuments();
-  return writeDocuments([...existing, doc]);
+export const writeDocuments = async (documents: Document[]): Promise<boolean> => {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("documents").upsert(documents);
+  if (error) {
+    console.error("Error writing documents to Supabase:", error);
+    return false;
+  }
+  return true;
+};
+
+export const appendDocument = async (doc: Document): Promise<boolean> => {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("documents").insert(doc);
+  if (error) {
+    console.error("Error appending document to Supabase:", error);
+    return false;
+  }
+  return true;
 };

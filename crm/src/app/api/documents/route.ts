@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const leadId = searchParams.get("leadId");
 
-    let docs = readDocuments();
+    let docs = await readDocuments();
     if (leadId) docs = docs.filter((d) => d.leadId === leadId);
     docs.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
 
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       uploadedAt: new Date().toISOString(),
     };
 
-    appendDocument(document);
+    await appendDocument(document);
 
     const activity: Activity = {
       id: `act-${Date.now()}`,
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
       createdBy: uploadedBy,
     };
-    appendActivity(activity);
+    await appendActivity(activity);
 
     return NextResponse.json({ success: true, document }, { status: 201 });
   } catch (error) {

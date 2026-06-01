@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const from = searchParams.get("from");
     const to = searchParams.get("to");
 
-    const leads = readLeads().filter((l) => !l.isDeleted);
+    const leads = (await readLeads()).filter((l) => !l.isDeleted);
 
     type PaymentRow = PaymentDetails & {
       leadId: string;
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "leadId and amountPaid are required" }, { status: 400 });
     }
 
-    const leads = readLeads();
+    const leads = await readLeads();
     const index = leads.findIndex((l) => l.id === leadId);
     if (index === -1) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       lastUpdated: today,
     };
 
-    const ok = writeLeads(leads);
+    const ok = await writeLeads(leads);
     if (!ok) return NextResponse.json({ error: "Failed to save payment" }, { status: 500 });
 
     const activity: Activity = {
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
       createdBy: body.createdBy || "SYSTEM",
     };
-    appendActivity(activity);
+    await appendActivity(activity);
 
     return NextResponse.json({ success: true, payment }, { status: 201 });
   } catch (error) {
