@@ -1334,7 +1334,7 @@ export default function CrmLayout() {
                           {/* Action Button */}
                           <button 
                             onClick={() => showToast("Joining Google Meet...")}
-                            className={`px-3 py-1.5 rounded-full border text-[11px] font-medium flex items-center shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200 ${
+                            className={`px-3 py-1.5 rounded-[10px] border text-[11px] font-medium flex items-center shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200 ${
                               theme === "light" 
                                 ? "bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50 hover:border-gray-300" 
                                 : "bg-slate-800 border-slate-700/60 text-slate-200 hover:bg-slate-750 hover:border-slate-650"
@@ -1391,7 +1391,7 @@ export default function CrmLayout() {
                           {/* Action Button */}
                           <button 
                             onClick={() => showToast("Opening Slack...")}
-                            className={`px-3 py-1.5 rounded-full border text-[11px] font-medium flex items-center shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200 ${
+                            className={`px-3 py-1.5 rounded-[10px] border text-[11px] font-medium flex items-center shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200 ${
                               theme === "light" 
                                 ? "bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50 hover:border-gray-300" 
                                 : "bg-slate-800 border-slate-700/60 text-slate-200 hover:bg-slate-750 hover:border-slate-650"
