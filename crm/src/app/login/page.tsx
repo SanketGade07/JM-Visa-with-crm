@@ -30,8 +30,11 @@ export default function LoginPage() {
         return;
       }
 
-      // Sync role to localStorage so CrmContext picks it up immediately
+      // Sync role and user to localStorage so CrmContext picks it up immediately
       localStorage.setItem("visa_crm_role", data.role);
+      if (data.user) {
+        localStorage.setItem("visa_crm_user", JSON.stringify(data.user));
+      }
       router.push("/");
       router.refresh();
     } catch {
@@ -47,11 +50,9 @@ export default function LoginPage() {
 
         {/* Brand */}
         <div className="flex flex-col items-center space-y-3">
-          <div className="p-4 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-500 shadow-xl shadow-violet-500/25">
-            <FaGlobe className="text-white text-2xl" />
-          </div>
+          <img src="/logo.webp" alt="JM Visa Logo" className="h-16 w-auto object-contain rounded-2xl" />
           <div className="text-center">
-            <h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
+            <h1 className="text-2xl font-extrabold text-white">
               JM VISA
             </h1>
             <p className="text-xs uppercase font-bold text-violet-400/80 tracking-widest mt-0.5">

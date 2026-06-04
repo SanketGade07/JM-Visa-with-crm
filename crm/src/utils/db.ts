@@ -1,5 +1,5 @@
 import { getSupabase } from "@/utils/supabase";
-import { Lead, Meeting, Activity, Expense, Document } from "@/context/CrmContext";
+import { Lead, Meeting, Activity, Expense, Document, CrmUser } from "@/context/CrmContext";
 
 // ── Leads ────────────────────────────────────────────────────────────────────
 export const readLeads = async (): Promise<Lead[]> => {
@@ -125,3 +125,83 @@ export const appendDocument = async (doc: Document): Promise<boolean> => {
   }
   return true;
 };
+
+// ── Users (Dynamic Staff Accounts in Storage) ───────────────────────────────
+export const getSeedUsers = (): CrmUser[] => [
+  {
+    id: "user-admin",
+    name: "Admin User",
+    email: "admin@jmvisa.com",
+    password: "admin123",
+    role: "ADMIN",
+    allowedTabs: ["Dashboard", "Leads", "FollowUps", "Countries", "USASlots", "Checklist", "Submissions", "Payments", "Meetings", "DropLeads", "Staff"],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "user-manager",
+    name: "Manager User",
+    email: "manager@jmvisa.com",
+    password: "manager123",
+    role: "MANAGER",
+    allowedTabs: ["Dashboard", "Leads", "FollowUps", "Countries", "USASlots", "Checklist", "Submissions", "Payments", "Meetings", "DropLeads", "Staff"],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "user-counselor",
+    name: "Priya Mehta",
+    email: "counselor@jmvisa.com",
+    password: "counselor123",
+    role: "COUNSELOR",
+    allowedTabs: ["Dashboard", "Leads", "FollowUps", "Countries", "Meetings", "DropLeads"],
+    createdAt: new Date().toISOString()
+  }
+];
+
+export const readUsers = async (): Promise<CrmUser[]> => {
+  const supabase = getSupabase();
+  const bucket = process.env.SUPABASE_BUCKET || "crm-documents";
+  
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .download("system/users.json");
+
+    if (error) {
+      console.log("Could not read users from storage, checking/seeding defaults...", error.message);
+      // Try to write default seed users if it wasn't found
+      const seeds = getSeedUsers();
+      await writeUsers(seeds);
+      return seeds;
+    }
+    
+    const text = await data.text();
+    return JSON.parse(text) as CrmUser[];
+  } catch (err) {
+    console.error("Failed to read/parse users.json:", err);
+    return getSeedUsers();
+  }
+};
+
+export const writeUsers = async (users: CrmUser[]): Promise<boolean> => {
+  const supabase = getSupabase();
+  const bucket = process.env.SUPABASE_BUCKET || "crm-documents";
+  
+  try {
+    const { error } = await supabase.storage
+      .from(bucket)
+      .upload("system/users.json", Buffer.from(JSON.stringify(users, null, 2)), {
+        contentType: "application/json",
+        upsert: true,
+      });
+
+    if (error) {
+      console.error("Error writing users to Supabase storage:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Exception writing users to storage:", err);
+    return false;
+  }
+};
+

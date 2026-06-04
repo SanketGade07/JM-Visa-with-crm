@@ -33,7 +33,20 @@ export type StaffRole =
   | "DOCUMENT TEAM"
   | "VISA TEAM"
   | "ACCOUNT TEAM"
-  | "MANAGER";
+  | "MANAGER"
+  | "OTHER";
+
+export interface CrmUser {
+  id: string;
+  name: string;
+  email: string;
+  password?: string;
+  role: StaffRole | string;
+  allowedTabs: string[];
+  createdAt: string;
+}
+
+
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
@@ -142,10 +155,15 @@ interface CrmContextType {
   meetings: Meeting[];
   activities: Activity[];
   documents: Document[];
-  currentRole: StaffRole;
+  users: CrmUser[];
+  currentUser: CrmUser | null;
+  currentRole: StaffRole | string;
   currentTab: string;
   setCurrentTab: (tab: string) => void;
-  setCurrentRole: (role: StaffRole) => void;
+  setCurrentRole: (role: StaffRole | string) => void;
+  setCurrentUser: (user: CrmUser | null) => void;
+  addUser: (user: Omit<CrmUser, "id" | "createdAt"> & { id?: string; password?: string; createdAt?: string }) => Promise<{ ok: boolean; error?: string }>;
+  deleteUser: (userId: string) => Promise<{ ok: boolean; error?: string }>;
   addLead: (lead: Omit<Lead, "id" | "dateCreated" | "lastUpdated" | "isDeleted">) => void;
   updateLeadStatus: (leadId: string, status: VisaStatus) => void;
   toggleChecklistItem: (leadId: string, item: keyof DocumentChecklist) => void;
@@ -162,6 +180,7 @@ interface CrmContextType {
   getLeadDocuments: (leadId: string) => Document[];
 }
 
+
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 const CrmContext = createContext<CrmContextType | undefined>(undefined);
@@ -171,35 +190,64 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [currentRole, setCurrentRole] = useState<StaffRole>("ADMIN");
+  const [users, setUsers] = useState<CrmUser[]>([]);
+  const [currentUser, setCurrentUser] = useState<CrmUser | null>(null);
+  const [currentRole, setCurrentRole] = useState<StaffRole | string>("ADMIN");
   const [currentTab, setCurrentTab] = useState<string>("Dashboard");
 
   useEffect(() => {
     const loadData = async () => {
-      // Restore the persisted role first (deferred out of the effect body)
+      // Restore the persisted user & role first
+      const savedUserStr = localStorage.getItem("visa_crm_user");
       const savedRole = localStorage.getItem("visa_crm_role");
-      if (savedRole) setCurrentRole(savedRole as StaffRole);
+      
+      if (savedUserStr) {
+        try {
+          const parsed = JSON.parse(savedUserStr);
+          setCurrentUser(parsed);
+          setCurrentRole(parsed.role);
+        } catch {}
+      } else if (savedRole) {
+        setCurrentRole(savedRole as StaffRole);
+      }
 
       try {
-        const [leadsRes, meetingsRes, activitiesRes, documentsRes] = await Promise.all([
+        const [leadsRes, meetingsRes, activitiesRes, documentsRes, usersRes] = await Promise.all([
           fetch("/api/leads?limit=1000"),
           fetch("/api/meetings"),
           fetch("/api/activities"),
           fetch("/api/documents"),
+          fetch("/api/users"),
         ]);
 
         if (leadsRes.ok) {
           const data = await leadsRes.json();
-          // API returns { leads, total, page, limit } — extract the array
           setLeads(Array.isArray(data) ? data : (data.leads ?? []));
         }
         if (meetingsRes.ok) setMeetings(await meetingsRes.json());
         if (activitiesRes.ok) setActivities(await activitiesRes.json());
         if (documentsRes.ok) setDocuments(await documentsRes.json());
+        if (usersRes.ok) {
+          const data = await usersRes.json();
+          setUsers(data);
+          
+          // Seed initial user object structure in state if matching email was stored
+          if (savedUserStr) {
+            try {
+              const parsed = JSON.parse(savedUserStr);
+              const matched = data.find((u: CrmUser) => u.id === parsed.id || u.email === parsed.email);
+              if (matched) {
+                setCurrentUser(matched);
+                setCurrentRole(matched.role);
+              }
+            } catch {}
+          }
+        }
       } catch (error) {
         console.error("Failed to load CRM data:", error);
       }
     };
+
 
     loadData();
   }, []);
@@ -601,9 +649,81 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const changeRoleAndPersist = (role: StaffRole) => {
+  const addUser = async (userData: Omit<CrmUser, "id" | "createdAt"> & { id?: string; password?: string; createdAt?: string }) => {
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { ok: false, error: data.error || "Failed to save user" };
+      }
+      
+      // Update local state
+      setUsers((prev) => {
+        const isExisting = prev.some((u) => u.id === data.user.id);
+        if (isExisting) {
+          return prev.map((u) => (u.id === data.user.id ? data.user : u));
+        } else {
+          return [...prev, data.user];
+        }
+      });
+      
+      // If updating our own logged-in account, keep currentUser in sync
+      if (currentUser && currentUser.id === data.user.id) {
+        const updatedCurrentUser = { ...currentUser, ...data.user };
+        setCurrentUser(updatedCurrentUser);
+        localStorage.setItem("visa_crm_user", JSON.stringify(updatedCurrentUser));
+      }
+
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Network error saving user" };
+    }
+  };
+
+  const deleteUser = async (userId: string) => {
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "DELETE", id: userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { ok: false, error: data.error || "Failed to delete user" };
+      }
+
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Network error deleting user" };
+    }
+  };
+
+  const changeRoleAndPersist = (role: StaffRole | string) => {
     setCurrentRole(role);
     localStorage.setItem("visa_crm_role", role);
+    
+    // Find if a user matches this role to update currentUser locally for the simulation
+    const matchedUser = users.find((u) => u.role === role);
+    if (matchedUser) {
+      setCurrentUser(matchedUser);
+      localStorage.setItem("visa_crm_user", JSON.stringify(matchedUser));
+    }
+  };
+
+  const handleSetCurrentUser = (user: CrmUser | null) => {
+    setCurrentUser(user);
+    if (user) {
+      localStorage.setItem("visa_crm_user", JSON.stringify(user));
+      setCurrentRole(user.role);
+      localStorage.setItem("visa_crm_role", user.role);
+    } else {
+      localStorage.removeItem("visa_crm_user");
+    }
   };
 
   return (
@@ -613,10 +733,15 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         meetings,
         activities,
         documents,
+        users,
+        currentUser,
         currentRole,
         currentTab,
         setCurrentTab,
         setCurrentRole: changeRoleAndPersist,
+        setCurrentUser: handleSetCurrentUser,
+        addUser,
+        deleteUser,
         addLead,
         updateLeadStatus,
         toggleChecklistItem,

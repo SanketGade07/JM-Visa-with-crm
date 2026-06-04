@@ -320,4 +320,63 @@ textarea {
   cursor: text;
 }
 
+/* ==========================================
+   PREMIUM ENTRY STAGGER ANIMATIONS
+   ========================================== */
+@keyframes premiumFadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-premium-fade-in-up {
+  opacity: 0;
+  animation: premiumFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.delay-100 {
+  animation-delay: 100ms;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+.delay-300 {
+  animation-delay: 300ms;
+}
+
+@keyframes premiumGrowY {
+  0% {
+    transform: scaleY(0);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+.animate-grow-y {
+  transform-origin: bottom;
+  animation: premiumGrowY 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes premiumGrowX {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+.animate-grow-x {
+  transform-origin: left;
+  animation: premiumGrowX 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useCrm, VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist } from "@/context/CrmContext";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
+import { useCrm, VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser } from "@/context/CrmContext";
 
 // Which sidebar tabs each role is allowed to open (guide §8.9 access model).
 // Every role lands on the Dashboard; specialist teams only see their own desks.
@@ -12,23 +13,99 @@ const ROLE_TABS: Record<StaffRole, string[]> = {
   "DOCUMENT TEAM": ["Dashboard", "Leads", "Countries", "Checklist"],
   "VISA TEAM": ["Dashboard", "Leads", "Countries", "USASlots", "Submissions"],
   "ACCOUNT TEAM": ["Dashboard", "Leads", "Payments"],
+  OTHER: ["Dashboard"],
 };
+
+const AVAILABLE_TABS = [
+  { id: "Dashboard", label: "Dashboard" },
+  { id: "Leads", label: "Lead Management" },
+  { id: "FollowUps", label: "Follow-Ups" },
+  { id: "Countries", label: "Country Wise Leads" },
+  { id: "USASlots", label: "USA Slot Tracking" },
+  { id: "Checklist", label: "Document Checklist" },
+  { id: "Submissions", label: "Visa Submission" },
+  { id: "Payments", label: "Payments & Finance" },
+  { id: "Meetings", label: "Meetings & Reminders" },
+  { id: "DropLeads", label: "Drop Leads Log" },
+  { id: "Staff", label: "Staff Directory" },
+];
+
 import {
   FaUserFriends, FaGlobe, FaCheckSquare, FaCalendarAlt, FaHistory,
   FaPassport, FaFileInvoiceDollar, FaChartBar, FaUserLock, FaPlus,
   FaTrash, FaUndo, FaSearch, FaTimes, FaCoins, FaCheckCircle,
   FaInfoCircle, FaFileDownload, FaFileUpload, FaPaperPlane,
-  FaSun, FaMoon
+  FaSun, FaMoon, FaEllipsisV, FaChevronLeft, FaChevronRight,
+  FaMinus, FaExpand
 } from "react-icons/fa";
+
+// @ts-ignore
+import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
+
+// Sharp lightweight SVG Flags for platform-agnostic color fidelity
+const AustraliaFlag = () => (
+  <svg className="w-5 h-5 rounded-full border border-gray-200 dark:border-slate-800 shrink-0" viewBox="0 0 30 30" fill="none">
+    <rect width="30" height="30" fill="#00247D" />
+    <path d="M0,0 L15,15 M15,0 L0,15" stroke="#FFFFFF" strokeWidth="2" />
+    <path d="M0,0 L15,15 M15,0 L0,15" stroke="#E62212" strokeWidth="0.8" />
+    <path d="M7.5,0 L7.5,15 M0,7.5 L15,7.5" stroke="#FFFFFF" strokeWidth="3" />
+    <path d="M7.5,0 L7.5,15 M0,7.5 L15,7.5" stroke="#E62212" strokeWidth="1.2" />
+    <polygon points="7.5,10.5 8.2,11.7 9.5,11.5 8.7,12.5 9.2,13.7 8,13.2 7,14 7,12.7 5.8,12.3 7,11.7" fill="#FFFFFF" transform="scale(0.8) translate(3, 4)" />
+    <circle cx="22" cy="7" r="1" fill="#FFFFFF" />
+    <circle cx="25" cy="12" r="1" fill="#FFFFFF" />
+    <circle cx="22" cy="17" r="1" fill="#FFFFFF" />
+    <circle cx="21" cy="22" r="1" fill="#FFFFFF" />
+    <circle cx="18" cy="14" r="0.8" fill="#FFFFFF" />
+  </svg>
+);
+
+const MalaysiaFlag = () => (
+  <svg className="w-5 h-5 rounded-full border border-gray-200 dark:border-slate-800 shrink-0" viewBox="0 0 30 30" fill="none">
+    <rect width="30" height="30" fill="#FFFFFF" />
+    {[0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28].map((y, idx) => (
+      idx % 2 === 0 && <rect key={y} x="0" y={y} width="30" height="2" fill="#E62212" />
+    ))}
+    <rect width="16" height="16" fill="#00247D" />
+    <circle cx="6" cy="8" r="3.5" fill="#FFCC00" />
+    <circle cx="7.5" cy="8" r="3.5" fill="#00247D" />
+    <polygon points="11,8 12,9 13,8 12,7" fill="#FFCC00" />
+    <polygon points="12,8 11,9 12,10 13,9" fill="#FFCC00" transform="rotate(45, 12, 8.5)" />
+  </svg>
+);
+
+const IndonesiaFlag = () => (
+  <svg className="w-5 h-5 rounded-full border border-gray-200 dark:border-slate-800 shrink-0" viewBox="0 0 30 30" fill="none">
+    <rect width="30" height="15" fill="#E62212" />
+    <rect y="15" width="30" height="15" fill="#FFFFFF" />
+  </svg>
+);
+
+const SingaporeFlag = () => (
+  <svg className="w-5 h-5 rounded-full border border-gray-200 dark:border-slate-800 shrink-0" viewBox="0 0 30 30" fill="none">
+    <rect width="30" height="15" fill="#DF151A" />
+    <rect y="15" width="30" height="15" fill="#FFFFFF" />
+    <path d="M 5,4 A 3,3 0 0,0 5,10 A 2.5,2.5 0 0,1 5,4" fill="#FFFFFF" />
+    <circle cx="8" cy="5" r="0.6" fill="#FFFFFF" />
+    <circle cx="9.5" cy="6" r="0.6" fill="#FFFFFF" />
+    <circle cx="9" cy="7.5" r="0.6" fill="#FFFFFF" />
+    <circle cx="7.2" cy="7.5" r="0.6" fill="#FFFFFF" />
+    <circle cx="6.5" cy="6" r="0.6" fill="#FFFFFF" />
+  </svg>
+);
 
 export default function CrmLayout() {
   const {
     leads,
     meetings,
+    users,
+    currentUser,
     currentRole,
     currentTab,
     setCurrentTab,
     setCurrentRole,
+    setCurrentUser,
+    addUser,
+    deleteUser,
     addLead,
     updateLeadStatus,
     updateUsaSlots,
@@ -43,17 +120,29 @@ export default function CrmLayout() {
     getLeadDocuments
   } = useCrm();
 
+
   // Search & Filters State
   const [searchTerm, setSearchTerm] = useState("");
 
   // Theme State
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [shouldAnimate, setShouldAnimate] = useState(true);
 
   useEffect(() => {
     const currentTheme = document.documentElement.classList.contains("light") ? "light" : "dark";
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTheme(currentTheme);
+
+    // Disable dashboard entry animations after 1.5s so switching tabs does not trigger them again
+    const animTimer = setTimeout(() => {
+      setShouldAnimate(false);
+    }, 1500);
+    return () => clearTimeout(animTimer);
   }, []);
+
+  const getAnimClass = (delayClass: string) => {
+    return shouldAnimate ? `opacity-0 animate-premium-fade-in-up ${delayClass}` : "";
+  };
 
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -98,6 +187,68 @@ export default function CrmLayout() {
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [isAddMeetingOpen, setIsAddMeetingOpen] = useState(false);
+  const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
+  const [isEditStaffOpen, setIsEditStaffOpen] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<CrmUser | null>(null);
+  const [addStaffRole, setAddStaffRole] = useState<string>("COUNSELOR");
+  const [addStaffCustomRole, setAddStaffCustomRole] = useState("");
+  const [editStaffRole, setEditStaffRole] = useState<string>("COUNSELOR");
+  const [editStaffCustomRole, setEditStaffCustomRole] = useState("");
+
+  // Dashboard Interactive States
+  const [leadsMgmtTab, setLeadsMgmtTab] = useState<"Status" | "Sources" | "Qualification">("Status");
+  const [selectedRevenuePeriod, setSelectedRevenuePeriod] = useState("1 Y");
+  const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<number>(8);
+
+  // States for Bottom Row Dashboard Widgets
+  const [hoveredRetentionMonth, setHoveredRetentionMonth] = useState<string | null>(null);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+  const [mapZoom, setMapZoom] = useState(3.5);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([130, -18]);
+  const [cardMapZoom, setCardMapZoom] = useState(2.7);
+  const [cardMapCenter, setCardMapCenter] = useState<[number, number]>([122, -18]);
+  const hoveredCountryRef = useRef<string | null>(null);
+  const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const tooltipPosRef = useRef({ x: 0, y: 0 });
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Map mouse/drag handlers - use refs to avoid re-renders that cause vibration
+  const handleCountryMouseEnter = useCallback((e: any, countryName: string) => {
+    setHoveredCountry(countryName);
+    tooltipPosRef.current = { x: e.clientX, y: e.clientY };
+    if (tooltipRef.current) {
+      tooltipRef.current.style.left = `${e.clientX + 16}px`;
+      tooltipRef.current.style.top = `${e.clientY - 10}px`;
+    }
+  }, []);
+
+  const handleCountryMouseMove = useCallback((e: any) => {
+    tooltipPosRef.current = { x: e.clientX, y: e.clientY };
+    if (tooltipRef.current) {
+      tooltipRef.current.style.left = `${e.clientX + 16}px`;
+      tooltipRef.current.style.top = `${e.clientY - 10}px`;
+    }
+  }, []);
+
+  const handleCountryMouseLeave = useCallback(() => {
+    setHoveredCountry(null);
+  }, []);
+
+  const handleCountryClick = useCallback((country: string) => {
+    setIsMapModalOpen(true);
+  }, []);
+
+  const resetMap = () => {
+    setMapZoom(1);
+    setMapCenter([11, 0]);
+  };
+
 
   // Revenue Date Filters
   const [startDate, setStartDate] = useState("2026-05-01");
@@ -109,6 +260,7 @@ export default function CrmLayout() {
   const [tempInvoiceUrl, setTempInvoiceUrl] = useState("");
   const [isUploadingTempInvoice, setIsUploadingTempInvoice] = useState(false);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (isAddPaymentOpen) {
       const filtered = leads.filter(l => l.status !== "Dropped" && (l.payments[0]?.totalPackage || 0) > 0);
@@ -121,23 +273,25 @@ export default function CrmLayout() {
       setTempInvoiceUrl("");
     }
   }, [isAddPaymentOpen, leads]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Tabs the current user or active role is allowed to open
+  const allowedTabs = ROLE_TABS[currentRole as StaffRole] ?? ["Dashboard"];
+  const userAllowedTabs = currentUser?.allowedTabs ?? allowedTabs;
 
   // Role SWITCH permission checks
-  const canModifyLeads = ["ADMIN", "COUNSELOR", "MANAGER"].includes(currentRole);
-  const canVerifyDocs = ["ADMIN", "DOCUMENT TEAM", "MANAGER"].includes(currentRole);
-  const canSubmitVisa = ["ADMIN", "VISA TEAM", "MANAGER"].includes(currentRole);
-  const canManagePayments = ["ADMIN", "ACCOUNT TEAM", "MANAGER"].includes(currentRole);
+  const canModifyLeads = ["ADMIN", "COUNSELOR", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Leads");
+  const canVerifyDocs = ["ADMIN", "DOCUMENT TEAM", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Checklist");
+  const canSubmitVisa = ["ADMIN", "VISA TEAM", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Submissions");
+  const canManagePayments = ["ADMIN", "ACCOUNT TEAM", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Payments");
 
-  // Tabs the active role is allowed to open
-  const allowedTabs = ROLE_TABS[currentRole] ?? ["Dashboard"];
-
-  // If a role switch lands on a tab the role can't access, fall back to Dashboard
+  // If a user switch lands on a tab they can't access, fall back to Dashboard
   useEffect(() => {
-    if (!allowedTabs.includes(currentTab)) {
+    if (!userAllowedTabs.includes(currentTab)) {
       setCurrentTab("Dashboard");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentRole]);
+  }, [currentUser, currentTab, userAllowedTabs]);
+
 
   // Active Lead Object
   const selectedLead = leads.find((l) => l.id === selectedLeadId) || leads[0];
@@ -161,6 +315,353 @@ export default function CrmLayout() {
     }
   };
 
+  // ── Real dashboard analytics (computed from live leads) ─────────────────────
+  const activeLeads = leads.filter((l) => l.status !== "Dropped");
+
+  // Monthly chart: last 6 months, bucketed by lead creation date.
+  // submissions = leads that reached submission stage; approvals = approved leads.
+  const submittedStages = ["Visa Submitted", "Approved / Rejected", "Closed"];
+  const monthlyChart = (() => {
+    const now = new Date();
+    const months: { month: string; sub: number; app: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = d.toLocaleString("en-US", { month: "short" });
+      const inMonth = leads.filter((l) => (l.dateCreated || "").startsWith(key));
+      months.push({
+        month: label,
+        sub: inMonth.filter((l) => submittedStages.includes(l.status)).length,
+        app: inMonth.filter((l) => l.status === "Approved / Rejected").length,
+      });
+    }
+    return months;
+  })();
+  const chartMax = Math.max(1, ...monthlyChart.map((m) => Math.max(m.sub, m.app)));
+
+  // Destination donut: real counts + percentages per country
+  const countryColors: Record<string, string> = {
+    USA: "#007BFF",
+    UK: "#00C1D4",
+    Canada: "#0ea5e9",
+    Europe: "#38bdf8",
+  };
+  const countryStats = (["USA", "UK", "Canada", "Europe"] as const).map((c) => {
+    const count = activeLeads.filter((l) => l.country === c).length;
+    return { country: c, count, color: countryColors[c] };
+  });
+  const countryTotal = countryStats.reduce((acc, c) => acc + c.count, 0);
+  // Build donut segments with cumulative offsets (circumference ≈ 100)
+  let cumulative = 0;
+  const donutSegments = countryStats.map((c) => {
+    const pct = countryTotal > 0 ? (c.count / countryTotal) * 100 : 0;
+    const seg = { ...c, pct, offset: 25 - cumulative };
+    cumulative += pct;
+    return seg;
+  });
+
+  // ── Dashboard Calculations for Image-like Mockup ────────────────────────────
+  const calendarData = (() => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+    const monthName = today.toLocaleString("en-US", { month: "long" });
+    
+    // Days in current month
+    const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+    // Day of the week of the first day
+    const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+    
+    const days: (number | null)[] = [];
+    for (let i = 0; i < firstDayIndex; i++) {
+      days.push(null);
+    }
+    for (let i = 1; i <= totalDays; i++) {
+      days.push(i);
+    }
+    
+    return { monthName, currentYear, days, todayDate: today.getDate() };
+  })();
+
+  const dashboardRevenueData = [
+    { month: "Mar", year: 2025, revenue: 23000, trend: 5000, valueStr: "$23.000", growth: "↑ 4%" },
+    { month: "Apr", year: 2025, revenue: 16000, trend: 6500, valueStr: "$16.000", growth: "↑ 1%" },
+    { month: "May", year: 2025, revenue: 20000, trend: 4000, valueStr: "$20.000", growth: "↑ 3%" },
+    { month: "Jun", year: 2025, revenue: 13000, trend: 7000, valueStr: "$13.000", growth: "↓ 2%" },
+    { month: "Jul", year: 2025, revenue: 20000, trend: 9500, valueStr: "$20.000", growth: "↑ 5%" },
+    { month: "Aug", year: 2025, revenue: 6000, trend: 8000, valueStr: "$6.000", growth: "↓ 4%" },
+    { month: "Sept", year: 2025, revenue: 20000, trend: 12000, valueStr: "$20.000", growth: "↑ 2%" },
+    { month: "Oct", year: 2025, revenue: 16000, trend: 5000, valueStr: "$16.000", growth: "↑ 1%" },
+    { month: "Nov", year: 2025, revenue: 19000, trend: 9000, valueStr: "$18.202", growth: "↑ 2%" },
+    { month: "Des", year: 2025, revenue: 10000, trend: 8000, valueStr: "$10.000", growth: "↓ 1%" },
+    { month: "Jan", year: 2026, revenue: 6000, trend: 5000, valueStr: "$6.000", growth: "↑ 2%" },
+    { month: "Feb", year: 2026, revenue: 8000, trend: 7000, valueStr: "$8.000", growth: "↑ 3%" }
+  ];
+
+  const maxRevenue = 40000;
+  
+  const yLabels = ["40k", "30k", "20k", "10k", "0k"];
+
+  const leadsMgmtData = (() => {
+    if (leadsMgmtTab === "Status") {
+      const statuses = ["New Lead", "Documents Pending", "Under Verification", "Ready for Submission", "Visa Submitted", "Approved / Rejected"];
+      return statuses.map(status => {
+        const count = leads.filter(l => l.status === status).length;
+        const pct = leads.length > 0 ? (count / leads.length) * 100 : 15 + (status.length * 7) % 45; // Fallback for aesthetic progress bars
+        return { label: status, count, pct };
+      });
+    } else if (leadsMgmtTab === "Sources") {
+      const sources: LeadSource[] = ["WEBSITE", "REFERRAL", "WALK_IN", "SOCIAL_MEDIA", "MANUAL"];
+      const labelMap: Record<LeadSource, string> = {
+        WEBSITE: "Website Form",
+        REFERRAL: "Agent Referral",
+        WALK_IN: "Walk-in Desk",
+        SOCIAL_MEDIA: "Social Media",
+        MANUAL: "Manual Registry",
+      };
+      return sources.map(source => {
+        const count = leads.filter(l => l.source === source).length;
+        const pct = leads.length > 0 ? (count / leads.length) * 100 : 10 + (source.length * 11) % 55;
+        return { label: labelMap[source] || source, count, pct };
+      });
+    } else {
+      const counselors = ["Priya Mehta", "Rohit Verma", "Simran Kaur"];
+      return counselors.map(c => {
+        const count = leads.filter(l => l.counselor === c).length;
+        const pct = leads.length > 0 ? (count / leads.length) * 100 : 20 + (c.length * 13) % 45;
+        return { label: c, count, pct };
+      });
+    }
+  })();
+
+  const topCountryStats = (() => {
+    const stats = (["USA", "UK", "Canada", "Europe"] as const).map((c) => {
+      const count = leads.filter((l) => l.country === c).length;
+      const pct = activeLeads.length > 0 ? (count / activeLeads.length) * 100 : 25 + (c.length * 12) % 35;
+      return { country: c === "Canada" ? "Canada" : c, count, pct, color: countryColors[c] || "#007BFF" };
+    });
+    return stats.sort((a, b) => b.count - a.count);
+  })();
+
+  const pipelineStats = (() => {
+    return (["USA", "UK", "Canada", "Europe"] as const).map((c) => {
+      const cLeads = leads.filter(l => l.country === c);
+      const approved = cLeads.filter(l => l.status === "Approved / Rejected").length;
+      const pending = cLeads.filter(l => ["Documents Pending", "Under Verification", "Ready for Submission", "Visa Submitted"].includes(l.status)).length;
+      const newLeads = cLeads.filter(l => l.status === "New Lead").length;
+      
+      const total = Math.max(1, approved + pending + newLeads);
+      return {
+        country: c === "Canada" ? "CAN" : c === "Europe" ? "EUR" : c,
+        approved: Math.round((approved / total) * 100) || 20 + (c.length * 5) % 40,
+        pending: Math.round((pending / total) * 100) || 30 + (c.length * 7) % 35,
+        newLeads: Math.round((newLeads / total) * 100) || 15 + (c.length * 3) % 25
+      };
+    });
+  })();
+
+  const cardMap = useMemo(() => {
+    if (!isMounted) return <div className="w-full h-full bg-gray-50/50 dark:bg-slate-950/20 animate-pulse rounded-xl" />;
+    return (
+      <ComposableMap
+        projection="geoMercator"
+        projectionConfig={{
+          scale: 145,
+          center: [11, 0]
+        }}
+        className="w-full h-full select-none"
+      >
+        <ZoomableGroup
+          zoom={cardMapZoom}
+          center={cardMapZoom <= 1.05 ? [11, 0] : cardMapCenter}
+          onMoveEnd={(position: any) => {
+            if (cardMapZoom > 1.05) {
+              setCardMapCenter(position.coordinates);
+            }
+          }}
+          maxZoom={5}
+          minZoom={0.1}
+        >
+          <Geographies geography="/world-110m.json">
+            {({ geographies }: any) =>
+              geographies.map((geo: any) => {
+                const countryName = geo.properties.name;
+                const isHighlighted = ["Australia", "Indonesia", "Malaysia", "Singapore"].includes(countryName);
+                return (
+                  <Geography
+                    key={geo.rrd || geo.id || countryName}
+                    geography={geo}
+                    fill={
+                      isHighlighted
+                        ? "#2563EB"
+                        : (theme === "light" ? "#F3F4F6" : "#1E293B")
+                    }
+                    stroke={theme === "light" ? "#D1D5DB" : "#334155"}
+                    strokeWidth={0.3}
+                    style={{
+                      default: { outline: "none", transition: "fill 150ms ease" },
+                      hover: { 
+                        fill: isHighlighted ? "#1D4ED8" : (theme === "light" ? "#E5E7EB" : "#334155"),
+                        outline: "none",
+                        cursor: isHighlighted ? "pointer" : "default",
+                        transition: "fill 150ms ease"
+                      },
+                      pressed: { outline: "none", transition: "fill 150ms ease" }
+                    }}
+                    onMouseEnter={(e: any) => {
+                      if (isHighlighted) {
+                        handleCountryMouseEnter(e, countryName);
+                      }
+                    }}
+                    onMouseMove={(e: any) => {
+                      if (isHighlighted) {
+                        handleCountryMouseMove(e);
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      if (isHighlighted) {
+                        handleCountryMouseLeave();
+                      }
+                    }}
+                  />
+                );
+              })
+            }
+          </Geographies>
+        </ZoomableGroup>
+      </ComposableMap>
+    );
+  }, [isMounted, theme, cardMapZoom, cardMapCenter, handleCountryMouseEnter, handleCountryMouseMove, handleCountryMouseLeave]);
+
+  const modalMap = useMemo(() => {
+    if (!isMounted) return <div className="w-full h-full bg-gray-50/50 dark:bg-slate-950/20 animate-pulse rounded-xl" />;
+    return (
+      <ComposableMap
+        projection="geoMercator"
+        projectionConfig={{
+          scale: 145,
+          center: [11, 0]
+        }}
+        className="w-full h-full select-none"
+      >
+        <ZoomableGroup
+          zoom={mapZoom}
+          center={mapZoom <= 1.05 ? [11, 0] : mapCenter}
+          onMoveEnd={(position: any) => {
+            if (mapZoom > 1.05) {
+              setMapCenter(position.coordinates);
+            }
+          }}
+          minZoom={0.2}
+          maxZoom={8}
+        >
+          <Geographies geography="/world-110m.json">
+            {({ geographies }: any) =>
+              geographies.map((geo: any) => {
+                const countryName = geo.properties.name;
+                const isHighlighted = ["Australia", "Indonesia", "Malaysia", "Singapore"].includes(countryName);
+                return (
+                  <Geography
+                    key={geo.rrd || geo.id || countryName}
+                    geography={geo}
+                    fill={
+                      isHighlighted
+                        ? "#2563EB"
+                        : (theme === "light" ? "#F3F4F6" : "#1E293B")
+                    }
+                    stroke={theme === "light" ? "#D1D5DB" : "#334155"}
+                    strokeWidth={0.5}
+                    style={{
+                      default: { outline: "none", transition: "fill 150ms ease" },
+                      hover: { 
+                        fill: isHighlighted ? "#1D4ED8" : (theme === "light" ? "#E5E7EB" : "#334155"),
+                        outline: "none",
+                        cursor: isHighlighted ? "pointer" : "default",
+                        transition: "fill 150ms ease"
+                      },
+                      pressed: { outline: "none", transition: "fill 150ms ease" }
+                    }}
+                    onMouseEnter={(e: any) => {
+                      if (isHighlighted) {
+                        handleCountryMouseEnter(e, countryName);
+                      }
+                    }}
+                    onMouseMove={(e: any) => {
+                      if (isHighlighted) {
+                        handleCountryMouseMove(e);
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      if (isHighlighted) {
+                        handleCountryMouseLeave();
+                      }
+                    }}
+                  />
+                );
+              })
+            }
+          </Geographies>
+
+          {/* Markers */}
+          {[
+            { name: "Australia", coords: [133.77, -25.27], rate: "48%" },
+            { name: "Indonesia", coords: [113.92, -0.78], rate: "25%" },
+            { name: "Malaysia", coords: [101.97, 4.21], rate: "33%" },
+            { name: "Singapore", coords: [103.82, 1.35], rate: "17%" }
+          ].map((marker) => (
+            <Marker key={marker.name} coordinates={marker.coords as [number, number]}>
+              <circle
+                r={3.5 / mapZoom}
+                fill="#EF4444"
+                stroke="#FFFFFF"
+                strokeWidth={0.8 / mapZoom}
+                style={{ cursor: "pointer" }}
+                onMouseEnter={(e: any) => handleCountryMouseEnter(e, marker.name)}
+                onMouseMove={(e: any) => handleCountryMouseMove(e)}
+                onMouseLeave={handleCountryMouseLeave}
+              />
+              {/* Text Outline/Halo for maximum contrast and readability */}
+              <text
+                textAnchor="middle"
+                y={-9.5 / mapZoom}
+                style={{
+                  fontFamily: "sans-serif",
+                  fill: "none",
+                  stroke: theme === "light" ? "#FFFFFF" : "#0A0A14",
+                  strokeWidth: 2.2 / mapZoom,
+                  strokeLinejoin: "round",
+                  fontSize: `${10 / mapZoom}px`,
+                  fontWeight: "bold",
+                  pointerEvents: "none"
+                }}
+              >
+                {marker.name}: {marker.rate}
+              </text>
+              {/* Text Foreground (consistent theme-based color) */}
+              <text
+                textAnchor="middle"
+                y={-9.5 / mapZoom}
+                style={{
+                  fontFamily: "sans-serif",
+                  fill: theme === "light" ? "#0F172A" : "#F8FAFC",
+                  fontSize: `${10 / mapZoom}px`,
+                  fontWeight: "bold",
+                  pointerEvents: "none"
+                }}
+              >
+                {marker.name}: {marker.rate}
+              </text>
+            </Marker>
+          ))}
+        </ZoomableGroup>
+      </ComposableMap>
+    );
+  }, [isMounted, theme, mapZoom, mapCenter, handleCountryMouseEnter, handleCountryMouseMove, handleCountryMouseLeave, setMapCenter]);
+
+  if (!isMounted) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
   return (
     <div className="flex min-h-screen bg-[#070712] text-slate-100 font-sans">
       
@@ -169,9 +670,7 @@ export default function CrmLayout() {
         <div>
           {/* Brand */}
           <div className="p-6 border-b border-slate-800/60 flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-500 shadow-lg shadow-violet-500/20">
-              <FaGlobe className="text-white text-lg animate-pulse" />
-            </div>
+            <img src="/logo.webp" alt="JM Visa Logo" className="w-10 h-10 object-contain rounded-xl shadow-lg shadow-violet-500/10" />
             <div>
               <h1 className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400 leading-tight">
                 JM VISA
@@ -181,6 +680,7 @@ export default function CrmLayout() {
               </span>
             </div>
           </div>
+
 
           {/* Navigation Menu */}
           <nav className="p-4 space-y-1">
@@ -200,7 +700,7 @@ export default function CrmLayout() {
               { id: "Meetings", label: "Meetings & Reminders", icon: FaCalendarAlt },
               { id: "DropLeads", label: "Drop Leads Log", icon: FaTrash },
               { id: "Staff", label: "Staff Directory", icon: FaUserLock },
-            ].filter((tab) => allowedTabs.includes(tab.id)).map((tab) => {
+            ].filter((tab) => userAllowedTabs.includes(tab.id)).map((tab) => {
               const Icon = tab.icon;
               const isActive = currentTab === tab.id;
               return (
@@ -225,19 +725,23 @@ export default function CrmLayout() {
         <div className="p-4 border-t border-slate-800/60 bg-[#070714] space-y-3">
           {/* Current Role switcher preview */}
           <div className="text-[10px] text-slate-500 font-bold px-1 uppercase tracking-wider block">
-            Switch Sandbox Role:
+            Switch Sandbox Account:
           </div>
           <select
-            value={currentRole}
-            onChange={(e) => setCurrentRole(e.target.value as StaffRole)}
+            value={currentUser?.id || "user-admin"}
+            onChange={(e) => {
+              const selectedUser = users.find((u) => u.id === e.target.value);
+              if (selectedUser) {
+                setCurrentUser(selectedUser);
+              }
+            }}
             className="w-full bg-slate-900/80 border border-slate-800 text-violet-400 font-bold text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500"
           >
-            <option value="ADMIN">ADMINISTRATOR</option>
-            <option value="COUNSELOR">COUNSELOR</option>
-            <option value="DOCUMENT TEAM">DOCUMENT TEAM</option>
-            <option value="VISA TEAM">VISA TEAM</option>
-            <option value="ACCOUNT TEAM">ACCOUNT TEAM</option>
-            <option value="MANAGER">GENERAL MANAGER</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name} ({u.role})
+              </option>
+            ))}
           </select>
         </div>
       </aside>
@@ -306,211 +810,1080 @@ export default function CrmLayout() {
           
           {/* 1. DASHBOARD OVERVIEW */}
           {currentTab === "Dashboard" && (
-            <div className="space-y-8">
-              {/* Metrics Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="space-y-6">
+              
+              {/* TOP METRICS ROW (4 Cards) */}
+              <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 ${getAnimClass("delay-100")}`}>
                 {[
-                  { label: "Total Active Leads", value: leads.filter(l => l.status !== "Dropped").length, icon: FaUserFriends, color: "from-sky-600 to-sky-400" },
-                  { label: "Visa Approved Leads", value: leads.filter(l => l.status === "Approved / Rejected").length, icon: FaCheckCircle, color: "from-emerald-600 to-emerald-400" },
-                  { label: "Pending Verification", value: leads.filter(l => l.status === "Documents Pending" || l.status === "Under Verification").length, icon: FaInfoCircle, color: "from-amber-600 to-amber-400" },
-                  { label: "Total Gross Revenue", value: `₹${leads.reduce((acc, lead) => acc + lead.payments.reduce((a, p) => a + p.amountPaid, 0), 0).toLocaleString()}`, icon: FaCoins, color: "from-violet-600 to-violet-400" },
-                ].map((item, index) => {
-                  const Icon = item.icon;
+                  {
+                    label: "Leads",
+                    value: leads.filter(l => l.status !== "Dropped").length,
+                    badge: "↑ 2%",
+                    badgeColor: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+                    subtext: "vs last week",
+                    icon: FaUserFriends
+                  },
+                  {
+                    label: "Consultations",
+                    value: meetings.length,
+                    badge: "Active",
+                    badgeColor: "bg-cyan-500/10 border-cyan-500/20 text-[#00C1D4]",
+                    subtext: "reminders set",
+                    icon: FaCalendarAlt
+                  },
+                  {
+                    label: "Conversion Rate",
+                    value: `${leads.length > 0 ? Math.round((leads.filter(l => l.status === "Approved / Rejected").length / leads.length) * 100) : 0}%`,
+                    badge: "↑ 1.5%",
+                    badgeColor: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+                    subtext: "approved visas",
+                    icon: FaCheckSquare
+                  },
+                  {
+                    label: "Revenue",
+                    value: (() => {
+                      const rev = leads.reduce((acc, lead) => acc + lead.payments.reduce((a, p) => a + p.amountPaid, 0), 0);
+                      return rev >= 100000 ? `₹${(rev / 100000).toFixed(1)}L` : `₹${(rev / 1000).toFixed(1)}K`;
+                    })(),
+                    badge: "↑ 12%",
+                    badgeColor: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+                    subtext: "vs last month",
+                    icon: FaCoins
+                  }
+                ].map((card, index) => {
+                  const Icon = card.icon;
+                  const isRed = card.badge.includes("↓") || card.badge.includes("Dropped");
+                  const isBlue = card.badge.includes("Active");
+                  
+                  // Theme-aware card background, border, text
+                  const cardBgClass = theme === "light" 
+                    ? "bg-white border-[#E5E7EB] shadow-[0_4px_16px_rgba(0,0,0,0.03)]" 
+                    : "bg-slate-900/60 backdrop-blur-md border-slate-800/80 shadow-lg";
+                  
+                  const labelColorClass = theme === "light" ? "text-slate-850" : "text-slate-200";
+                  const valueColorClass = theme === "light" ? "text-slate-900" : "text-white";
+                  const subtextColorClass = theme === "light" ? "text-slate-400" : "text-slate-500";
+                  
+                  // Icon container theme styling
+                  const iconContainerClass = theme === "light"
+                    ? "bg-slate-50 border-[#E5E7EB] text-slate-700"
+                    : "bg-slate-800/50 border-slate-700/50 text-slate-300";
+                  
+                  // Badge styling:
+                  const badgeClass = isRed
+                    ? (theme === "light" 
+                        ? "bg-[#fff1f2] border-[#ffe4e6] text-[#e11d48]" 
+                        : "bg-rose-500/10 border-rose-500/20 text-rose-400")
+                    : isBlue
+                    ? (theme === "light"
+                        ? "bg-[#ecfeff] border-[#cffafe] text-[#0891b2]"
+                        : "bg-cyan-500/10 border-cyan-500/20 text-[#00C1D4]")
+                    : (theme === "light"
+                        ? "bg-[#ecfdf5] border-[#d1fae5] text-[#059669]"
+                        : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400");
+                  
                   return (
-                    <div key={index} className="p-6 bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl shadow-lg relative overflow-hidden flex items-center justify-between group hover:-translate-y-0.5 transition-all">
-                      <div className="space-y-1">
-                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                          {item.label}
-                        </span>
-                        <span className="text-2xl font-extrabold text-white block">
-                          {item.value}
-                        </span>
+                    <div 
+                      key={index} 
+                      className={`border rounded-xl p-4.5 flex flex-col justify-between h-28 hover:-translate-y-0.5 transition-all ${cardBgClass}`}
+                      style={{ padding: "18px" }}
+                    >
+                      {/* Top Row: Icon Container + Label & Info Icon */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2.5">
+                          {/* Rounded square container for the icon */}
+                          <div className={`w-[28px] h-[28px] flex items-center justify-center rounded-[8px] border shadow-sm ${iconContainerClass}`}>
+                            <Icon className="text-xs" />
+                          </div>
+                          <span className={`text-[12.5px] font-semibold tracking-tight ${labelColorClass}`}>
+                            {card.label}
+                          </span>
+                        </div>
+                        <FaInfoCircle className="text-[11px] text-slate-400 hover:text-slate-500 cursor-pointer" />
                       </div>
-                      <div className={`p-3 rounded-xl bg-gradient-to-tr ${item.color} text-slate-950 shadow-md group-hover:scale-105 transition-transform`}>
-                        <Icon className="text-base" />
+
+                      {/* Bottom Row: Value + Badge & Subtext */}
+                      <div className="flex items-baseline justify-between mt-3">
+                        <div className="flex items-center space-x-2">
+                          <span className={`text-2xl font-extrabold ${valueColorClass}`}>
+                            {card.value}
+                          </span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors ${badgeClass}`}>
+                            {card.badge}
+                          </span>
+                        </div>
+                        <span className={`text-[10.5px] font-semibold ${subtextColorClass}`}>
+                          {card.subtext}
+                        </span>
                       </div>
                     </div>
                   );
                 })}
               </div>
+ 
+              {/* MIDDLE ROW (Revenue Overview + Calendar Widget) */}
+              <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${getAnimClass("delay-200")}`}>
+                {/* ── Revenue Overview Card ── */}
+                <div className={`lg:col-span-2 rounded-xl flex flex-col shadow-sm border overflow-hidden ${
+                  theme === "light" 
+                    ? "bg-white border-[#E5E7EB]" 
+                    : "bg-slate-900/60 backdrop-blur-md border-slate-800/80"
+                }`} style={{ padding: "24px 28px 24px" }}>
 
-              {/* Dynamic SVGs for visually premium graphics */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Revenue Overview chart */}
-                <div className="lg:col-span-2 p-6 bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl space-y-4">
-                  <div>
-                    <h3 className="text-sm font-bold text-white mb-1">Monthly Analytics Chart</h3>
-                    <p className="text-[11px] text-slate-400">Dynamic tracking comparison of Visa Applications submitted vs Approved.</p>
+                  {/* ── Header Row ── */}
+                  <div className="flex items-start justify-between">
+                    <div>
+                      {/* Title */}
+                      <div className="flex items-center space-x-1.5 cursor-pointer select-none">
+                        <span className={`text-[15px] font-semibold tracking-[-0.01em] ${
+                          theme === "light" ? "text-slate-800" : "text-slate-100"
+                        }`}>Revenue</span>
+                        <svg className="w-3.5 h-3.5 text-slate-400 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                        </svg>
+                      </div>
+                      {/* Value + growth */}
+                      <div className="flex items-baseline mt-1">
+                        <span className={`text-[32px] font-bold tracking-tight leading-none ${
+                          theme === "light" ? "text-slate-900" : "text-white"
+                        }`}>$32.209</span>
+                        <span className="text-[13px] text-slate-400 font-normal ml-3 leading-none self-end pb-1">
+                          +22% vs last month
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* ── Period Selector ── */}
+                    <div className={`flex items-center rounded-xl overflow-hidden ${
+                      theme === "light"
+                        ? "bg-[#F3F4F6] border border-[#E5E7EB]"
+                        : "bg-slate-900 border border-slate-700"
+                    }`} style={{ padding: "3px" }}>
+                      {["1 D", "1 W", "1 M", "6 M", "1 Y", "ALL"].map((period) => (
+                        <button
+                          key={period}
+                          onClick={() => setSelectedRevenuePeriod(period)}
+                          className={`transition-all text-[12px] font-medium leading-none ${
+                            selectedRevenuePeriod === period 
+                              ? (theme === "light" 
+                                  ? "bg-white text-slate-900 shadow-sm rounded-lg border border-[#E5E7EB]" 
+                                  : "bg-slate-800 text-white shadow-md rounded-lg")
+                              : (theme === "light" 
+                                  ? "text-slate-400 hover:text-slate-600" 
+                                  : "text-slate-500 hover:text-slate-300")
+                          }`}
+                          style={{ padding: "6px 14px" }}
+                        >
+                          {period}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  
-                  {/* SVG Chart */}
-                  <div className="h-64 flex items-end justify-between border-b border-l border-slate-800 p-4 relative">
-                    {/* Grid lines */}
-                    <div className="absolute left-0 right-0 top-1/4 border-t border-slate-900 border-dashed pointer-events-none" />
-                    <div className="absolute left-0 right-0 top-2/4 border-t border-slate-900 border-dashed pointer-events-none" />
-                    <div className="absolute left-0 right-0 top-3/4 border-t border-slate-900 border-dashed pointer-events-none" />
 
-                    {[
-                      { month: "Jan", sub: 10, app: 8 },
-                      { month: "Feb", sub: 15, app: 11 },
-                      { month: "Mar", sub: 25, app: 19 },
-                      { month: "Apr", sub: 32, app: 28 },
-                      { month: "May", sub: 45, app: 38 },
-                    ].map((bar, i) => (
-                      <div key={i} className="flex flex-col items-center space-y-2 z-10 w-1/5">
-                        <div className="flex items-end space-x-1.5 h-44">
-                          {/* Submissions Bar */}
-                          <div 
-                            className="w-4 bg-gradient-to-t from-violet-600 to-indigo-400 rounded-t-md hover:scale-105 transition-all cursor-pointer relative group"
-                            style={{ height: `${bar.sub * 3}px` }}
-                          >
-                            <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-900 text-violet-300 border border-slate-800 rounded px-1.5 py-0.5 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
-                              Sub: {bar.sub}
-                            </span>
-                          </div>
-                          {/* Approvals Bar */}
-                          <div 
-                            className="w-4 bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t-md hover:scale-105 transition-all cursor-pointer relative group"
-                            style={{ height: `${bar.app * 3}px` }}
-                          >
-                            <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-900 text-emerald-300 border border-slate-800 rounded px-1.5 py-0.5 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
-                              App: {bar.app}
-                            </span>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-bold text-slate-500">{bar.month}</span>
+                  {/* ── Chart Area ── */}
+                  <div className="relative flex-1 flex items-end" style={{ marginTop: "12px", paddingLeft: "44px" }}>
+                    
+                    {/* Y-Axis Labels */}
+                    <div className="absolute left-0 top-0 bottom-0 pointer-events-none select-none" style={{ width: "36px" }}>
+                      {yLabels.map((lbl, idx) => (
+                        <span 
+                          key={idx} 
+                          className={`absolute right-0 -translate-y-1/2 text-[11px] font-medium tabular-nums ${
+                            theme === "light" ? "text-slate-400" : "text-slate-500"
+                          }`}
+                          style={{ top: `${idx * 25}%` }}
+                        >
+                          {lbl}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Grid Canvas */}
+                    <div className={`relative flex-1 h-full border-l ${
+                      theme === "light" ? "border-[#E5E7EB]" : "border-slate-700"
+                    }`}>
+                      
+                      {/* Horizontal grid lines */}
+                      {[25, 50, 75, 100].map((pct) => (
+                        <div 
+                          key={pct}
+                          className={`absolute left-0 right-0 border-t pointer-events-none ${
+                            pct === 100 
+                              ? (theme === "light" ? "border-[#E5E7EB]" : "border-slate-700")
+                              : (theme === "light" ? "border-[#F1F3F5] border-dashed" : "border-slate-800/50 border-dashed")
+                          }`}
+                          style={{ top: `${pct}%` }}
+                        />
+                      ))}
+
+                      {/* Trend Line (dotted curve behind bars) */}
+                      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 20 }} viewBox="0 0 1200 200" preserveAspectRatio="none">
+                        <path
+                          d={dashboardRevenueData.map((item, idx) => {
+                            const x = 50 + idx * (1100 / 11);
+                            const y = 200 - (item.trend / 40000) * 200;
+                            return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`;
+                          }).join(' ')}
+                          fill="none"
+                          stroke={theme === "light" ? "#CBD5E1" : "#475569"}
+                          strokeWidth="1.5"
+                          strokeDasharray="3 5"
+                          opacity="0.6"
+                        />
+                      </svg>
+
+                      {/* Bar Columns */}
+                      <div className="absolute inset-0 flex items-end" style={{ paddingLeft: "8px", paddingRight: "8px" }}>
+                        {dashboardRevenueData.map((item, idx) => {
+                          const heightPct = (item.revenue / maxRevenue) * 100;
+                          const isHovered = hoveredBarIndex === idx;
+                          return (
+                            <div
+                              key={idx}
+                              onMouseEnter={() => setHoveredBarIndex(idx)}
+                              onMouseLeave={() => setHoveredBarIndex(null)}
+                              className="flex-1 h-full flex flex-col justify-end items-center relative cursor-pointer"
+                              style={{ zIndex: isHovered ? 30 : 10 }}
+                            >
+                              {/* Vertical dashed guide line — ONLY on hover */}
+                              {isHovered && (
+                                <div 
+                                  className="absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none"
+                                  style={{ 
+                                    height: `${heightPct}%`,
+                                    width: 0,
+                                    borderLeft: "1.5px dashed rgba(0,0,0,0.35)",
+                                    zIndex: 25
+                                  }}
+                                />
+                              )}
+
+                              {/* Dot on top of hovered bar */}
+                              {isHovered && (
+                                <div 
+                                  className="absolute pointer-events-none rounded-full"
+                                  style={{ 
+                                    bottom: `${heightPct}%`, 
+                                    left: "50%", 
+                                    transform: "translate(-50%, 50%)",
+                                    width: "8px",
+                                    height: "8px",
+                                    backgroundColor: "#1e293b",
+                                    border: "2px solid white",
+                                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                                    zIndex: 35
+                                  }}
+                                />
+                              )}
+
+                              {/* Tooltip */}
+                              {isHovered && (
+                                <div 
+                                  className="absolute pointer-events-none left-1/2 -translate-x-1/2"
+                                  style={{ 
+                                    bottom: `calc(${heightPct}% + 14px)`,
+                                    zIndex: 50
+                                  }}
+                                >
+                                  <div 
+                                    className="bg-white border border-[#E5E7EB] flex flex-col items-start"
+                                    style={{
+                                      borderRadius: "16px",
+                                      padding: "10px 16px",
+                                      minWidth: "140px",
+                                      boxShadow: "0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)"
+                                    }}
+                                  >
+                                    <span className="text-[12px] text-slate-400 font-medium">
+                                      Sept, {item.year}
+                                    </span>
+                                    <div className="flex items-center mt-0.5" style={{ gap: "8px" }}>
+                                      <span className="text-[20px] font-bold text-slate-800 tracking-tight">
+                                        {item.valueStr}
+                                      </span>
+                                      {(() => {
+                                        const isDown = item.growth.includes("↓");
+                                        const cleanGrowth = item.growth.replace(/[↑↓\s%]/g, "");
+                                        return (
+                                          <span 
+                                            className="flex items-center font-semibold"
+                                            style={{
+                                              fontSize: "11.5px",
+                                              color: isDown ? "#e11d48" : "#16a34a",
+                                              backgroundColor: isDown ? "#fff1f2" : "#f0fdf4",
+                                              padding: "2px 7px",
+                                              borderRadius: "6px"
+                                            }}
+                                          >
+                                            {isDown ? (
+                                              <svg className="mr-0.5 shrink-0" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                              </svg>
+                                            ) : (
+                                              <svg className="mr-0.5 shrink-0" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+                                              </svg>
+                                            )}
+                                            {cleanGrowth}%
+                                          </span>
+                                        );
+                                      })()}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* The Bar */}
+                              <div 
+                                className={`relative flex flex-col justify-start overflow-hidden transition-all ${shouldAnimate ? "animate-grow-y" : ""}`}
+                                style={{ 
+                                  height: `${heightPct}%`,
+                                  width: "70%",
+                                  maxWidth: "48px",
+                                  borderRadius: "6px 6px 0 0",
+                                  border: isHovered 
+                                    ? "1px solid rgba(37, 99, 235, 0.3)" 
+                                    : `1px solid ${theme === "light" ? "#E8EAED" : "rgba(51,65,85,0.5)"}`,
+                                  borderBottom: "none",
+                                  backgroundColor: isHovered 
+                                    ? "rgba(37, 99, 235, 0.12)" 
+                                    : (theme === "light" ? "rgba(241, 243, 245, 0.55)" : "rgba(30,41,59,0.15)"),
+                                  animationDelay: shouldAnimate ? `${idx * 40}ms` : undefined
+                                }}
+                              >
+                                {/* Top accent line */}
+                                <div style={{ 
+                                  height: "3px", 
+                                  width: "100%",
+                                  backgroundColor: "#2563EB",
+                                  opacity: isHovered ? 1 : 0.95,
+                                  flexShrink: 0
+                                }} />
+                                
+                                {/* Hover gradient fill */}
+                                {isHovered && (
+                                  <div 
+                                    className="flex-1 w-full"
+                                    style={{
+                                      background: "linear-gradient(to bottom, rgba(37,99,235,0.18) 0%, rgba(37,99,235,0.06) 60%, transparent 100%)"
+                                    }}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* X-Axis Month Labels */}
+                  <div className="flex" style={{ paddingLeft: "44px", marginTop: "2px" }}>
+                    {dashboardRevenueData.map((item, idx) => (
+                      <div key={idx} className="flex-1 flex justify-center" style={{ paddingLeft: "8px", paddingRight: "8px" }}>
+                        <span className={`text-[12px] font-medium transition-colors ${
+                          hoveredBarIndex === idx 
+                            ? (theme === "light" ? "text-slate-800" : "text-white") 
+                            : (theme === "light" ? "text-slate-400" : "text-slate-500")
+                        }`}>
+                          {item.month}
+                        </span>
                       </div>
                     ))}
                   </div>
+                </div>
 
-                  {/* Chart Legend */}
-                  <div className="flex items-center space-x-6 text-[10px] font-bold pl-4">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2.5 h-2.5 bg-violet-500 rounded-sm" />
-                      <span className="text-slate-400">Total Submissions</span>
+                {/* 1/3 Width - Calendar Widget */}
+                <div className={`p-5 rounded-xl border flex flex-col justify-between transition-all duration-300 ${
+                  theme === "light" 
+                    ? "bg-white border-gray-200 shadow-[0_8px_30px_rgb(0,0,0,0.03)]" 
+                    : "bg-slate-900 border-slate-800/80 shadow-[0_8px_30px_rgba(0,0,0,0.2)]"
+                }`}>
+                  <div>
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <h3 className={`text-[16px] font-semibold tracking-tight ${
+                        theme === "light" ? "text-gray-900" : "text-white"
+                      }`}>
+                        Calendar
+                      </h3>
+                      <button className={`w-9 h-9 flex items-center justify-center rounded-[12px] border transition-all duration-200 ${
+                        theme === "light" 
+                          ? "bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50 shadow-[0_2px_8px_rgb(0,0,0,0.04)]" 
+                          : "bg-slate-800/60 border-slate-700/50 text-slate-300 hover:bg-slate-750 shadow-md"
+                      }`}>
+                        <FaEllipsisV className="text-sm" />
+                      </button>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2.5 h-2.5 bg-emerald-400 rounded-sm" />
-                      <span className="text-slate-400">Visa Approvals</span>
+
+                    {/* Navigation */}
+                    <div className="flex items-center justify-between mt-[18px] mb-4">
+                      <button 
+                        onClick={() => showToast("Previous week")}
+                        className={`p-1 transition-colors ${
+                          theme === "light" ? "text-gray-400 hover:text-gray-600" : "text-slate-500 hover:text-slate-300"
+                        }`}
+                      >
+                        <FaChevronLeft className="text-[11px]" />
+                      </button>
+                      <span className={`text-[14px] font-medium tracking-wide ${
+                        theme === "light" ? "text-gray-800" : "text-slate-200"
+                      }`}>
+                        October 2025
+                      </span>
+                      <button 
+                        onClick={() => showToast("Next week")}
+                        className={`p-1 transition-colors ${
+                          theme === "light" ? "text-gray-400 hover:text-gray-600" : "text-slate-500 hover:text-slate-300"
+                        }`}
+                      >
+                        <FaChevronRight className="text-[11px]" />
+                      </button>
+                    </div>
+
+                    {/* Weekdays */}
+                    <div className="grid grid-cols-7 text-center mb-3">
+                      {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+                        <span key={day} className={`text-[12px] font-medium ${
+                          theme === "light" ? "text-gray-400/90" : "text-slate-500"
+                        }`}>
+                          {day}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Dates */}
+                    <div className="grid grid-cols-7 text-center items-center mb-4">
+                      {[5, 6, 7, 8, 9, 10, 11].map((date) => {
+                        const isSelected = selectedCalendarDate === date;
+                        return (
+                          <div key={date} className="flex justify-center items-center h-8">
+                            <button
+                              onClick={() => setSelectedCalendarDate(date)}
+                              className={`w-[30px] h-[30px] flex items-center justify-center rounded-full text-[13px] font-medium transition-all duration-200 ${
+                                isSelected
+                                  ? "bg-[#2563EB] text-white shadow-[0_4px_10px_rgba(37,99,235,0.35)] scale-105"
+                                  : theme === "light"
+                                    ? "text-gray-700 hover:bg-gray-100"
+                                    : "text-slate-300 hover:bg-slate-800"
+                              }`}
+                            >
+                              {date}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Dashed Divider */}
+                    <div className={`border-t border-dashed my-4 ${
+                      theme === "light" ? "border-gray-200/80" : "border-slate-800/80"
+                    }`} />
+
+                    {/* Scheduled Events Container */}
+                    <div className="space-y-3">
+                      {/* Event 1 */}
+                      <div className={`p-4 rounded-[14px] flex flex-col transition-all duration-205 ${
+                        theme === "light" ? "bg-[#F8F9FB] hover:bg-[#F3F4F6]" : "bg-slate-800/30 hover:bg-slate-800/40"
+                      }`}>
+                        <div className="flex justify-between items-start">
+                          <span className={`text-[14px] font-semibold tracking-tight ${
+                            theme === "light" ? "text-gray-900" : "text-white"
+                          }`}>
+                            Mesh Weekly Meeting
+                          </span>
+                          <span className={`text-[12px] font-medium tracking-tight ${
+                            theme === "light" ? "text-gray-400" : "text-slate-400"
+                          }`}>
+                            9.00 am - 10.00 am
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center mt-[14px]">
+                          {/* Avatars */}
+                          <div className="flex -space-x-1.5 items-center">
+                            <img 
+                              className={`w-[26px] h-[26px] rounded-full border-2 object-cover z-30 ${
+                                theme === "light" ? "border-[#F8F9FB]" : "border-slate-850"
+                              }`}
+                              src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80"
+                              alt="Avatar 1"
+                            />
+                            <img 
+                              className={`w-[26px] h-[26px] rounded-full border-2 object-cover z-20 ${
+                                theme === "light" ? "border-[#F8F9FB]" : "border-slate-850"
+                              }`}
+                              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80"
+                              alt="Avatar 2"
+                            />
+                            <img 
+                              className={`w-[26px] h-[26px] rounded-full border-2 object-cover z-10 ${
+                                theme === "light" ? "border-[#F8F9FB]" : "border-slate-850"
+                              }`}
+                              src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80"
+                              alt="Avatar 3"
+                            />
+                            <div className={`w-[26px] h-[26px] rounded-full border-2 flex items-center justify-center text-[9px] font-semibold z-0 bg-purple-50 text-purple-600 ${
+                              theme === "light" 
+                                ? "border-[#F8F9FB]" 
+                                : "border-slate-850 bg-purple-950/40 text-purple-300"
+                            }`}>
+                              +7
+                            </div>
+                          </div>
+
+                          {/* Action Button */}
+                          <button 
+                            onClick={() => showToast("Joining Google Meet...")}
+                            className={`px-3 py-1.5 rounded-full border text-[11px] font-medium flex items-center shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200 ${
+                              theme === "light" 
+                                ? "bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50 hover:border-gray-300" 
+                                : "bg-slate-800 border-slate-700/60 text-slate-200 hover:bg-slate-750 hover:border-slate-650"
+                            }`}
+                          >
+                            On Google Meet
+                            <FaChevronRight className="text-[8px] text-gray-400/90 ml-1.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Event 2 */}
+                      <div className={`p-4 rounded-[14px] flex flex-col transition-all duration-205 ${
+                        theme === "light" ? "bg-[#F8F9FB] hover:bg-[#F3F4F6]" : "bg-slate-800/30 hover:bg-slate-800/40"
+                      }`}>
+                        <div className="flex justify-between items-start">
+                          <span className={`text-[14px] font-semibold tracking-tight ${
+                            theme === "light" ? "text-gray-900" : "text-white"
+                          }`}>
+                            Gamification Demo
+                          </span>
+                          <span className={`text-[12px] font-medium tracking-tight ${
+                            theme === "light" ? "text-gray-400" : "text-slate-400"
+                          }`}>
+                            10.45 am - 11.45 am
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center mt-[14px]">
+                          {/* Avatars */}
+                          <div className="flex -space-x-1.5 items-center">
+                            <img 
+                              className={`w-[26px] h-[26px] rounded-full border-2 object-cover z-30 ${
+                                theme === "light" ? "border-[#F8F9FB]" : "border-slate-850"
+                              }`}
+                              src="https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=80"
+                              alt="Avatar 4"
+                            />
+                            <img 
+                              className={`w-[26px] h-[26px] rounded-full border-2 object-cover z-20 ${
+                                theme === "light" ? "border-[#F8F9FB]" : "border-slate-850"
+                              }`}
+                              src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80"
+                              alt="Avatar 5"
+                            />
+                            <img 
+                              className={`w-[26px] h-[26px] rounded-full border-2 object-cover z-10 ${
+                                theme === "light" ? "border-[#F8F9FB]" : "border-slate-850"
+                              }`}
+                              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80"
+                              alt="Avatar 6"
+                            />
+                          </div>
+
+                          {/* Action Button */}
+                          <button 
+                            onClick={() => showToast("Opening Slack...")}
+                            className={`px-3 py-1.5 rounded-full border text-[11px] font-medium flex items-center shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200 ${
+                              theme === "light" 
+                                ? "bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50 hover:border-gray-300" 
+                                : "bg-slate-800 border-slate-700/60 text-slate-200 hover:bg-slate-750 hover:border-slate-650"
+                            }`}
+                          >
+                            On Slack
+                            <FaChevronRight className="text-[8px] text-gray-400/90 ml-1.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* BOTTOM ROW (Leads Management + Country Breakdown Map + Pipeline) */}
+              <div className={`grid grid-cols-1 md:grid-cols-12 gap-6 ${getAnimClass("delay-300")}`}>
+                
+                {/* Column 1 - Leads Management */}
+                <div className={`md:col-span-3 pt-5 px-5 pb-3 rounded-xl border flex flex-col transition-all duration-300 ${
+                  theme === "light" 
+                    ? "bg-white border-gray-200 shadow-[0_8px_30px_rgb(0,0,0,0.02)]" 
+                    : "bg-slate-900 border-slate-800/80 shadow-[0_8px_30px_rgba(0,0,0,0.2)]"
+                }`}>
+                  <div className="flex-1 flex flex-col">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className={`text-[15px] font-semibold tracking-tight ${
+                        theme === "light" ? "text-gray-900" : "text-white"
+                      }`}>
+                        Leads Management
+                      </h3>
+                      <button className={`w-8 h-8 flex items-center justify-center rounded-[10px] border transition-all duration-200 ${
+                        theme === "light" 
+                          ? "bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50 shadow-[0_2px_8px_rgb(0,0,0,0.04)]" 
+                          : "bg-slate-800/60 border-slate-700/50 text-slate-300 hover:bg-slate-750 shadow-md"
+                      }`}>
+                        <FaEllipsisV className="text-xs" />
+                      </button>
+                    </div>
+
+                    {/* Custom switchable tabs */}
+                    <div className={`flex items-center p-1 rounded-xl mb-4 ${
+                      theme === "light" ? "bg-gray-100/80" : "bg-slate-950 border border-slate-900"
+                    }`}>
+                      {(["Status", "Sources", "Qualification"] as const).map((tab) => {
+                        const isActive = leadsMgmtTab === tab;
+                        return (
+                          <button
+                            key={tab}
+                            onClick={() => setLeadsMgmtTab(tab)}
+                            className={`flex-1 text-center py-1.5 rounded-lg text-[11px] font-medium transition-all duration-200 ${
+                              isActive 
+                                ? theme === "light"
+                                  ? "bg-white text-gray-900 shadow-[0_2px_8px_rgba(0,0,0,0.05)] font-semibold"
+                                  : "bg-slate-800 text-white shadow-md font-semibold"
+                                : theme === "light"
+                                  ? "text-gray-400 hover:text-gray-700"
+                                  : "text-slate-500 hover:text-slate-350"
+                            }`}
+                          >
+                            {tab}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Metrics and Progress Bars */}
+                    <div className="space-y-6 pt-2 flex-1 flex flex-col justify-center">
+                      {[
+                        { label: "Qualified", pct: 90 },
+                        { label: "Contacted", pct: 70 },
+                        { label: "Lost", pct: 20 },
+                        { label: "Won", pct: 85 }
+                      ].map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between">
+                          <span className={`text-[13px] font-medium w-20 shrink-0 ${
+                            theme === "light" ? "text-gray-800" : "text-slate-300"
+                          }`}>
+                            {item.label}
+                          </span>
+                          <div className="flex-1 flex items-center relative group">
+                            {/* Outer Progress Bar container */}
+                            <div className={`w-full h-[14px] rounded-[4px] overflow-hidden relative ${
+                              theme === "light" ? "bg-gray-100/60" : "bg-slate-950/40 border border-slate-800/30"
+                            }`}>
+                              <div 
+                                className={`h-full rounded-[4px] transition-all duration-700 relative overflow-hidden ${shouldAnimate ? "animate-grow-x" : ""}`} 
+                                style={{ 
+                                  width: `${item.pct}%`,
+                                  background: "linear-gradient(to right, #2563EB, #60A5FA)",
+                                  animationDelay: shouldAnimate ? `${idx * 100}ms` : undefined
+                                }}
+                              >
+                                {/* Diagonal gloss overlay for a premium look */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 animate-pulse" />
+                              </div>
+                            </div>
+                            
+                            {/* Hover percentage tooltip */}
+                            <span className={`absolute right-2 text-[11px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${
+                              theme === "light" ? "text-gray-900" : "text-white"
+                            }`}>
+                              {item.pct}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                {/* Country Breakdown Donut SVG Chart */}
-                <div className="p-6 bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl flex flex-col justify-between">
+                {/* Column 2 - Top Country */}
+                <div className={`md:col-span-5 pt-5 px-5 pb-4 rounded-xl border flex flex-col justify-between transition-all duration-300 ${
+                  theme === "light" 
+                    ? "bg-white border-gray-200 shadow-[0_8px_30px_rgb(0,0,0,0.02)]" 
+                    : "bg-slate-900 border-slate-800/80 shadow-[0_8px_30px_rgba(0,0,0,0.2)]"
+                }`}>
+                  <div className="grid grid-cols-12 gap-5 items-stretch h-full flex-1">
+                    {/* Left: Map */}
+                    <div className="col-span-7 relative rounded-xl border border-gray-100 dark:border-slate-800/80 bg-gray-50/50 dark:bg-slate-950/20 overflow-hidden flex items-center justify-center group min-h-[220px]">
+                      
+                      {/* Card Map Zoom Controls */}
+                      <div className="absolute bottom-3 left-3 flex items-center rounded-[8px] border border-[#E5E7EB] dark:border-slate-700/80 bg-white dark:bg-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.06)] z-10 overflow-hidden divide-x divide-[#E5E7EB] dark:divide-slate-700/80">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCardMapZoom(prev => Math.min(5, prev + 0.3));
+                          }}
+                          className="w-7 h-7 flex items-center justify-center text-slate-800 dark:text-slate-200 text-[13px] font-semibold hover:bg-gray-50 dark:hover:bg-slate-750 transition-colors"
+                          title="Zoom In"
+                        >
+                          +
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCardMapZoom(prev => Math.max(0.1, prev - 0.2));
+                          }}
+                          className="w-7 h-7 flex items-center justify-center text-slate-800 dark:text-slate-200 text-[13px] font-semibold hover:bg-gray-50 dark:hover:bg-slate-750 transition-colors"
+                          title="Zoom Out"
+                        >
+                          -
+                        </button>
+                      </div>
+
+                      <button 
+                        onClick={() => setIsMapModalOpen(true)}
+                        className="absolute top-3 right-3 w-6 h-6 rounded-lg bg-white dark:bg-slate-800 border border-[#E5E7EB] dark:border-slate-700 text-slate-800 dark:text-slate-200 text-[10px] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-slate-750 shadow-[0_2px_8px_rgba(0,0,0,0.06)] z-10 transition-colors"
+                      >
+                        <FaExpand />
+                      </button>
+
+                      <div 
+                        className="w-full h-full" 
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          setCardMapZoom(2.7);
+                          setCardMapCenter([122, -18]);
+                        }}
+                      >
+                        {cardMap}
+                      </div>
+                    </div>
+
+                    {/* Right: Info Column */}
+                    <div className="col-span-5 flex flex-col justify-between">
+                      <div>
+                        {/* Header Row */}
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className={`text-[15px] font-semibold tracking-tight ${
+                            theme === "light" ? "text-gray-900" : "text-white"
+                          }`}>
+                            Top Country
+                          </h3>
+                          <button className={`w-8 h-8 flex items-center justify-center rounded-[10px] border transition-all duration-200 ${
+                            theme === "light" 
+                              ? "bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50 shadow-[0_2px_8px_rgb(0,0,0,0.04)]" 
+                              : "bg-slate-800/60 border-slate-700/50 text-slate-300 hover:bg-slate-750 shadow-md"
+                          }`}>
+                            <FaEllipsisV className="text-xs" />
+                          </button>
+                        </div>
+
+                        {/* Country Ranking */}
+                        <div className="space-y-2.5">
+                          {[
+                            { rank: 1, country: "Australia", value: "48%", flag: <AustraliaFlag /> },
+                            { rank: 2, country: "Malaysia", value: "33%", flag: <MalaysiaFlag /> },
+                            { rank: 3, country: "Indonesia", value: "25%", flag: <IndonesiaFlag /> },
+                            { rank: 4, country: "Singapore", value: "17%", flag: <SingaporeFlag /> }
+                          ].map((c) => {
+                            const isHovered = hoveredCountry === c.country;
+                            return (
+                              <div 
+                                key={c.rank} 
+                                className={`flex items-center justify-between py-1 px-1.5 rounded-lg transition-colors cursor-pointer ${
+                                  isHovered 
+                                    ? theme === "light" ? "bg-gray-50" : "bg-slate-800/40"
+                                    : ""
+                                }`}
+                                onMouseEnter={() => setHoveredCountry(c.country)}
+                                onMouseLeave={() => setHoveredCountry(null)}
+                                onClick={() => handleCountryClick(c.country)}
+                              >
+                                <div className="flex items-center space-x-2.5">
+                                  <span className={`text-[12px] font-bold ${
+                                    theme === "light" ? "text-gray-400" : "text-slate-500"
+                                  }`}>
+                                    {c.rank}
+                                  </span>
+                                  {c.flag}
+                                  <span className={`text-[13px] font-medium ${
+                                    theme === "light" ? "text-gray-750" : "text-slate-350"
+                                  }`}>
+                                    {c.country}
+                                  </span>
+                                </div>
+                                <span className={`text-[13px] font-semibold ${
+                                  theme === "light" ? "text-gray-900" : "text-white"
+                                }`}>
+                                  {c.value}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* View Countries Tab link */}
+                      <div className="flex justify-start mt-3">
+                        <button
+                          onClick={() => setIsMapModalOpen(true)}
+                          className={`w-full py-2 rounded-xl border text-[12px] font-semibold flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.03)] transition-all duration-200 ${
+                            theme === "light" 
+                              ? "bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50 hover:border-gray-300" 
+                              : "bg-slate-800 border-slate-700/60 text-slate-200 hover:bg-slate-750 hover:border-slate-650"
+                          }`}
+                        >
+                          View more &nbsp; &rarr;
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Column 3 - Retention Rate */}
+                <div className={`md:col-span-4 pt-5 px-5 pb-1 rounded-xl border flex flex-col transition-all duration-300 ${
+                  theme === "light" 
+                    ? "bg-white border-gray-200 shadow-[0_8px_30px_rgb(0,0,0,0.02)]" 
+                    : "bg-slate-900 border-slate-800/80 shadow-[0_8px_30px_rgba(0,0,0,0.2)]"
+                }`}>
                   <div>
-                    <h3 className="text-sm font-bold text-white mb-1">Destination Volume</h3>
-                    <p className="text-[11px] text-slate-400">Demographic percentage of active immigration files.</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className={`text-[15px] font-semibold tracking-tight ${
+                        theme === "light" ? "text-gray-900" : "text-white"
+                      }`}>
+                        Retention Rate
+                      </h3>
+                      <button className={`w-8 h-8 flex items-center justify-center rounded-[10px] border transition-all duration-200 ${
+                        theme === "light" 
+                          ? "bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50 shadow-[0_2px_8px_rgb(0,0,0,0.04)]" 
+                          : "bg-slate-800/60 border-slate-700/50 text-slate-300 hover:bg-slate-750 shadow-md"
+                      }`}>
+                        <FaEllipsisV className="text-xs" />
+                      </button>
+                    </div>
+
+                    {/* Headline and Legend */}
+                    <div className="mb-3">
+                      <div className="flex items-baseline space-x-1.5">
+                        <span className={`text-2xl font-extrabold ${
+                          theme === "light" ? "text-gray-900" : "text-white"
+                        }`}>
+                          95%
+                        </span>
+                        <span className="text-[12px] text-emerald-500 font-semibold">
+                          +12% vs last month
+                        </span>
+                      </div>
+                      
+                      {/* Color opacity legend */}
+                      <div className="flex items-center space-x-4 text-[10px] font-semibold mt-1">
+                        <div className="flex items-center space-x-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB]" />
+                          <span className={theme === "light" ? "text-gray-500" : "text-slate-400"}>SMEs</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB]/60" />
+                          <span className={theme === "light" ? "text-gray-500" : "text-slate-400"}>Startups</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB]/25" />
+                          <span className={theme === "light" ? "text-gray-500" : "text-slate-400"}>Enterprises</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Custom Donut Chart via SVG */}
-                  <div className="flex items-center justify-center py-4">
-                    <svg className="w-36 h-36" viewBox="0 0 36 36">
-                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#0f172a" strokeWidth="3" />
-                      {/* USA - 40% */}
-                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#8b5cf6" strokeWidth="3" strokeDasharray="40 60" strokeDashoffset="25" />
-                      {/* UK - 30% */}
-                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#3b82f6" strokeWidth="3" strokeDasharray="30 70" strokeDashoffset="85" />
-                      {/* Canada - 20% */}
-                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#10b981" strokeWidth="3" strokeDasharray="20 80" strokeDashoffset="55" />
-                      {/* Europe - 10% */}
-                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#f59e0b" strokeWidth="3" strokeDasharray="10 90" strokeDashoffset="35" />
-                    </svg>
-                  </div>
+                  {/* Stacked Chart container */}
+                  <div className="flex-1 flex items-end justify-around pb-0 relative select-none">
+                      {[
+                        { month: "Jun", sme: 28, startup: 22, enterprise: 15, total: 65 },
+                        { month: "Jul", sme: 18, startup: 15, enterprise: 12, total: 45 },
+                        { month: "Aug", sme: 35, startup: 25, enterprise: 20, total: 80 },
+                        { month: "Sep", sme: 42, startup: 31, enterprise: 22, total: 95 },
+                        { month: "Oct", sme: 1.2, startup: 0.5, enterprise: 0.3, total: 2 },
+                        { month: "Nov", sme: 1.0, startup: 0.6, enterprise: 0.4, total: 2 },
+                        { month: "Dec", sme: 1.1, startup: 0.5, enterprise: 0.4, total: 2 },
+                      ].map((item, idx) => {
+                        const isHovered = hoveredRetentionMonth === item.month;
+                        return (
+                          <div 
+                            key={idx} 
+                            className="w-1/8 flex flex-col items-center h-full justify-end relative"
+                            onMouseEnter={() => setHoveredRetentionMonth(item.month)}
+                            onMouseLeave={() => setHoveredRetentionMonth(null)}
+                          >
+                            {/* Floating breakdown tooltip */}
+                            {isHovered && (
+                              <div className={`absolute bottom-[175px] left-1/2 transform -translate-x-1/2 text-[10px] p-2.5 rounded-lg shadow-xl z-20 w-32 border pointer-events-none transition-all duration-200 ${
+                                theme === "light" 
+                                  ? "bg-slate-900 border-slate-800 text-white" 
+                                  : "bg-white border-gray-200 text-gray-900"
+                              }`}>
+                                <div className="font-semibold mb-1 text-center border-b border-gray-700/35 pb-0.5">{item.month}</div>
+                                <div className="flex justify-between py-0.5">
+                                  <span className="opacity-70">SMEs:</span>
+                                  <span className="font-semibold">{item.sme}%</span>
+                                </div>
+                                <div className="flex justify-between py-0.5">
+                                  <span className="opacity-70">Startups:</span>
+                                  <span className="font-semibold">{item.startup}%</span>
+                                </div>
+                                <div className="flex justify-between py-0.5">
+                                  <span className="opacity-70">Enterprises:</span>
+                                  <span className="font-semibold">{item.enterprise}%</span>
+                                </div>
+                                <div className="flex justify-between border-t border-gray-700/35 mt-1 pt-0.5 font-bold">
+                                  <span>Total:</span>
+                                  <span>{item.total}%</span>
+                                </div>
+                              </div>
+                            )}
 
-                  {/* Legend list */}
-                  <div className="space-y-1.5 text-[10px] font-bold">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 rounded-full bg-violet-500" />
-                        <span className="text-slate-400">USA (40%)</span>
-                      </div>
-                      <span className="text-slate-200">
-                        {leads.filter((l) => l.country === "USA" && l.status !== "Dropped").length} Leads
-                      </span>
+                            {/* The Stacked Bar */}
+                            <div 
+                              className={`w-8 flex flex-col justify-end rounded-t-lg overflow-hidden transition-all duration-250 cursor-pointer ${shouldAnimate ? "animate-grow-y" : ""} ${
+                                isHovered 
+                                  ? "ring-2 ring-[#2563EB]/40 ring-offset-1 dark:ring-offset-slate-900" 
+                                  : ""
+                              }`}
+                              style={{ 
+                                height: `${item.total}%`,
+                                minHeight: item.total <= 2 ? "3px" : "auto",
+                                animationDelay: shouldAnimate ? `${idx * 40}ms` : undefined
+                              }}
+                            >
+                              <div className="bg-[#2563EB]/25" style={{ height: `${(item.enterprise / item.total) * 100}%` }} />
+                              <div className="bg-[#2563EB]/60" style={{ height: `${(item.startup / item.total) * 100}%` }} />
+                              <div className="bg-[#2563EB]" style={{ height: `${(item.sme / item.total) * 100}%` }} />
+                            </div>
+                            
+                            <span className={`text-[10px] font-bold mt-1.5 transition-colors ${
+                              item.month === "Sep" 
+                                ? theme === "light" ? "text-gray-900 font-black" : "text-white font-black"
+                                : "text-gray-400 dark:text-slate-500"
+                            }`}>
+                              {item.month}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 rounded-full bg-blue-500" />
-                        <span className="text-slate-400">UK (30%)</span>
-                      </div>
-                      <span className="text-slate-200">
-                        {leads.filter((l) => l.country === "UK" && l.status !== "Dropped").length} Leads
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                        <span className="text-slate-400">Canada (20%)</span>
-                      </div>
-                      <span className="text-slate-200">
-                        {leads.filter((l) => l.country === "Canada" && l.status !== "Dropped").length} Leads
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 rounded-full bg-amber-500" />
-                        <span className="text-slate-400">Europe (10%)</span>
-                      </div>
-                      <span className="text-slate-200">
-                        {leads.filter((l) => l.country === "Europe" && l.status !== "Dropped").length} Leads
-                      </span>
-                    </div>
-                  </div>
                 </div>
 
               </div>
 
-              {/* Recent Meetings widget & Workload log */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* Recent Meetings */}
-                <div className="p-6 bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl space-y-4">
-                  <h3 className="text-sm font-bold text-white border-b border-slate-800/60 pb-3">Upcoming Client Consultations</h3>
-                  <div className="space-y-3">
-                    {meetings.slice(0, 3).map((meet) => (
-                      <div key={meet.id} className="p-3 bg-slate-950 border border-slate-900 rounded-xl flex items-center justify-between">
-                        <div className="space-y-1">
-                          <span className="text-xs font-bold text-slate-100">{meet.clientName}</span>
-                          <p className="text-[10px] text-slate-400">{meet.reminderText}</p>
-                          <span className="text-[9px] uppercase font-bold text-violet-400">{meet.counselorAssigned}</span>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className="px-2 py-1 bg-slate-900 text-slate-300 font-bold border border-slate-800 rounded-lg text-[10px]">
-                            {meet.meetingDate}
-                          </span>
-                        </div>
+              {/* Top Countries Map Full Screen Modal */}
+              {isMapModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 dark:bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
+                  <div 
+                    className={`w-[90vw] h-[85vh] rounded-[24px] border shadow-2xl flex flex-col relative p-6 transition-all duration-300 scale-100 ${
+                      theme === "light" 
+                        ? "bg-white border-gray-200" 
+                        : "bg-slate-900 border-slate-800"
+                    }`}
+                  >
+                    {/* Close Button */}
+                    <button 
+                      onClick={() => setIsMapModalOpen(false)}
+                      className={`absolute top-6 right-6 w-9 h-9 rounded-full flex items-center justify-center border transition-all ${
+                        theme === "light"
+                          ? "bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
+                          : "bg-slate-850 border-slate-700 text-slate-400 hover:bg-slate-700"
+                      }`}
+                    >
+                      <FaTimes className="text-sm" />
+                    </button>
+
+                    {/* Header */}
+                    <div className="mb-4">
+                      <h3 className={`text-xl font-bold tracking-tight ${
+                        theme === "light" ? "text-gray-900" : "text-white"
+                      }`}>
+                        Top Countries Analytics
+                      </h3>
+                      <p className="text-[12px] text-gray-400 dark:text-slate-500 font-medium">
+                        Asia-Pacific Traffic & Engagement Statistics
+                      </p>
+                    </div>
+
+                    {/* Map Viewport */}
+                    <div className="flex-1 rounded-2xl border border-gray-150 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/20 relative overflow-hidden flex items-center justify-center">
+                      
+                      {/* Floating Map Helper Controls (bottom left) */}
+                      <div className="absolute bottom-4 left-4 flex space-x-2 z-10">
+                        <button 
+                          onClick={() => setMapZoom(z => Math.min(z + 0.5, 8))}
+                          className={`w-8 h-8 rounded-lg border text-sm flex items-center justify-center transition-all ${
+                            theme === "light" 
+                              ? "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm" 
+                              : "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750"
+                          }`}
+                          title="Zoom In"
+                        >
+                          <FaPlus />
+                        </button>
+                        <button 
+                          onClick={() => setMapZoom(z => Math.max(z - 0.5, 0.2))}
+                          className={`w-8 h-8 rounded-lg border text-sm flex items-center justify-center transition-all ${
+                            theme === "light" 
+                              ? "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm" 
+                              : "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750"
+                          }`}
+                          title="Zoom Out"
+                        >
+                          <FaMinus />
+                        </button>
+                        <button 
+                          onClick={resetMap}
+                          className={`px-3 h-8 rounded-lg border text-xs font-semibold flex items-center justify-center transition-all ${
+                            theme === "light" 
+                              ? "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm" 
+                              : "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750"
+                          }`}
+                          title="Reset Viewport"
+                        >
+                          Reset
+                        </button>
                       </div>
-                    ))}
+
+                      {/* Real Map inside Modal */}
+                      <div className="w-full h-full">
+                        {modalMap}
+                      </div>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {/* Team Workload list */}
-                <div className="p-6 bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl space-y-4">
-                  <h3 className="text-sm font-bold text-white border-b border-slate-800/60 pb-3">Counselor Distribution Desk</h3>
-                  <div className="space-y-3">
-                    {[
-                      { name: "Priya Mehta", role: "Senior Consultant", count: leads.filter(l => l.counselor === "Priya Mehta").length },
-                      { name: "Rohit Verma", role: "Visa Specialist", count: leads.filter(l => l.counselor === "Rohit Verma").length },
-                      { name: "Simran Kaur", role: "Schengen Expert", count: leads.filter(l => l.counselor === "Simran Kaur").length },
-                    ].map((member, i) => (
-                      <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-slate-900 last:border-0">
-                        <div className="space-y-0.5">
-                          <span className="font-bold text-slate-200">{member.name}</span>
-                          <p className="text-[10px] text-slate-500">{member.role}</p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-[10px] bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 py-0.5 px-2 rounded-lg font-bold">
-                            {member.count} Active Files
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+              {/* Tooltip elements rendered outside SVGs using fixed positions */}
+              {isMounted && hoveredCountry && createPortal(
+                <div 
+                  ref={tooltipRef}
+                  className={`fixed text-[11px] p-2.5 rounded-lg shadow-xl z-[9999] border pointer-events-none ${
+                    theme === "light" 
+                      ? "bg-slate-900 border-slate-800 text-white" 
+                      : "bg-white border-gray-200 text-gray-900"
+                  }`}
+                  style={{ 
+                    left: `${tooltipPosRef.current.x + 16}px`, 
+                    top: `${tooltipPosRef.current.y - 10}px`,
+                    pointerEvents: "none"
+                  }}
+                >
+                  <div className="font-bold border-b border-gray-700/20 pb-0.5 mb-1">{hoveredCountry}</div>
+                  <div className="flex justify-between gap-3 py-0.5">
+                    <span className="opacity-70">Traffic Share:</span>
+                    <span className="font-semibold">
+                      {hoveredCountry === "Australia" ? "48%" : hoveredCountry === "Malaysia" ? "33%" : hoveredCountry === "Indonesia" ? "25%" : hoveredCountry === "Singapore" ? "17%" : "0%"}
+                    </span>
                   </div>
-                </div>
-
-              </div>
+                  <div className="flex justify-between gap-3 py-0.5">
+                    <span className="opacity-70">Active Users:</span>
+                    <span className="font-semibold">
+                      {hoveredCountry === "Australia" ? "12,345" : hoveredCountry === "Malaysia" ? "8,421" : hoveredCountry === "Indonesia" ? "6,192" : hoveredCountry === "Singapore" ? "4,057" : "0"}
+                    </span>
+                  </div>
+                </div>,
+                document.body
+              )}
 
             </div>
           )}
@@ -1679,49 +3052,93 @@ export default function CrmLayout() {
           {currentTab === "Staff" && (
             <div className="space-y-6">
               
-              <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl">
-                <h3 className="text-base font-bold text-white mb-1">Company Staff Directory</h3>
-                <p className="text-xs text-slate-400">View roster of active case counselors and billing managers.</p>
+              <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-bold text-white mb-1">Company Staff Directory & Access Manager</h3>
+                  <p className="text-xs text-slate-400">Manage case counselors, roles, and customize tab-level access permissions.</p>
+                </div>
+                {currentRole === "ADMIN" && (
+                  <button
+                    onClick={() => setIsAddStaffOpen(true)}
+                    className="flex items-center justify-center space-x-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-lg transition-all"
+                  >
+                    <FaPlus className="text-xs" />
+                    <span>Create Staff Account</span>
+                  </button>
+                )}
               </div>
 
               {/* Roster profiles */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                  { name: "Priya Mehta", role: "Senior Consultant", email: "priya.m@jmvisa.com", ext: "Ext: 402", location: "Mumbai HQ" },
-                  { name: "Rohit Verma", role: "Visa Slot Officer", email: "rohit.v@jmvisa.com", ext: "Ext: 405", location: "Delhi Desk" },
-                  { name: "Simran Kaur", role: "Schengen Case Expert", email: "simran.k@jmvisa.com", ext: "Ext: 412", location: "Kolkata Desk" },
-                ].map((staff, i) => (
-                  <div key={i} className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-4 hover:-translate-y-0.5 transition-all">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center font-bold text-white">
-                        {staff.name.split(" ").map(n => n[0]).join("")}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {users.map((staff, i) => (
+                  <div key={staff.id || i} className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-4 hover:-translate-y-0.5 transition-all flex flex-col justify-between">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center font-bold text-white uppercase">
+                            {staff.name ? staff.name.split(" ").map(n => n[0]).join("") : "U"}
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-100">{staff.name}</h4>
+                            <span className="text-[10px] text-violet-400 font-bold block">{staff.role}</span>
+                          </div>
+                        </div>
+                        {currentRole === "ADMIN" && staff.id !== "user-admin" && staff.role !== "ADMIN" && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to delete ${staff.name}'s account?`)) {
+                                deleteUser(staff.id).then((res) => {
+                                  if (res.ok) showToast("Account deleted successfully");
+                                  else showToast(res.error || "Failed to delete account", "error");
+                                });
+                              }
+                            }}
+                            className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer"
+                            title="Delete Account"
+                          >
+                            <FaTrash className="text-xs" />
+                          </button>
+                        )}
                       </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-100">{staff.name}</h4>
-                        <span className="text-[10px] text-violet-400 font-bold block">{staff.role}</span>
+
+                      <div className="space-y-2 text-xs pt-1 border-t border-slate-900">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500 font-semibold">Email Desk:</span>
+                          <span className="text-slate-300 font-bold select-all">{staff.email}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500 font-semibold">Tab Access:</span>
+                          <span className="text-violet-400 font-extrabold">{staff.allowedTabs ? staff.allowedTabs.length : 0} / 11 Tabs</span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="space-y-2 text-xs pt-1 border-t border-slate-900">
-                      <div className="flex justify-between">
-                        <span className="text-slate-500 font-semibold">Email Desk:</span>
-                        <span className="text-slate-300 font-bold">{staff.email}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500 font-semibold">Intercom:</span>
-                        <span className="text-slate-300 font-bold">{staff.ext}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500 font-semibold">Office:</span>
-                        <span className="text-slate-300 font-bold">{staff.location}</span>
-                      </div>
-                    </div>
+                    {currentRole === "ADMIN" && staff.role !== "ADMIN" && (
+                      <button
+                        onClick={() => {
+                          setEditingStaff(staff);
+                          const standardRoles = ["ADMIN", "COUNSELOR", "DOCUMENT TEAM", "VISA TEAM", "ACCOUNT TEAM", "MANAGER"];
+                          if (standardRoles.includes(staff.role)) {
+                            setEditStaffRole(staff.role);
+                            setEditStaffCustomRole("");
+                          } else {
+                            setEditStaffRole("OTHER");
+                            setEditStaffCustomRole(staff.role);
+                          }
+                          setIsEditStaffOpen(true);
+                        }}
+                        className="w-full mt-4 py-2 bg-slate-950 border border-slate-800 hover:border-violet-500/50 hover:bg-violet-950/10 text-slate-300 hover:text-violet-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                      >
+                        Configure Access
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
 
             </div>
           )}
+
 
         </div>
       </main>
@@ -2420,6 +3837,294 @@ export default function CrmLayout() {
         </div>
       )}
 
+      {/* G. ADD NEW STAFF MODAL */}
+      {isAddStaffOpen && (
+        <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-xl bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5">
+            <button 
+              onClick={() => setIsAddStaffOpen(false)}
+              className="absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-200 rounded-lg cursor-pointer"
+            >
+              <FaTimes />
+            </button>
+
+            <h3 className="text-sm font-bold text-white border-b border-slate-900 pb-3">Create New Staff Account</h3>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                const name = fd.get("name") as string;
+                const email = fd.get("email") as string;
+                const password = fd.get("password") as string;
+                const role = (addStaffRole === "OTHER" ? addStaffCustomRole.trim() || "OTHER" : addStaffRole) as StaffRole;
+                
+                // Get checked tabs
+                const allowedTabs: string[] = [];
+                AVAILABLE_TABS.forEach((t) => {
+                  if (fd.get(`tab-${t.id}`)) {
+                    allowedTabs.push(t.id);
+                  }
+                });
+
+                const res = await addUser({ name, email, password, role, allowedTabs });
+                if (res.ok) {
+                  showToast("Staff account created successfully!");
+                  setIsAddStaffOpen(false);
+                  setAddStaffRole("COUNSELOR");
+                  setAddStaffCustomRole("");
+                } else {
+                  showToast(res.error || "Failed to create account", "error");
+                }
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5 text-left">
+                  <label className="text-slate-400 font-bold block">Full Name</label>
+                  <input
+                    required
+                    name="name"
+                    placeholder="e.g. John Doe"
+                    className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 text-slate-200"
+                  />
+                </div>
+                <div className="space-y-1.5 text-left">
+                  <label className="text-slate-400 font-bold block">Email Address</label>
+                  <input
+                    required
+                    type="email"
+                    name="email"
+                    placeholder="john@jmvisa.com"
+                    className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 text-slate-200"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5 text-left">
+                  <label className="text-slate-400 font-bold block">Password</label>
+                  <input
+                    required
+                    type="password"
+                    name="password"
+                    placeholder="••••••••"
+                    className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 text-slate-200"
+                  />
+                </div>
+                <div className="space-y-1.5 text-left">
+                  <label className="text-slate-400 font-bold block">Staff Role</label>
+                  <select
+                    name="role"
+                    value={addStaffRole}
+                    onChange={(e) => {
+                      setAddStaffRole(e.target.value);
+                      if (e.target.value !== "OTHER") setAddStaffCustomRole("");
+                    }}
+                    className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 text-slate-200 font-bold"
+                  >
+                    <option value="COUNSELOR">COUNSELOR</option>
+                    <option value="ADMIN">ADMINISTRATOR</option>
+                    <option value="MANAGER">GENERAL MANAGER</option>
+                    <option value="DOCUMENT TEAM">DOCUMENT TEAM</option>
+                    <option value="VISA TEAM">VISA TEAM</option>
+                    <option value="ACCOUNT TEAM">ACCOUNT TEAM</option>
+                    <option value="OTHER">OTHER</option>
+                  </select>
+                  {addStaffRole === "OTHER" && (
+                    <input
+                      type="text"
+                      value={addStaffCustomRole}
+                      onChange={(e) => setAddStaffCustomRole(e.target.value)}
+                      required
+                      placeholder="Enter custom role name"
+                      className="w-full mt-2 bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 text-slate-200"
+                    />
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2 text-left">
+                <label className="text-slate-400 font-bold block border-b border-slate-900 pb-1.5">
+                  Tab Permissions (Select accessible operations)
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 max-h-40 overflow-y-auto p-2 bg-slate-950/50 rounded-xl border border-slate-900">
+                  {AVAILABLE_TABS.map((t) => (
+                    <label key={t.id} className="flex items-center space-x-2 p-1.5 hover:bg-slate-900/50 rounded-lg cursor-pointer text-slate-300 hover:text-white transition-colors">
+                      <input
+                        type="checkbox"
+                        name={`tab-${t.id}`}
+                        defaultChecked={t.id === "Dashboard"}
+                        className="rounded border-slate-800 bg-slate-950 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                      />
+                      <span className="font-semibold">{t.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-bold text-white rounded-xl shadow-lg cursor-pointer"
+              >
+                Create Staff Account
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* H. EDIT STAFF / CONFIGURE ACCESS MODAL */}
+      {isEditStaffOpen && editingStaff && (
+        <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-xl bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5">
+            <button 
+              onClick={() => {
+                setIsEditStaffOpen(false);
+                setEditingStaff(null);
+              }}
+              className="absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-200 rounded-lg cursor-pointer"
+            >
+              <FaTimes />
+            </button>
+
+            <h3 className="text-sm font-bold text-white border-b border-slate-900 pb-3">Configure Tab Access & Account Settings</h3>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                const name = fd.get("name") as string;
+                const email = fd.get("email") as string;
+                const password = fd.get("password") as string;
+                const role = (editStaffRole === "OTHER" ? editStaffCustomRole.trim() || "OTHER" : editStaffRole) as StaffRole;
+                
+                // Get checked tabs
+                const allowedTabs: string[] = [];
+                AVAILABLE_TABS.forEach((t) => {
+                  if (fd.get(`tab-${t.id}`)) {
+                    allowedTabs.push(t.id);
+                  }
+                });
+
+                const res = await addUser({
+                  id: editingStaff.id,
+                  name,
+                  email,
+                  password: password || editingStaff.password,
+                  role,
+                  allowedTabs,
+                  createdAt: editingStaff.createdAt
+                });
+
+                if (res.ok) {
+                  showToast("Staff account updated successfully!");
+                  setIsEditStaffOpen(false);
+                  setEditingStaff(null);
+                  setEditStaffRole("COUNSELOR");
+                  setEditStaffCustomRole("");
+                } else {
+                  showToast(res.error || "Failed to update account", "error");
+                }
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5 text-left">
+                  <label className="text-slate-400 font-bold block">Full Name</label>
+                  <input
+                    required
+                    name="name"
+                    defaultValue={editingStaff.name}
+                    placeholder="e.g. John Doe"
+                    className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 text-slate-200"
+                  />
+                </div>
+                <div className="space-y-1.5 text-left">
+                  <label className="text-slate-400 font-bold block">Email Address</label>
+                  <input
+                    required
+                    type="email"
+                    name="email"
+                    defaultValue={editingStaff.email}
+                    placeholder="john@jmvisa.com"
+                    className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 text-slate-200"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5 text-left">
+                  <label className="text-slate-400 font-bold block">Password (Leave blank to keep current)</label>
+                  <input
+                    type="password"
+                    name="password"
+                    placeholder="••••••••"
+                    className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 text-slate-200"
+                  />
+                </div>
+                <div className="space-y-1.5 text-left">
+                  <label className="text-slate-400 font-bold block">Staff Role</label>
+                  <select
+                    name="role"
+                    value={editStaffRole}
+                    onChange={(e) => {
+                      setEditStaffRole(e.target.value);
+                      if (e.target.value !== "OTHER") setEditStaffCustomRole("");
+                    }}
+                    className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 text-slate-200 font-bold"
+                  >
+                    <option value="COUNSELOR">COUNSELOR</option>
+                    <option value="ADMIN">ADMINISTRATOR</option>
+                    <option value="MANAGER">GENERAL MANAGER</option>
+                    <option value="DOCUMENT TEAM">DOCUMENT TEAM</option>
+                    <option value="VISA TEAM">VISA TEAM</option>
+                    <option value="ACCOUNT TEAM">ACCOUNT TEAM</option>
+                    <option value="OTHER">OTHER</option>
+                  </select>
+                  {editStaffRole === "OTHER" && (
+                    <input
+                      type="text"
+                      value={editStaffCustomRole}
+                      onChange={(e) => setEditStaffCustomRole(e.target.value)}
+                      required
+                      placeholder="Enter custom role name"
+                      className="w-full mt-2 bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 text-slate-200"
+                    />
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2 text-left">
+                <label className="text-slate-400 font-bold block border-b border-slate-900 pb-1.5">
+                  Tab Permissions (Select accessible operations)
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 max-h-40 overflow-y-auto p-2 bg-slate-950/50 rounded-xl border border-slate-900">
+                  {AVAILABLE_TABS.map((t) => (
+                    <label key={t.id} className="flex items-center space-x-2 p-1.5 hover:bg-slate-900/50 rounded-lg cursor-pointer text-slate-300 hover:text-white transition-colors">
+                      <input
+                        type="checkbox"
+                        name={`tab-${t.id}`}
+                        defaultChecked={editingStaff.allowedTabs ? editingStaff.allowedTabs.includes(t.id) : false}
+                        className="rounded border-slate-800 bg-slate-950 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                      />
+                      <span className="font-semibold">{t.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-bold text-white rounded-xl shadow-lg cursor-pointer"
+              >
+                Save Account Configuration
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Toast Notification */}
       {toast && (
         <div className={`fixed bottom-6 right-6 z-[100] flex items-center space-x-2.5 px-4 py-3 rounded-xl border shadow-2xl transition-all duration-300 animate-fade-in ${
@@ -2435,6 +4140,7 @@ export default function CrmLayout() {
           <span className="text-xs font-bold">{toast.message}</span>
         </div>
       )}
+
 
     </div>
   );
