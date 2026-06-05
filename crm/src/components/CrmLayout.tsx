@@ -14,7 +14,7 @@ import {
   FaInfoCircle, FaFileDownload, FaFileUpload, FaPaperPlane,
   FaSun, FaMoon, FaEllipsisV, FaChevronLeft, FaChevronRight,
   FaMinus, FaExpand, FaEye, FaPhone, FaCommentDots, FaCog, FaEnvelope,
-  FaWhatsapp, FaExternalLinkAlt
+  FaWhatsapp, FaExternalLinkAlt, FaSignOutAlt
 } from "react-icons/fa";
 import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiEye, FiSettings, FiGlobe } from "react-icons/fi";
 import DataTable, { exportRowsToCsv, StatusPill, getPillClasses, ProgressBar } from "@/components/ui/DataTable";
@@ -95,6 +95,17 @@ export default function CrmLayout() {
     getLeadDocuments
   } = useCrm();
 
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+    localStorage.removeItem("visa_crm_user");
+    localStorage.removeItem("visa_crm_role");
+    setCurrentUser(null);
+    window.location.href = "/login";
+  };
 
   // Search & Filters State
   const [searchTerm, setSearchTerm] = useState("");
@@ -732,6 +743,14 @@ export default function CrmLayout() {
               </option>
             ))}
           </select>
+
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center space-x-2 py-2 bg-slate-950 border border-slate-800 hover:border-rose-500/50 hover:bg-rose-950/10 text-slate-300 hover:text-rose-400 font-bold text-xs rounded-xl transition-all cursor-pointer mt-2"
+          >
+            <FaSignOutAlt className="text-xs shrink-0" />
+            <span>Sign Out</span>
+          </button>
         </div>
       </aside>
 
@@ -1579,7 +1598,17 @@ export default function CrmLayout() {
                                     ? theme === "light" ? "bg-gray-50" : "bg-slate-800/40"
                                     : ""
                                 }`}
-                                onMouseEnter={() => setHoveredCountry(c.country)}
+                                onMouseEnter={(e) => {
+                                  setHoveredCountry(c.country);
+                                  tooltipPosRef.current = { x: e.clientX, y: e.clientY };
+                                }}
+                                onMouseMove={(e) => {
+                                  tooltipPosRef.current = { x: e.clientX, y: e.clientY };
+                                  if (tooltipRef.current) {
+                                    tooltipRef.current.style.left = `${e.clientX + 16}px`;
+                                    tooltipRef.current.style.top = `${e.clientY - 10}px`;
+                                  }
+                                }}
                                 onMouseLeave={() => setHoveredCountry(null)}
                                 onClick={() => handleCountryClick(c.country)}
                               >
