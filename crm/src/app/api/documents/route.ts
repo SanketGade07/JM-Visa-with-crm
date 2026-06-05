@@ -72,12 +72,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Storage upload failed: ${uploadError.message}` }, { status: 500 });
       }
 
-      // Public URL (bucket must be public, or swap for a signed URL)
-      const { data: publicUrlData } = supabase.storage
-        .from(DOCUMENTS_BUCKET)
-        .getPublicUrl(objectPath);
-
-      finalFileUrl = publicUrlData.publicUrl;
+      // Store the storage path (not a public URL) so we can generate signed URLs on demand
+      finalFileUrl = `storage://${objectPath}`;
       finalFileName = file.name;
     }
 

@@ -114,7 +114,7 @@ export interface Document {
   leadId: string;
   docType: string; // matches a DocumentChecklist key, e.g. "passport"
   fileName: string;
-  fileUrl: string; // public URL from Supabase Storage
+  fileUrl: string; // storage path (storage://...) or external URL
   status: "UPLOADED" | "VERIFIED" | "REJECTED";
   uploadedBy: string;
   uploadedAt: string;

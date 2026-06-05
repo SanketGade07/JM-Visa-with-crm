@@ -263,6 +263,36 @@ export default function CrmLayout() {
   const canSubmitVisa = ["ADMIN", "VISA TEAM", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Submissions");
   const canManagePayments = ["ADMIN", "ACCOUNT TEAM", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Payments");
 
+  // Helper: open a document URL. If it's a Supabase storage path, fetch a signed URL first.
+  const openSignedUrl = useCallback(async (fileUrl: string) => {
+    // New format: storage://path/to/file
+    // Legacy format: https://xxx.supabase.co/storage/v1/object/public/crm-documents/path/to/file
+    let storagePath = "";
+
+    if (fileUrl.startsWith("storage://")) {
+      storagePath = fileUrl.replace("storage://", "");
+    } else if (fileUrl.includes("/storage/v1/object/public/crm-documents/")) {
+      storagePath = fileUrl.split("/storage/v1/object/public/crm-documents/")[1];
+    }
+
+    if (storagePath) {
+      try {
+        const res = await fetch(`/api/documents/signed-url?path=${encodeURIComponent(storagePath)}`);
+        const data = await res.json();
+        if (res.ok && data.signedUrl) {
+          window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+        } else {
+          alert(data.error || "Failed to load document");
+        }
+      } catch {
+        alert("Network error loading document");
+      }
+    } else {
+      // External URL (e.g., Google Drive link) — open directly
+      window.open(fileUrl, "_blank", "noopener,noreferrer");
+    }
+  }, []);
+
   // If a user switch lands on a tab they can't access, fall back to Dashboard
   useEffect(() => {
     if (!userAllowedTabs.includes(currentTab)) {
@@ -2773,16 +2803,14 @@ export default function CrmLayout() {
                               </span>
                               {doc ? (
                                 <div className="flex items-center mt-1">
-                                  <a
-                                    href={doc.fileUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-100/50 dark:hover:bg-emerald-950/50 transition-colors truncate max-w-[170px]"
+                                  <button
+                                    onClick={() => openSignedUrl(doc.fileUrl)}
+                                    className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-100/50 dark:hover:bg-emerald-950/50 transition-colors truncate max-w-[170px] cursor-pointer"
                                     title={doc.fileName}
                                   >
                                     <FaFileDownload className="text-[9px] shrink-0" />
                                     <span className="truncate">{doc.fileName}</span>
-                                  </a>
+                                  </button>
                                 </div>
                               ) : (
                                 <span className="text-[10px] text-slate-500 block mt-0.5">No file uploaded</span>
@@ -4007,15 +4035,13 @@ export default function CrmLayout() {
                                 <td className="py-3 text-right">
                                   {pay.invoiceUrl ? (
                                     <div className="flex items-center justify-end space-x-2">
-                                      <a
-                                        href={pay.invoiceUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center space-x-1 text-[10px] font-bold text-violet-400 hover:text-violet-300 hover:underline"
+                                      <button
+                                        onClick={() => openSignedUrl(pay.invoiceUrl!)}
+                                        className="inline-flex items-center space-x-1 text-[10px] font-bold text-violet-400 hover:text-violet-300 hover:underline cursor-pointer"
                                       >
                                         <FaFileDownload className="text-[9px]" />
                                         <span className="truncate max-w-[120px]">{pay.invoiceFile || "Open"}</span>
-                                      </a>
+                                      </button>
                                       <button
                                         onClick={async () => {
                                           if (isUploading) return;
