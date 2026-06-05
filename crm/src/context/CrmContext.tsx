@@ -170,6 +170,7 @@ interface CrmContextType {
   updateUsaSlots: (leadId: string, slots: Partial<UsaSlotTracking>) => void;
   addPayment: (leadId: string, payment: Omit<PaymentDetails, "invoiceNumber" | "date">) => void;
   addMeeting: (meeting: Omit<Meeting, "id">) => void;
+  updateMeeting: (meeting: Meeting) => void;
   deleteLead: (leadId: string) => void;
   restoreLead: (leadId: string) => void;
   updateLeadNotes: (leadId: string, notes: string) => void;
@@ -447,6 +448,13 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addMeeting = (meetingData: Omit<Meeting, "id">) => {
     const newMeeting: Meeting = { ...meetingData, id: `meet-${Date.now()}` };
     syncMeetings([...meetings, newMeeting]);
+  };
+
+  const updateMeeting = (updatedMeeting: Meeting) => {
+    const updated = meetings.map((meet) =>
+      meet.id === updatedMeeting.id ? updatedMeeting : meet
+    );
+    syncMeetings(updated);
   };
 
   // Soft delete — never permanently removes a lead (guide §13 rule 5)
@@ -748,6 +756,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateUsaSlots,
         addPayment,
         addMeeting,
+        updateMeeting,
         deleteLead,
         restoreLead,
         updateLeadNotes,

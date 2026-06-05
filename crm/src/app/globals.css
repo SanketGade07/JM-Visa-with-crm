@@ -11,8 +11,10 @@
   --color-violet-200: #bfdbfe;
   --color-violet-300: #93c5fd;
   --color-violet-400: #60a5fa;
-  --color-violet-500: #3b82f6; /* JM Primary Blue */
-  --color-violet-600: #2563eb; /* JM Darker Blue */
+  --color-violet-500: #3b82f6;
+  /* JM Primary Blue */
+  --color-violet-600: #2563eb;
+  /* JM Darker Blue */
   --color-violet-700: #1d4ed8;
   --color-violet-800: #1e40af;
   --color-violet-900: #1e3a8a;
@@ -81,7 +83,19 @@ body {
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* Smooth theme transition */
-html, body, aside, header, div, p, span, button, input, select, textarea, tr, td {
+html,
+body,
+aside,
+header,
+div,
+p,
+span,
+button,
+input,
+select,
+textarea,
+tr,
+td {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
@@ -115,6 +129,7 @@ html.light [class*="bg-[#020207]/80"] {
 html.light aside div.border-b.border-slate-800\/60 {
   border-color: #f1f5f9 !important;
 }
+
 html.light aside h1 {
   background-image: linear-gradient(to right, #1e3a8a, #3b82f6) !important;
   -webkit-background-clip: text !important;
@@ -132,6 +147,7 @@ html.light [class*="bg-[#070714]"] {
 html.light aside nav button:not(.bg-gradient-to-r) {
   color: #475569 !important;
 }
+
 html.light aside nav button:not(.bg-gradient-to-r):hover {
   background-color: #f1f5f9 !important;
   color: #0f172a !important;
@@ -149,6 +165,7 @@ html.light [class*="bg-slate-900/40"] {
   background-color: #f1f5f9 !important;
   border-color: #cbd5e1 !important;
 }
+
 html.light [class*="bg-slate-900/40"]:hover {
   background-color: #e2e8f0 !important;
 }
@@ -164,6 +181,7 @@ html.light [class*="bg-slate-900"] {
   background-color: #f8fafc !important;
   border-color: #e2e8f0 !important;
 }
+
 html.light [class*="bg-slate-900/80"] {
   background-color: #ffffff !important;
   border-color: #cbd5e1 !important;
@@ -178,6 +196,7 @@ html.light .border-slate-900\/50,
 html.light .border-l-4.border-violet-500 {
   border-color: #e2e8f0 !important;
 }
+
 html.light .border-l-4.border-violet-500 {
   border-left-color: #3b82f6 !important;
 }
@@ -221,10 +240,12 @@ html.light textarea {
   border-color: #cbd5e1 !important;
   color: #0f172a !important;
 }
+
 html.light select option {
   background-color: #ffffff !important;
   color: #0f172a !important;
 }
+
 html.light select:focus,
 html.light input:focus,
 html.light textarea:focus {
@@ -260,21 +281,126 @@ html.light [class*="bg-gradient-to-r"].from-violet-600\/25 {
 /* Checkboxes */
 html.light input[type="checkbox"] {
   accent-color: #3b82f6 !important;
+  border-color: #e5e7eb !important; /* gray-200 — very subtle */
 }
 
+html.dark input[type="checkbox"] {
+  border-color: rgba(100, 116, 139, 0.35) !important; /* slate-500 at 35% — barely visible */
+}
+
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+html.light input[type="checkbox"] {
+  background-color: #fff;
+  border-color: #e2e5e9 !important;
+}
+
+html.dark input[type="checkbox"] {
+  background-color: rgba(15, 23, 42, 0.3);
+  border-color: rgba(100, 116, 139, 0.3) !important;
+}
+
+input[type="checkbox"]:checked {
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+}
+
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 3.5px;
+  top: 1px;
+  width: 4.5px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+
 /* Status badges adjustments */
-html.light [class*="bg-sky-500/10"] { background-color: #e0f2fe !important; color: #0369a1 !important; border-color: #bae6fd !important; }
-html.light [class*="bg-indigo-500/10"] { background-color: #e0e7ff !important; color: #4338ca !important; border-color: #c7d2fe !important; }
-html.light [class*="bg-amber-500/10"] { background-color: #fef3c7 !important; color: #b45309 !important; border-color: #fde68a !important; }
-html.light [class*="bg-purple-500/10"] { background-color: #f3e8ff !important; color: #6b21a8 !important; border-color: #e9d5ff !important; }
-html.light [class*="bg-yellow-500/10"] { background-color: #fef9c3 !important; color: #a16207 !important; border-color: #fef08a !important; }
-html.light [class*="bg-cyan-500/10"] { background-color: #ecfeff !important; color: #0e7490 !important; border-color: #cffafe !important; }
-html.light [class*="bg-orange-500/10"] { background-color: #ffedd5 !important; color: #c2410c !important; border-color: #fed7aa !important; }
-html.light [class*="bg-emerald-500/20"] { background-color: #d1fae5 !important; color: #047857 !important; border-color: #a7f3d0 !important; }
-html.light [class*="bg-violet-500/15"] { background-color: #ede9fe !important; color: #5b21b6 !important; border-color: #ddd6fe !important; }
-html.light [class*="bg-teal-500/10"] { background-color: #ccfbf1 !important; color: #0f766e !important; border-color: #99f6e4 !important; }
-html.light [class*="bg-slate-500/10"] { background-color: #f1f5f9 !important; color: #475569 !important; border-color: #e2e8f0 !important; }
-html.light [class*="bg-rose-500/10"] { background-color: #ffe4e6 !important; color: #b91c1c !important; border-color: #fecdd3 !important; }
+html.light [class*="bg-sky-500/10"] {
+  background-color: #e0f2fe !important;
+  color: #0369a1 !important;
+  border-color: #bae6fd !important;
+}
+
+html.light [class*="bg-indigo-500/10"] {
+  background-color: #e0e7ff !important;
+  color: #4338ca !important;
+  border-color: #c7d2fe !important;
+}
+
+html.light [class*="bg-amber-500/10"] {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+  border-color: #fde68a !important;
+}
+
+html.light [class*="bg-purple-500/10"] {
+  background-color: #f3e8ff !important;
+  color: #6b21a8 !important;
+  border-color: #e9d5ff !important;
+}
+
+html.light [class*="bg-yellow-500/10"] {
+  background-color: #fef9c3 !important;
+  color: #a16207 !important;
+  border-color: #fef08a !important;
+}
+
+html.light [class*="bg-cyan-500/10"] {
+  background-color: #ecfeff !important;
+  color: #0e7490 !important;
+  border-color: #cffafe !important;
+}
+
+html.light [class*="bg-orange-500/10"] {
+  background-color: #ffedd5 !important;
+  color: #c2410c !important;
+  border-color: #fed7aa !important;
+}
+
+html.light [class*="bg-emerald-500/20"] {
+  background-color: #d1fae5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
+}
+
+html.light [class*="bg-violet-500/15"] {
+  background-color: #ede9fe !important;
+  color: #5b21b6 !important;
+  border-color: #ddd6fe !important;
+}
+
+html.light [class*="bg-teal-500/10"] {
+  background-color: #ccfbf1 !important;
+  color: #0f766e !important;
+  border-color: #99f6e4 !important;
+}
+
+html.light [class*="bg-slate-500/10"] {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light [class*="bg-rose-500/10"] {
+  background-color: #ffe4e6 !important;
+  color: #b91c1c !important;
+  border-color: #fecdd3 !important;
+}
 
 /* Keep button texts correct inside light theme modals and elements */
 html.light button.text-white,
@@ -283,6 +409,7 @@ html.light button[type="submit"],
 html.light button[type="submit"] * {
   color: #ffffff !important;
 }
+
 html.light span.absolute.-top-7 {
   background-color: #f1f5f9 !important;
   border-color: #cbd5e1 !important;
@@ -328,6 +455,7 @@ textarea {
     opacity: 0;
     transform: translateY(20px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -355,6 +483,7 @@ textarea {
   0% {
     transform: scaleY(0);
   }
+
   100% {
     transform: scaleY(1);
   }
@@ -369,6 +498,7 @@ textarea {
   0% {
     transform: scaleX(0);
   }
+
   100% {
     transform: scaleX(1);
   }
@@ -379,4 +509,350 @@ textarea {
   animation: premiumGrowX 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* ==========================================
+   STATUS DROPDOWN SELECT OVERRIDES
+   ========================================== */
 
+select.status-select-pill {
+  text-align: center !important;
+  text-align-last: center !important;
+  padding-left: 0.25rem !important;
+  padding-right: 0.25rem !important;
+  width: 90px !important;
+  max-width: 90px !important;
+}
+
+/* Default/Light Mode Status Select Pills */
+html.light select.status-select-pill[data-status="New Lead"],
+select.status-select-pill[data-status="New Lead"] {
+  background-color: rgba(59, 130, 246, 0.08) !important;
+  color: rgb(37, 99, 235) !important;
+  border-color: rgba(59, 130, 246, 0.55) !important;
+}
+
+html.light select.status-select-pill[data-status="Contacted"],
+select.status-select-pill[data-status="Contacted"] {
+  background-color: rgba(16, 185, 129, 0.08) !important;
+  color: rgb(5, 150, 105) !important;
+  border-color: rgba(16, 185, 129, 0.55) !important;
+}
+
+html.light select.status-select-pill[data-status="Follow-Up"],
+select.status-select-pill[data-status="Follow-Up"] {
+  background-color: rgba(249, 115, 22, 0.08) !important;
+  color: rgb(217, 119, 6) !important;
+  border-color: rgba(249, 115, 22, 0.55) !important;
+}
+
+html.light select.status-select-pill[data-status="Interested"],
+select.status-select-pill[data-status="Interested"] {
+  background-color: rgba(168, 85, 247, 0.08) !important;
+  color: rgb(147, 51, 234) !important;
+  border-color: rgba(168, 85, 247, 0.55) !important;
+}
+
+html.light select.status-select-pill[data-status="Documents Pending"],
+select.status-select-pill[data-status="Documents Pending"] {
+  background-color: rgba(59, 130, 246, 0.08) !important;
+  color: rgb(37, 99, 235) !important;
+  border-color: rgba(59, 130, 246, 0.55) !important;
+}
+
+html.light select.status-select-pill[data-status="Documents Received"],
+select.status-select-pill[data-status="Documents Received"] {
+  background-color: rgba(249, 115, 22, 0.08) !important;
+  color: rgb(217, 119, 6) !important;
+  border-color: rgba(249, 115, 22, 0.55) !important;
+}
+
+html.light select.status-select-pill[data-status="Under Verification"],
+select.status-select-pill[data-status="Under Verification"] {
+  background-color: rgba(249, 115, 22, 0.08) !important;
+  color: rgb(217, 119, 6) !important;
+  border-color: rgba(249, 115, 22, 0.55) !important;
+}
+
+html.light select.status-select-pill[data-status="Ready For Submission"],
+select.status-select-pill[data-status="Ready For Submission"] {
+  background-color: rgba(168, 85, 247, 0.08) !important;
+  color: rgb(147, 51, 234) !important;
+  border-color: rgba(168, 85, 247, 0.55) !important;
+}
+
+html.light select.status-select-pill[data-status="Visa Submitted"],
+select.status-select-pill[data-status="Visa Submitted"] {
+  background-color: rgba(59, 130, 246, 0.08) !important;
+  color: rgb(37, 99, 235) !important;
+  border-color: rgba(59, 130, 246, 0.55) !important;
+}
+
+html.light select.status-select-pill[data-status="Approved / Rejected"],
+select.status-select-pill[data-status="Approved / Rejected"] {
+  background-color: rgba(16, 185, 129, 0.08) !important;
+  color: rgb(5, 150, 105) !important;
+  border-color: rgba(16, 185, 129, 0.55) !important;
+}
+
+html.light select.status-select-pill[data-status="Closed"],
+select.status-select-pill[data-status="Closed"] {
+  background-color: rgba(100, 116, 139, 0.08) !important;
+  color: rgb(71, 85, 105) !important;
+  border-color: rgba(148, 163, 184, 0.55) !important;
+}
+
+html.light select.status-select-pill[data-status="Dropped"],
+select.status-select-pill[data-status="Dropped"] {
+  background-color: rgba(244, 63, 94, 0.08) !important;
+  color: rgb(225, 29, 72) !important;
+  border-color: rgba(244, 63, 94, 0.55) !important;
+}
+
+/* Dark Mode Overrides for Status Select Pills */
+html.dark select.status-select-pill[data-status="New Lead"] {
+  background-color: rgba(96, 165, 250, 0.12) !important;
+  color: rgb(147, 197, 253) !important;
+  border-color: rgba(96, 165, 250, 0.4) !important;
+}
+
+html.dark select.status-select-pill[data-status="Contacted"] {
+  background-color: rgba(52, 211, 153, 0.12) !important;
+  color: rgb(110, 231, 183) !important;
+  border-color: rgba(52, 211, 153, 0.4) !important;
+}
+
+html.dark select.status-select-pill[data-status="Follow-Up"] {
+  background-color: rgba(251, 146, 60, 0.12) !important;
+  color: rgb(253, 186, 116) !important;
+  border-color: rgba(251, 146, 60, 0.4) !important;
+}
+
+html.dark select.status-select-pill[data-status="Interested"] {
+  background-color: rgba(192, 132, 252, 0.12) !important;
+  color: rgb(216, 180, 254) !important;
+  border-color: rgba(192, 132, 252, 0.4) !important;
+}
+
+html.dark select.status-select-pill[data-status="Documents Pending"] {
+  background-color: rgba(96, 165, 250, 0.12) !important;
+  color: rgb(147, 197, 253) !important;
+  border-color: rgba(96, 165, 250, 0.4) !important;
+}
+
+html.dark select.status-select-pill[data-status="Documents Received"] {
+  background-color: rgba(251, 146, 60, 0.12) !important;
+  color: rgb(253, 186, 116) !important;
+  border-color: rgba(251, 146, 60, 0.4) !important;
+}
+
+html.dark select.status-select-pill[data-status="Under Verification"] {
+  background-color: rgba(251, 146, 60, 0.12) !important;
+  color: rgb(253, 186, 116) !important;
+  border-color: rgba(251, 146, 60, 0.4) !important;
+}
+
+html.dark select.status-select-pill[data-status="Ready For Submission"] {
+  background-color: rgba(192, 132, 252, 0.12) !important;
+  color: rgb(216, 180, 254) !important;
+  border-color: rgba(192, 132, 252, 0.4) !important;
+}
+
+html.dark select.status-select-pill[data-status="Visa Submitted"] {
+  background-color: rgba(96, 165, 250, 0.12) !important;
+  color: rgb(147, 197, 253) !important;
+  border-color: rgba(96, 165, 250, 0.4) !important;
+}
+
+html.dark select.status-select-pill[data-status="Approved / Rejected"] {
+  background-color: rgba(52, 211, 153, 0.12) !important;
+  color: rgb(110, 231, 183) !important;
+  border-color: rgba(52, 211, 153, 0.4) !important;
+}
+
+html.dark select.status-select-pill[data-status="Closed"] {
+  background-color: rgba(148, 163, 184, 0.12) !important;
+  color: rgb(203, 213, 225) !important;
+  border-color: rgba(148, 163, 184, 0.4) !important;
+}
+
+html.dark select.status-select-pill[data-status="Dropped"] {
+  background-color: rgba(244, 63, 94, 0.12) !important;
+  color: rgb(253, 164, 175) !important;
+  border-color: rgba(244, 63, 94, 0.4) !important;
+}
+
+/* ==========================================
+   PREMIUM CUSTOM SCROLLBARS (Theme-Aware)
+   ========================================== */
+
+/* Width and height of scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+/* Scrollbar Track */
+html.dark ::-webkit-scrollbar-track {
+  background: rgba(10, 10, 20, 0.2);
+}
+
+html.light ::-webkit-scrollbar-track {
+  background: rgba(248, 250, 252, 0.5);
+}
+
+/* Scrollbar Thumb */
+html.dark ::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25) !important;
+  border-radius: 9999px;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45) !important;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4) !important;
+  border-radius: 9999px;
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6) !important;
+}
+
+/* Firefox scrollbar support */
+* {
+  scrollbar-width: thin;
+}
+html.dark * {
+  scrollbar-color: rgba(148, 163, 184, 0.25) rgba(10, 10, 20, 0.2);
+}
+html.light * {
+  scrollbar-color: rgba(148, 163, 184, 0.4) rgba(248, 250, 252, 0.5);
+}
+
+/* Meeting Card Left Accent Fix */
+html.light .meeting-card,
+html.light div.meeting-card,
+.meeting-card {
+  border-left-color: #3b82f6 !important;
+}
+
+/* Country Desk Card Hover Override */
+html.light button.country-desk-card:hover,
+html.dark button.country-desk-card:hover,
+button.country-desk-card:hover {
+  background-color: #2563eb !important;
+  border-color: #1d4ed8 !important;
+}
+
+html.light button.country-desk-card:hover *,
+html.dark button.country-desk-card:hover *,
+button.country-desk-card:hover * {
+  color: #ffffff !important;
+}
+
+html.light button.country-desk-card:hover p,
+html.dark button.country-desk-card:hover p,
+button.country-desk-card:hover p {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+html.light button.country-desk-card:hover span,
+html.dark button.country-desk-card:hover span,
+button.country-desk-card:hover span {
+  color: #ffffff !important;
+}
+
+html.light button.country-desk-card:hover span[class*="border"],
+html.dark button.country-desk-card:hover span[class*="border"],
+button.country-desk-card:hover span[class*="border"] {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+}
+
+/* Active/Selected Country Card style in Light Mode */
+html.light button.country-desk-card[class*="bg-slate-900/80"],
+html.light div.country-desk-card[class*="bg-slate-900/80"] {
+  background-color: #ffffff !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 4px 12px -2px rgba(59, 130, 246, 0.15), 0 2px 6px -1px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Audit List Item Hover Override */
+html.light button.audit-list-item:hover,
+html.dark button.audit-list-item:hover,
+button.audit-list-item:hover {
+  background-color: #2563eb !important;
+  border-color: #1d4ed8 !important;
+}
+
+html.light button.audit-list-item:hover *,
+html.dark button.audit-list-item:hover *,
+button.audit-list-item:hover * {
+  color: #ffffff !important;
+}
+
+html.light button.audit-list-item:hover span,
+html.dark button.audit-list-item:hover span,
+button.audit-list-item:hover span {
+  color: #ffffff !important;
+}
+
+html.light button.audit-list-item:hover span[class*="border"],
+html.dark button.audit-list-item:hover span[class*="border"],
+button.audit-list-item:hover span[class*="border"] {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+}
+
+html.light button.audit-list-item:hover div[class*="bg-slate-250"],
+html.light button.audit-list-item:hover div[class*="bg-slate-200"],
+html.dark button.audit-list-item:hover div[class*="bg-slate-800"],
+button.audit-list-item:hover div[class*="bg-slate-200"],
+button.audit-list-item:hover div[class*="bg-slate-800"] {
+  background-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Premium Progress Bar Keyframe & Shimmer Animation */
+@keyframes progress-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-progress-shimmer {
+  animation: progress-shimmer 2.5s infinite linear;
+}
+
+/* Audit compliance desk progress bar styling overrides */
+.audit-progress-container {
+  border-radius: 2px !important;
+  overflow: hidden !important;
+}
+
+.audit-progress-fill {
+  background: #10b981 !important; /* Flat emerald green, strictly no gradient */
+  border-radius: 0px !important; /* Square leading edge */
+  box-shadow: none !important;
+}
+
+html.light .audit-progress-container {
+  background-color: #f1f5f9 !important;
+  border-color: rgba(226, 232, 240, 0.4) !important;
+}
+
+html.dark .audit-progress-container {
+  background-color: #020207 !important;
+  border-color: rgba(30, 41, 59, 0.5) !important;
+}
+
+/* Ensure progress bar filled segments are highly visible when list item is hovered (blue bg) */
+html.light button.audit-list-item:hover div.bg-emerald-500,
+html.dark button.audit-list-item:hover div.bg-emerald-500,
+button.audit-list-item:hover div.bg-emerald-500 {
+  background-color: #4ade80 !important; /* Bright green on hover for high contrast */
+}

@@ -2,33 +2,10 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { useCrm, VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser } from "@/context/CrmContext";
-
-// Which sidebar tabs each role is allowed to open (guide §8.9 access model).
-// Every role lands on the Dashboard; specialist teams only see their own desks.
-const ROLE_TABS: Record<StaffRole, string[]> = {
-  ADMIN: ["Dashboard", "Leads", "FollowUps", "Countries", "USASlots", "Checklist", "Submissions", "Payments", "Meetings", "DropLeads", "Staff"],
-  MANAGER: ["Dashboard", "Leads", "FollowUps", "Countries", "USASlots", "Checklist", "Submissions", "Payments", "Meetings", "DropLeads", "Staff"],
-  COUNSELOR: ["Dashboard", "Leads", "FollowUps", "Countries", "Meetings", "DropLeads"],
-  "DOCUMENT TEAM": ["Dashboard", "Leads", "Countries", "Checklist"],
-  "VISA TEAM": ["Dashboard", "Leads", "Countries", "USASlots", "Submissions"],
-  "ACCOUNT TEAM": ["Dashboard", "Leads", "Payments"],
-  OTHER: ["Dashboard"],
-};
-
-const AVAILABLE_TABS = [
-  { id: "Dashboard", label: "Dashboard" },
-  { id: "Leads", label: "Lead Management" },
-  { id: "FollowUps", label: "Follow-Ups" },
-  { id: "Countries", label: "Country Wise Leads" },
-  { id: "USASlots", label: "USA Slot Tracking" },
-  { id: "Checklist", label: "Document Checklist" },
-  { id: "Submissions", label: "Visa Submission" },
-  { id: "Payments", label: "Payments & Finance" },
-  { id: "Meetings", label: "Meetings & Reminders" },
-  { id: "DropLeads", label: "Drop Leads Log" },
-  { id: "Staff", label: "Staff Directory" },
-];
+import { useCrm, VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Meeting } from "@/context/CrmContext";
+import { ROLE_TABS, AVAILABLE_TABS } from "@/utils/crmConstants";
+import { docProgress, timeAgo, getStatusColor } from "@/utils/leadHelpers";
+import { AustraliaFlag, MalaysiaFlag, IndonesiaFlag, SingaporeFlag } from "@/components/CountryFlags";
 
 import {
   FaUserFriends, FaGlobe, FaCheckSquare, FaCalendarAlt, FaHistory,
@@ -36,62 +13,60 @@ import {
   FaTrash, FaUndo, FaSearch, FaTimes, FaCoins, FaCheckCircle,
   FaInfoCircle, FaFileDownload, FaFileUpload, FaPaperPlane,
   FaSun, FaMoon, FaEllipsisV, FaChevronLeft, FaChevronRight,
-  FaMinus, FaExpand
+  FaMinus, FaExpand, FaEye, FaPhone, FaCommentDots, FaCog, FaEnvelope,
+  FaWhatsapp, FaExternalLinkAlt
 } from "react-icons/fa";
+import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiEye, FiSettings, FiGlobe } from "react-icons/fi";
+import DataTable, { exportRowsToCsv, StatusPill, getPillClasses, ProgressBar } from "@/components/ui/DataTable";
 
 // @ts-ignore
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
 
-// Sharp lightweight SVG Flags for platform-agnostic color fidelity
-const AustraliaFlag = () => (
-  <svg className="w-5 h-5 rounded-full border border-gray-200 dark:border-slate-800 shrink-0" viewBox="0 0 30 30" fill="none">
-    <rect width="30" height="30" fill="#00247D" />
-    <path d="M0,0 L15,15 M15,0 L0,15" stroke="#FFFFFF" strokeWidth="2" />
-    <path d="M0,0 L15,15 M15,0 L0,15" stroke="#E62212" strokeWidth="0.8" />
-    <path d="M7.5,0 L7.5,15 M0,7.5 L15,7.5" stroke="#FFFFFF" strokeWidth="3" />
-    <path d="M7.5,0 L7.5,15 M0,7.5 L15,7.5" stroke="#E62212" strokeWidth="1.2" />
-    <polygon points="7.5,10.5 8.2,11.7 9.5,11.5 8.7,12.5 9.2,13.7 8,13.2 7,14 7,12.7 5.8,12.3 7,11.7" fill="#FFFFFF" transform="scale(0.8) translate(3, 4)" />
-    <circle cx="22" cy="7" r="1" fill="#FFFFFF" />
-    <circle cx="25" cy="12" r="1" fill="#FFFFFF" />
-    <circle cx="22" cy="17" r="1" fill="#FFFFFF" />
-    <circle cx="21" cy="22" r="1" fill="#FFFFFF" />
-    <circle cx="18" cy="14" r="0.8" fill="#FFFFFF" />
-  </svg>
-);
+const LEAD_AVATARS = [
+  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1552058544-f2b08422138a?w=150&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80",
+];
 
-const MalaysiaFlag = () => (
-  <svg className="w-5 h-5 rounded-full border border-gray-200 dark:border-slate-800 shrink-0" viewBox="0 0 30 30" fill="none">
-    <rect width="30" height="30" fill="#FFFFFF" />
-    {[0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28].map((y, idx) => (
-      idx % 2 === 0 && <rect key={y} x="0" y={y} width="30" height="2" fill="#E62212" />
-    ))}
-    <rect width="16" height="16" fill="#00247D" />
-    <circle cx="6" cy="8" r="3.5" fill="#FFCC00" />
-    <circle cx="7.5" cy="8" r="3.5" fill="#00247D" />
-    <polygon points="11,8 12,9 13,8 12,7" fill="#FFCC00" />
-    <polygon points="12,8 11,9 12,10 13,9" fill="#FFCC00" transform="rotate(45, 12, 8.5)" />
-  </svg>
-);
+const getLeadAvatar = (id: string, index: number) => {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const avatarIndex = Math.abs(hash) % LEAD_AVATARS.length;
+  return LEAD_AVATARS[avatarIndex];
+};
 
-const IndonesiaFlag = () => (
-  <svg className="w-5 h-5 rounded-full border border-gray-200 dark:border-slate-800 shrink-0" viewBox="0 0 30 30" fill="none">
-    <rect width="30" height="15" fill="#E62212" />
-    <rect y="15" width="30" height="15" fill="#FFFFFF" />
-  </svg>
-);
+const getLeadDescription = (lead: any) => {
+  if (lead.notes && lead.notes.trim().length > 0) {
+    const lines = lead.notes.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.length > 5 && !trimmed.startsWith("Received via") && !trimmed.startsWith("Source:") && !trimmed.startsWith("Service:")) {
+        return trimmed;
+      }
+    }
+  }
+  return `Interested in ${lead.visaType} for ${lead.country}`;
+};
 
-const SingaporeFlag = () => (
-  <svg className="w-5 h-5 rounded-full border border-gray-200 dark:border-slate-800 shrink-0" viewBox="0 0 30 30" fill="none">
-    <rect width="30" height="15" fill="#DF151A" />
-    <rect y="15" width="30" height="15" fill="#FFFFFF" />
-    <path d="M 5,4 A 3,3 0 0,0 5,10 A 2.5,2.5 0 0,1 5,4" fill="#FFFFFF" />
-    <circle cx="8" cy="5" r="0.6" fill="#FFFFFF" />
-    <circle cx="9.5" cy="6" r="0.6" fill="#FFFFFF" />
-    <circle cx="9" cy="7.5" r="0.6" fill="#FFFFFF" />
-    <circle cx="7.2" cy="7.5" r="0.6" fill="#FFFFFF" />
-    <circle cx="6.5" cy="6" r="0.6" fill="#FFFFFF" />
-  </svg>
-);
+const getLeadCompany = (lead: any) => {
+  const companySuffixes = ["Solutions", "Data Inc.", "Systems", "Technologies", "Innovations", "Group", "Dynamics", "Industries", "Global", "OmniCorp"];
+  let hash = 0;
+  for (let i = 0; i < lead.id.length; i++) {
+    hash = lead.id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const suffixIndex = Math.abs(hash) % companySuffixes.length;
+  const firstWord = lead.name.split(' ')[0] || "Global";
+  return `${firstWord} ${companySuffixes[suffixIndex]}`;
+};
 
 export default function CrmLayout() {
   const {
@@ -111,7 +86,7 @@ export default function CrmLayout() {
     updateUsaSlots,
     addPayment,
     addMeeting,
-    deleteLead,
+    updateMeeting,
     restoreLead,
     updateLeadNotes,
     assignCounselor,
@@ -123,6 +98,7 @@ export default function CrmLayout() {
 
   // Search & Filters State
   const [searchTerm, setSearchTerm] = useState("");
+  const [checklistSearch, setChecklistSearch] = useState("");
 
   // Theme State
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -187,6 +163,8 @@ export default function CrmLayout() {
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [isAddMeetingOpen, setIsAddMeetingOpen] = useState(false);
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [isEditMeetingOpen, setIsEditMeetingOpen] = useState(false);
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
   const [isEditStaffOpen, setIsEditStaffOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<CrmUser | null>(null);
@@ -295,25 +273,6 @@ export default function CrmLayout() {
 
   // Active Lead Object
   const selectedLead = leads.find((l) => l.id === selectedLeadId) || leads[0];
-
-  // Helper: Status Badge Colors
-  const getStatusColor = (status: VisaStatus) => {
-    switch (status) {
-      case "New Lead": return "bg-sky-500/10 text-sky-400 border border-sky-500/20";
-      case "Contacted": return "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20";
-      case "Follow-Up": return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
-      case "Interested": return "bg-purple-500/10 text-purple-400 border border-purple-500/20";
-      case "Documents Pending": return "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20";
-      case "Documents Received": return "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20";
-      case "Under Verification": return "bg-orange-500/10 text-orange-400 border border-orange-500/20";
-      case "Ready For Submission": return "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
-      case "Visa Submitted": return "bg-violet-500/15 text-violet-300 border border-violet-500/30";
-      case "Approved / Rejected": return "bg-teal-500/10 text-teal-400 border border-teal-500/20";
-      case "Closed": return "bg-slate-500/10 text-slate-400 border border-slate-500/20";
-      case "Dropped": return "bg-rose-500/10 text-rose-400 border border-rose-500/20";
-      default: return "bg-slate-600/10 text-slate-400 border border-slate-600/20";
-    }
-  };
 
   // ── Real dashboard analytics (computed from live leads) ─────────────────────
   const activeLeads = leads.filter((l) => l.status !== "Dropped");
@@ -1141,10 +1100,11 @@ export default function CrmLayout() {
                                   width: "70%",
                                   maxWidth: "48px",
                                   borderRadius: "6px 6px 0 0",
-                                  border: isHovered 
-                                    ? "1px solid rgba(37, 99, 235, 0.3)" 
-                                    : `1px solid ${theme === "light" ? "#E8EAED" : "rgba(51,65,85,0.5)"}`,
-                                  borderBottom: "none",
+                                  borderWidth: "1px 1px 0px 1px",
+                                  borderStyle: "solid",
+                                  borderColor: isHovered 
+                                    ? "rgba(37, 99, 235, 0.3)" 
+                                    : (theme === "light" ? "#E8EAED" : "rgba(51,65,85,0.5)"),
                                   backgroundColor: isHovered 
                                     ? "rgba(37, 99, 235, 0.12)" 
                                     : (theme === "light" ? "rgba(241, 243, 245, 0.55)" : "rgba(30,41,59,0.15)"),
@@ -1890,255 +1850,452 @@ export default function CrmLayout() {
 
           {/* 2. LEAD MANAGEMENT */}
           {currentTab === "Leads" && (
-            <div className="space-y-6">
-              
-              {/* Filter Row */}
-              <div className="p-4 bg-slate-900/60 border border-slate-800/80 rounded-2xl flex flex-wrap gap-4 items-center justify-between">
-                <div className="flex flex-wrap gap-3">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs font-semibold text-slate-500">Status:</span>
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-1.5 px-3 focus:outline-none"
-                    >
-                      <option value="All">All Statuses</option>
-                      <option value="New Lead">New Lead</option>
-                      <option value="Contacted">Contacted</option>
-                      <option value="Follow-Up">Follow-Up</option>
-                      <option value="Interested">Interested</option>
-                      <option value="Documents Pending">Documents Pending</option>
-                      <option value="Documents Received">Documents Received</option>
-                      <option value="Under Verification">Under Verification</option>
-                      <option value="Ready For Submission">Ready For Submission</option>
-                      <option value="Visa Submitted">Visa Submitted</option>
-                      <option value="Approved / Rejected">Approved / Rejected</option>
-                      <option value="Closed">Closed</option>
-                      <option value="Dropped">Dropped</option>
-                    </select>
-                  </div>
+            <div className="-m-8 p-6 bg-gray-50 dark:bg-transparent min-h-[calc(100vh-4rem)] space-y-5">
 
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs font-semibold text-slate-500">Destination:</span>
-                    <select
-                      value={countryFilter}
-                      onChange={(e) => setCountryFilter(e.target.value)}
-                      className="bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-1.5 px-3 focus:outline-none"
-                    >
-                      <option value="All">All Countries</option>
-                      <option value="USA">USA</option>
-                      <option value="UK">UK</option>
-                      <option value="Canada">Canada</option>
-                      <option value="Europe">Europe</option>
-                    </select>
-                  </div>
+              {/* Page header */}
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Lead Management</h2>
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Manage and track all your leads in one place.</p>
                 </div>
 
-                <div className="text-xs font-semibold text-slate-400">
-                  Showing <span className="text-violet-400 font-bold">{
-                    leads.filter(l => 
+              </div>
+
+              {/* KPI cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                {[
+                  {
+                    label: "Total Leads",
+                    value: leads.filter(l => l.status !== "Dropped").length,
+                    icon: FiUsers,
+                    trend: "↑ 12%",
+                    up: true,
+                    bgColor: "bg-[#eff6ff] dark:bg-blue-950/45",
+                    textColor: "text-[#2563eb] dark:text-blue-400",
+                    trendColor: "text-emerald-600 dark:text-emerald-500",
+                    color: "#3b82f6",
+                    linePath: "M 5 30 C 12 28, 18 20, 25 25 C 32 30, 38 12, 45 15 C 52 18, 58 22, 65 18 C 72 14, 78 10, 85 14 C 92 18, 96 10, 100 8",
+                    areaPath: "M 5 30 C 12 28, 18 20, 25 25 C 32 30, 38 12, 45 15 C 52 18, 58 22, 65 18 C 72 14, 78 10, 85 14 C 92 18, 96 10, 100 8 L 100 40 L 5 40 Z"
+                  },
+                  {
+                    label: "In Progress",
+                    value: leads.filter(l => ["Contacted", "Follow-Up", "Interested", "Documents Pending", "Documents Received", "Under Verification", "Ready For Submission", "Visa Submitted"].includes(l.status)).length,
+                    icon: FiClock,
+                    trend: "↑ 8%",
+                    up: true,
+                    bgColor: "bg-[#eff6ff] dark:bg-sky-950/45",
+                    textColor: "text-[#0284c7] dark:text-sky-400",
+                    trendColor: "text-emerald-600 dark:text-emerald-500",
+                    color: "#3b82f6",
+                    linePath: "M 5 32 C 12 32, 18 35, 24 25 C 30 15, 36 32, 42 32 C 48 32, 54 18, 60 16 C 66 14, 72 25, 78 14 C 84 4, 92 14, 100 12",
+                    areaPath: "M 5 32 C 12 32, 18 35, 24 25 C 30 15, 36 32, 42 32 C 48 32, 54 18, 60 16 C 66 14, 72 25, 78 14 C 84 4, 92 14, 100 12 L 100 40 L 5 40 Z"
+                  },
+                  {
+                    label: "New Today",
+                    value: leads.filter(l => l.dateCreated === new Date().toISOString().split("T")[0]).length,
+                    icon: FiCalendar,
+                    trend: "↓ 16%",
+                    up: false,
+                    bgColor: "bg-[#fef2f2] dark:bg-rose-950/45",
+                    textColor: "text-[#ef4444] dark:text-rose-450",
+                    trendColor: "text-rose-600 dark:text-rose-500",
+                    color: "#ef4444",
+                    linePath: "M 5 20 C 12 18, 18 35, 24 30 C 30 25, 36 22, 42 26 C 48 30, 54 28, 60 20 C 66 12, 72 35, 78 30 C 84 25, 92 28, 100 26",
+                    areaPath: "M 5 20 C 12 18, 18 35, 24 30 C 30 25, 36 22, 42 26 C 48 30, 54 28, 60 20 C 66 12, 72 35, 78 30 C 84 25, 92 28, 100 26 L 100 40 L 5 40 Z"
+                  },
+                  {
+                    label: "Meetings Booked",
+                    value: meetings.length,
+                    icon: FiCalendar,
+                    trend: "↑ 15%",
+                    up: true,
+                    bgColor: "bg-[#faf5ff] dark:bg-purple-950/45",
+                    textColor: "text-[#7c3aed] dark:text-purple-400",
+                    trendColor: "text-emerald-600 dark:text-emerald-500",
+                    color: "#a855f7",
+                    linePath: "M 5 32 C 15 32, 25 30, 35 28 C 45 26, 55 24, 65 18 C 75 12, 85 14, 95 8 C 97 6, 99 5, 100 4",
+                    areaPath: "M 5 32 C 15 32, 25 30, 35 28 C 45 26, 55 24, 65 18 C 75 12, 85 14, 95 8 C 97 6, 99 5, 100 4 L 100 40 L 5 40 Z"
+                  },
+                ].map((kpi, i) => {
+                  const Icon = kpi.icon;
+                  return (
+                    <div
+                      key={i}
+                      className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none hover:shadow-[0_4px_25px_-2px_rgba(0,0,0,0.08)] transition-all duration-300 flex gap-4 items-start"
+                    >
+                      <div className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 ${kpi.bgColor} ${kpi.textColor}`}>
+                        <Icon className="text-lg" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-350">{kpi.label}</span>
+                          <span className={`text-[12px] font-semibold ${kpi.trendColor}`}>{kpi.trend}</span>
+                        </div>
+                        <div className="flex items-end justify-between mt-1">
+                          <div className="flex flex-col">
+                            <span className="text-[28px] font-bold text-slate-900 dark:text-slate-100 tracking-tight leading-none mt-1">
+                              {kpi.value.toLocaleString()}
+                            </span>
+                            <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-2">vs. last period</span>
+                          </div>
+                          <div className="w-[100px] h-10 shrink-0 relative overflow-visible">
+                            <svg viewBox="0 0 100 40" className="w-full h-full overflow-visible">
+                              <defs>
+                                <linearGradient id={`sparkline-grad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor={kpi.color} stopOpacity="0.25" />
+                                  <stop offset="100%" stopColor={kpi.color} stopOpacity="0.0" />
+                                </linearGradient>
+                              </defs>
+                              <path
+                                d={kpi.areaPath}
+                                fill={`url(#sparkline-grad-${i})`}
+                              />
+                              <path
+                                d={kpi.linePath}
+                                fill="none"
+                                stroke={kpi.color}
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Lead detail split-screen */}
+              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-stretch h-[600px]">
+                
+                {/* Leads list (reusable DataTable) */}
+                <div className="xl:col-span-3 flex flex-col h-full">
+                  <DataTable
+                    className="h-full flex flex-col"
+                    rows={leads.filter(l =>
                       (statusFilter === "Dropped" ? l.status === "Dropped" : l.status !== "Dropped") &&
                       (statusFilter === "All" || l.status === statusFilter) &&
                       (countryFilter === "All" || l.country === countryFilter) &&
                       (l.name.toLowerCase().includes(searchTerm.toLowerCase()) || l.phone.includes(searchTerm))
-                    ).length
-                  }</span> Leads
-                </div>
-              </div>
-
-              {/* Lead detail split-screen */}
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                
-                {/* Leads list list */}
-                <div className="xl:col-span-2 p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-4">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-800 text-slate-500 font-bold">
-                          <th className="pb-2.5">Name</th>
-                          <th className="pb-2.5">Destination</th>
-                          <th className="pb-2.5">Visa Class</th>
-                          <th className="pb-2.5">Workflow Status</th>
-                          <th className="pb-2.5">Counselor</th>
-                          <th className="pb-2.5 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {leads
-                          .filter(l => 
+                    )}
+                    getRowId={(l) => l.id}
+                    onRowClick={(l) => setSelectedLeadId(l.id)}
+                    selectedRowId={selectedLeadId}
+                    title="Lead List"
+                    search={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    searchPlaceholder="Search name or phone…"
+                    filters={
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Status:</span>
+                          <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="bg-white dark:bg-slate-900 border border-gray-250 dark:border-slate-800 text-gray-750 dark:text-slate-250 text-[11px] rounded-lg py-1 px-2.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          >
+                            <option value="All">All Statuses</option>
+                            <option value="New Lead">New Lead</option>
+                            <option value="Contacted">Contacted</option>
+                            <option value="Follow-Up">Follow-Up</option>
+                            <option value="Interested">Interested</option>
+                            <option value="Documents Pending">Documents Pending</option>
+                            <option value="Documents Received">Documents Received</option>
+                            <option value="Under Verification">Under Verification</option>
+                            <option value="Ready For Submission">Ready For Submission</option>
+                            <option value="Visa Submitted">Visa Submitted</option>
+                            <option value="Approved / Rejected">Approved / Rejected</option>
+                            <option value="Closed">Closed</option>
+                            <option value="Dropped">Dropped</option>
+                          </select>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Destination:</span>
+                          <select
+                            value={countryFilter}
+                            onChange={(e) => setCountryFilter(e.target.value)}
+                            className="bg-white dark:bg-slate-900 border border-gray-250 dark:border-slate-800 text-gray-750 dark:text-slate-250 text-[11px] rounded-lg py-1 px-2.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          >
+                            <option value="All">All Countries</option>
+                            <option value="USA">USA</option>
+                            <option value="UK">UK</option>
+                            <option value="Canada">Canada</option>
+                            <option value="Europe">Europe</option>
+                          </select>
+                        </div>
+                      </>
+                    }
+                    onExport={() =>
+                      exportRowsToCsv(
+                        "leads",
+                        ["#", "Name", "Phone", "Destination", "Visa Class", "Doc %", "Status", "Counselor"],
+                        leads
+                          .filter(l =>
                             (statusFilter === "Dropped" ? l.status === "Dropped" : l.status !== "Dropped") &&
                             (statusFilter === "All" || l.status === statusFilter) &&
                             (countryFilter === "All" || l.country === countryFilter) &&
                             (l.name.toLowerCase().includes(searchTerm.toLowerCase()) || l.phone.includes(searchTerm))
                           )
-                          .map((lead) => (
-                            <tr 
-                              key={lead.id} 
-                              onClick={() => setSelectedLeadId(lead.id)}
-                              className={`border-b border-slate-900/50 hover:bg-slate-900/20 cursor-pointer ${
-                                selectedLeadId === lead.id ? "bg-violet-950/20 border-violet-800/40" : ""
-                              }`}
-                            >
-                              <td className="py-3 font-semibold text-slate-200">
-                                <div>{lead.name}</div>
-                                <span className="text-[10px] text-slate-500 font-medium block">{lead.phone}</span>
-                              </td>
-                              <td className="py-3 font-semibold text-slate-300">{lead.country}</td>
-                              <td className="py-3 text-slate-400">{lead.visaType}</td>
-                              <td className="py-3" onClick={(e) => e.stopPropagation()}>
-                                <select
-                                  value={lead.status}
-                                  onChange={(e) => updateLeadStatus(lead.id, e.target.value as VisaStatus)}
-                                  disabled={!canModifyLeads}
-                                  className={`w-[135px] py-1 px-2 text-[11px] font-bold rounded-lg ${getStatusColor(lead.status)} focus:outline-none cursor-pointer border`}
-                                >
-                                  <option value="New Lead">New Lead</option>
-                                  <option value="Contacted">Contacted</option>
-                                  <option value="Follow-Up">Follow-Up</option>
-                                  <option value="Interested">Interested</option>
-                                  <option value="Documents Pending">Documents Pending</option>
-                                  <option value="Documents Received">Documents Received</option>
-                                  <option value="Under Verification">Under Verification</option>
-                                  <option value="Ready For Submission">Ready For Submission</option>
-                                  <option value="Visa Submitted">Visa Submitted</option>
-                                  <option value="Approved / Rejected">Approved / Rejected</option>
-                                  <option value="Closed">Closed</option>
-                                  <option value="Dropped">Dropped</option>
-                                </select>
-                              </td>
-                              <td className="py-3" onClick={(e) => e.stopPropagation()}>
-                                <select
-                                  value={lead.counselor}
-                                  onChange={(e) => assignCounselor(lead.id, e.target.value)}
-                                  disabled={!canModifyLeads}
-                                  className="w-[135px] py-1 px-2 text-[11px] font-bold rounded-lg bg-slate-950 border border-slate-800 focus:outline-none text-slate-200 cursor-pointer"
-                                >
-                                  <option value="Unassigned">Unassigned</option>
-                                  <option value="Priya Mehta">Priya Mehta</option>
-                                  <option value="Rohit Verma">Rohit Verma</option>
-                                  <option value="Simran Kaur">Simran Kaur</option>
-                                </select>
-                              </td>
-                              <td className="py-3 text-right">
-                                <div className="flex items-center justify-end space-x-1">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      deleteLead(lead.id);
-                                    }}
-                                    disabled={!canModifyLeads}
-                                    className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent"
-                                    title="Drop Lead"
-                                  >
-                                    <FaTrash />
-                                  </button>
+                          .map((l, i) => [i + 1, l.name, l.phone, l.country, l.visaType, `${Math.round(docProgress(l.checklist))}%`, l.status, l.counselor])
+                      )
+                    }
+                    columns={[
+                      {
+                        header: "Lead",
+                        render: (lead) => (
+                          <div className="min-w-0">
+                            <div className="font-bold text-gray-900 dark:text-slate-100 text-[13px] truncate">{lead.name}</div>
+                            <span className="text-[11px] text-gray-400 dark:text-slate-500 font-medium block max-w-[180px] truncate">
+                              {getLeadDescription(lead)}
+                            </span>
+                          </div>
+                        ),
+                      },
+                      {
+                        header: "Service",
+                        render: (lead) => (
+                          <span className="font-medium text-gray-600 dark:text-slate-300 text-[13px] whitespace-nowrap">
+                            {lead.visaType}
+                          </span>
+                        ),
+                      },
+                      {
+                        header: "Doc Verification",
+                        render: (lead) => {
+                          const pct = docProgress(lead.checklist);
+                          const filledCount = pct === 0 ? 0 : Math.ceil(pct / 25);
+                          return (
+                            <div className="min-w-[120px] flex items-center justify-start h-full">
+                              <div className="flex items-center gap-2">
+                                <div className="flex gap-1 w-[76px]">
+                                  {[1, 2, 3, 4].map((seg) => (
+                                    <div
+                                      key={seg}
+                                      className={`h-2 flex-1 rounded-[1.5px] ${
+                                        seg <= filledCount
+                                          ? "bg-emerald-500"
+                                          : "bg-gray-200 dark:bg-slate-800"
+                                      }`}
+                                    />
+                                  ))}
                                 </div>
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
+                                <span className="text-[12px] font-bold text-gray-500 dark:text-slate-400 tabular-nums">
+                                  {Math.round(pct)}%
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        },
+                      },
+                      {
+                        header: "Status",
+                        render: (lead) => {
+                          const getStatusSelectClasses = (status: string) => {
+                            switch (status) {
+                              case "New Lead":
+                                return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/60";
+                              case "Contacted":
+                                return "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800/60";
+                              case "Follow-Up":
+                                return "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60";
+                              case "Interested":
+                                return "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/60";
+                              case "Documents Pending":
+                                return "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/60";
+                              case "Documents Received":
+                                return "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/60";
+                              case "Under Verification":
+                                return "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/60";
+                              case "Ready For Submission":
+                                return "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200 dark:bg-fuchsia-950/40 dark:text-fuchsia-300 dark:border-fuchsia-800/60";
+                              case "Visa Submitted":
+                                return "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/60";
+                              case "Approved / Rejected":
+                                return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60";
+                              case "Closed":
+                                return "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900/40 dark:text-slate-300 dark:border-slate-800/60";
+                              case "Dropped":
+                                return "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60";
+                              default:
+                                return "bg-gray-50 text-gray-700 border-gray-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700/60";
+                            }
+                          };
+                          return (
+                            <select
+                              value={lead.status}
+                              data-status={lead.status}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => updateLeadStatus(lead.id, e.target.value as VisaStatus)}
+                              disabled={!canModifyLeads}
+                              className="appearance-none py-0.5 px-2.5 text-[11px] font-semibold rounded-full border cursor-pointer focus:outline-none transition-all duration-150 status-select-pill"
+                            >
+                              <option value="New Lead" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">New Lead</option>
+                              <option value="Contacted" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Contacted</option>
+                              <option value="Follow-Up" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Follow-Up</option>
+                              <option value="Interested" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Interested</option>
+                              <option value="Documents Pending" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Documents Pending</option>
+                              <option value="Documents Received" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Documents Received</option>
+                              <option value="Under Verification" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Under Verification</option>
+                              <option value="Ready For Submission" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Ready For Submission</option>
+                              <option value="Visa Submitted" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Visa Submitted</option>
+                              <option value="Approved / Rejected" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Approved / Rejected</option>
+                              <option value="Closed" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Closed</option>
+                              <option value="Dropped" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Dropped</option>
+                            </select>
+                          );
+                        },
+                      },
+                      {
+                        header: "Counselor",
+                        render: (lead) => (
+                          <select
+                            value={lead.counselor}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => assignCounselor(lead.id, e.target.value)}
+                            disabled={!canModifyLeads}
+                            className="appearance-none py-0.5 px-2.5 text-[11px] font-medium rounded-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 focus:outline-none text-gray-600 dark:text-slate-300 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-all duration-150"
+                          >
+                            <option value="Unassigned" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Unassigned</option>
+                            <option value="Priya Mehta" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Priya Mehta</option>
+                            <option value="Rohit Verma" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Rohit Verma</option>
+                            <option value="Simran Kaur" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Simran Kaur</option>
+                          </select>
+                        ),
+                      },
+                      {
+                        header: "Last Contact",
+                        render: (lead) => (
+                          <span className="text-gray-500 dark:text-slate-400 text-[12px] font-medium whitespace-nowrap">
+                            {timeAgo(lead.lastUpdated)}
+                          </span>
+                        ),
+                      },
+                    ]}
+                    actions={(lead) => [
+                      {
+                        icon: FiPhone,
+                        title: "Call",
+                        onClick: (l) => window.open(`tel:${l.phone}`),
+                      },
+                      {
+                        icon: FaWhatsapp,
+                        title: "WhatsApp",
+                        onClick: (l) =>
+                          window.open(
+                            `https://wa.me/${l.phone.replace(/[^0-9]/g, "")}`,
+                            "_blank"
+                          ),
+                      },
+                      {
+                        icon: FiMail,
+                        title: "Email",
+                        onClick: (l) => window.open(`mailto:${l.email}`),
+                      },
+                    ]}
+                    emptyText="No leads match your filters."
+                  />
                 </div>
 
                 {/* Lead Detail Panel Side Card */}
                 {selectedLead && (
-                  <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-6">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                      <div>
-                        <h4 className="text-sm font-bold text-white">{selectedLead.name}</h4>
-                        <span className="text-[10px] text-slate-500 font-bold tracking-widest uppercase block">{selectedLead.id}</span>
+                  <div className="xl:col-span-1 bg-white dark:bg-slate-900/50 border border-gray-200/70 dark:border-slate-800 rounded-2xl shadow-sm dark:shadow-none p-5 flex flex-col h-full space-y-5 overflow-y-auto">
+                    <div className="space-y-5">
+                      {/* Details header */}
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-slate-100 truncate leading-snug">{selectedLead.name}</h4>
+                          <span className="text-[10px] text-gray-400 dark:text-slate-500 font-semibold tracking-wider uppercase block truncate mt-0.5">{selectedLead.id}</span>
+                        </div>
+                        <StatusPill status={selectedLead.status} />
                       </div>
-                      <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-lg ${getStatusColor(selectedLead.status)}`}>
-                        {selectedLead.status}
-                      </span>
+
+                      {/* Dropdowns and Meta Fields */}
+                      <div className="space-y-4 border-t border-gray-100 dark:border-slate-800/80 pt-4">
+                        {/* Transition status */}
+                        <div className="space-y-1.5">
+                          <label className="text-gray-400 dark:text-slate-500 font-bold uppercase text-[10px] tracking-wider block">Transition Status</label>
+                          <select
+                            value={selectedLead.status}
+                            onChange={(e) => updateLeadStatus(selectedLead.id, e.target.value as VisaStatus)}
+                            disabled={!canModifyLeads}
+                            className="w-full bg-white dark:bg-slate-800/40 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+                          >
+                            <option value="New Lead">New Lead</option>
+                            <option value="Contacted">Contacted</option>
+                            <option value="Follow-Up">Follow-Up</option>
+                            <option value="Interested">Interested</option>
+                            <option value="Documents Pending">Documents Pending</option>
+                            <option value="Documents Received">Documents Received</option>
+                            <option value="Under Verification">Under Verification</option>
+                            <option value="Ready For Submission">Ready For Submission</option>
+                            <option value="Visa Submitted">Visa Submitted</option>
+                            <option value="Approved / Rejected">Approved / Rejected</option>
+                            <option value="Closed">Closed</option>
+                          </select>
+                        </div>
+
+                        {/* Assigned counselor */}
+                        <div className="space-y-1.5">
+                          <label className="text-gray-400 dark:text-slate-500 font-bold uppercase text-[10px] tracking-wider block">Assigned Counselor</label>
+                          <select
+                            value={selectedLead.counselor}
+                            onChange={(e) => assignCounselor(selectedLead.id, e.target.value)}
+                            disabled={!canModifyLeads}
+                            className="w-full bg-white dark:bg-slate-800/40 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+                          >
+                            <option value="Unassigned">Unassigned</option>
+                            <option value="Priya Mehta">Priya Mehta</option>
+                            <option value="Rohit Verma">Rohit Verma</option>
+                            <option value="Simran Kaur">Simran Kaur</option>
+                          </select>
+                        </div>
+
+                        {/* Contact details */}
+                        <div className="grid grid-cols-2 gap-4 border-t border-gray-100 dark:border-slate-800/80 pt-4">
+                          <div className="min-w-0">
+                            <span className="text-[10px] uppercase text-gray-400 dark:text-slate-500 font-bold tracking-wider block">Email Address</span>
+                            <span className="text-gray-700 dark:text-slate-200 text-[12px] font-bold select-all block mt-1 truncate">{selectedLead.email}</span>
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[10px] uppercase text-gray-400 dark:text-slate-500 font-bold tracking-wider block">Contact Number</span>
+                            <span className="text-gray-700 dark:text-slate-200 text-[12px] font-bold select-all block mt-1 truncate">{selectedLead.phone}</span>
+                          </div>
+                        </div>
+
+                        {/* Counselor notes */}
+                        <div className="space-y-1.5 border-t border-gray-100 dark:border-slate-800/80 pt-4">
+                          <label className="text-gray-400 dark:text-slate-500 font-bold uppercase text-[10px] tracking-wider block">Counselor File Notes</label>
+                          <textarea
+                            rows={3}
+                            value={selectedLead.notes}
+                            onChange={(e) => updateLeadNotes(selectedLead.id, e.target.value)}
+                            disabled={!canModifyLeads}
+                            placeholder="Type internal remarks here..."
+                            className="w-full bg-white dark:bg-slate-800/30 border border-gray-200 dark:border-slate-700 text-xs p-3 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder-gray-400 dark:placeholder-slate-500 text-gray-700 dark:text-slate-200 resize-none h-[100px]"
+                          />
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="space-y-4 text-xs">
-                      
-                      {/* Workflow state slider dropdown */}
-                      <div className="space-y-1.5">
-                        <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">Transition Status</label>
-                        <select
-                          value={selectedLead.status}
-                          onChange={(e) => updateLeadStatus(selectedLead.id, e.target.value as VisaStatus)}
-                          disabled={!canModifyLeads}
-                          className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs py-2 px-3 rounded-xl focus:outline-none"
-                        >
-                          <option value="New Lead">New Lead</option>
-                          <option value="Contacted">Contacted</option>
-                          <option value="Follow-Up">Follow-Up</option>
-                          <option value="Interested">Interested</option>
-                          <option value="Documents Pending">Documents Pending</option>
-                          <option value="Documents Received">Documents Received</option>
-                          <option value="Under Verification">Under Verification</option>
-                          <option value="Ready For Submission">Ready For Submission</option>
-                          <option value="Visa Submitted">Visa Submitted</option>
-                          <option value="Approved / Rejected">Approved / Rejected</option>
-                          <option value="Closed">Closed</option>
-                        </select>
+                    {/* Completed scans footer */}
+                    <div className="p-4 bg-gray-50/50 dark:bg-slate-800/20 border border-gray-100 dark:border-slate-800/80 rounded-xl flex items-center justify-between mt-auto">
+                      <div>
+                        <span className="text-[10px] uppercase text-gray-400 dark:text-slate-500 font-bold tracking-wider block">Completed Scans</span>
+                        <span className="text-emerald-500 dark:text-emerald-400 font-bold text-sm mt-0.5 block">
+                          {Object.values(selectedLead.checklist).filter(Boolean).length} / {Object.values(selectedLead.checklist).length} Files
+                        </span>
                       </div>
-
-                      {/* Assign counselor dropdown */}
-                      <div className="space-y-1.5">
-                        <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">Assigned Counselor</label>
-                        <select
-                          value={selectedLead.counselor}
-                          onChange={(e) => assignCounselor(selectedLead.id, e.target.value)}
-                          disabled={!canModifyLeads}
-                          className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs py-2 px-3 rounded-xl focus:outline-none"
-                        >
-                          <option value="Unassigned">Unassigned</option>
-                          <option value="Priya Mehta">Priya Mehta</option>
-                          <option value="Rohit Verma">Rohit Verma</option>
-                          <option value="Simran Kaur">Simran Kaur</option>
-                        </select>
-                      </div>
-
-                      {/* Contact metadata */}
-                      <div className="grid grid-cols-2 gap-4 border-y border-slate-900 py-4">
-                        <div>
-                          <span className="text-[9px] uppercase text-slate-500 font-bold tracking-wider block">Email Address</span>
-                          <span className="text-slate-300 font-semibold select-all block mt-0.5">{selectedLead.email}</span>
-                        </div>
-                        <div>
-                          <span className="text-[9px] uppercase text-slate-500 font-bold tracking-wider block">Contact Number</span>
-                          <span className="text-slate-300 font-semibold select-all block mt-0.5">{selectedLead.phone}</span>
-                        </div>
-                      </div>
-
-                      {/* Notes Box */}
-                      <div className="space-y-1.5">
-                        <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">Counselor File Notes</label>
-                        <textarea
-                          rows={3}
-                          value={selectedLead.notes}
-                          onChange={(e) => updateLeadNotes(selectedLead.id, e.target.value)}
-                          disabled={!canModifyLeads}
-                          placeholder="Type internal remarks here..."
-                          className="w-full bg-slate-950 border border-slate-800 text-xs p-3 rounded-xl focus:outline-none placeholder-slate-600 text-slate-300"
-                        />
-                      </div>
-
-                      {/* Summary checks stats */}
-                      <div className="p-3 bg-slate-950 border border-slate-900 rounded-xl flex items-center justify-between">
-                        <div>
-                          <span className="text-[9px] uppercase text-slate-500 font-bold tracking-wider block">Completed Scans</span>
-                          <span className="text-emerald-400 font-bold mt-0.5 block">
-                            {Object.values(selectedLead.checklist).filter(Boolean).length} / {Object.values(selectedLead.checklist).length} Files
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setCurrentTab("Checklist");
-                            setSelectedLeadId(selectedLead.id);
-                          }}
-                          className="text-violet-400 hover:text-violet-300 font-bold hover:underline"
-                        >
-                          Review Vault
-                        </button>
-                      </div>
-
+                      <button
+                        onClick={() => {
+                          setCurrentTab("Checklist");
+                          setSelectedLeadId(selectedLead.id);
+                        }}
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-bold text-xs inline-flex items-center gap-1"
+                      >
+                        Review Vault →
+                      </button>
                     </div>
                   </div>
                 )}
@@ -2164,50 +2321,39 @@ export default function CrmLayout() {
               </div>
 
               {/* Followups leads table */}
-              <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-slate-500 font-bold">
-                        <th className="pb-2.5">Name</th>
-                        <th className="pb-2.5">Visa Type</th>
-                        <th className="pb-2.5">Last Status</th>
-                        <th className="pb-2.5">File Notes Log</th>
-                        <th className="pb-2.5">counselor</th>
-                        <th className="pb-2.5 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leads
-                        .filter(l => ["Follow-Up", "Contacted", "Interested"].includes(l.status))
-                        .map((lead) => (
-                          <tr key={lead.id} className="border-b border-slate-900/50 hover:bg-slate-900/20">
-                            <td className="py-3 font-semibold text-slate-200">{lead.name}</td>
-                            <td className="py-3 text-slate-300">{lead.country} - {lead.visaType}</td>
-                            <td className="py-3">
-                              <span className={`px-2 py-0.5 text-[10px] font-bold rounded-lg ${getStatusColor(lead.status)}`}>
-                                {lead.status}
-                              </span>
-                            </td>
-                            <td className="py-3 text-slate-400 truncate max-w-xs">{lead.notes || "No notes yet..."}</td>
-                            <td className="py-3 text-slate-300 font-semibold">{lead.counselor}</td>
-                            <td className="py-3 text-right">
-                              <button
-                                onClick={() => {
-                                  setCurrentTab("Leads");
-                                  setSelectedLeadId(lead.id);
-                                }}
-                                className="text-violet-400 hover:text-violet-300 font-bold hover:underline"
-                              >
-                                View File
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <DataTable
+                title="Pending Follow-Ups"
+                rows={leads.filter(l => ["Follow-Up", "Contacted", "Interested"].includes(l.status))}
+                getRowId={(l) => l.id}
+                onExport={() =>
+                  exportRowsToCsv(
+                    "follow-ups",
+                    ["#", "Name", "Visa Type", "Status", "Notes", "Counselor"],
+                    leads
+                      .filter(l => ["Follow-Up", "Contacted", "Interested"].includes(l.status))
+                      .map((l, i) => [i + 1, l.name, `${l.country} - ${l.visaType}`, l.status, l.notes || "", l.counselor])
+                  )
+                }
+                columns={[
+                  {
+                    header: "Name",
+                    render: (lead) => (
+                      <span className="font-semibold text-gray-900 dark:text-slate-100 text-[13px]">{lead.name}</span>
+                    ),
+                  },
+                  { header: "Visa Type", render: (lead) => <span className="text-gray-600 dark:text-slate-300">{lead.country} - {lead.visaType}</span> },
+                  { header: "Last Status", render: (lead) => <StatusPill status={lead.status} /> },
+                  { header: "File Notes Log", render: (lead) => <span className="text-gray-500 truncate max-w-xs block">{lead.notes || "No notes yet..."}</span> },
+                  { header: "Counselor", render: (lead) => <span className="text-gray-600 dark:text-slate-300 font-medium">{lead.counselor}</span> },
+                ]}
+                actions={(lead) => [
+                  { icon: FiEye, title: "View file", onClick: (l) => { setCurrentTab("Leads"); setSelectedLeadId(l.id); } },
+                  { icon: FiPhone, title: "Call", onClick: (l) => window.open(`tel:${l.phone}`) },
+                  { icon: FaWhatsapp, title: "Message", onClick: (l) => window.open(`https://wa.me/${l.phone.replace(/[^0-9]/g, "")}`, "_blank") },
+                  { icon: FiMail, title: "Email", onClick: (l) => window.open(`mailto:${l.email}`) },
+                ]}
+                emptyText="No leads need follow-up right now."
+              />
 
             </div>
           )}
@@ -2232,7 +2378,7 @@ export default function CrmLayout() {
                   <button
                     key={item.key}
                     onClick={() => setCountryFilter(item.key)}
-                    className={`p-6 border rounded-2xl flex flex-col justify-between text-left transition-all ${
+                    className={`country-desk-card p-6 border rounded-2xl flex flex-col justify-between text-left transition-all ${
                       countryFilter === item.key 
                         ? "bg-slate-900/80 border-violet-500 shadow-md shadow-violet-500/10 scale-[1.02]" 
                         : "bg-slate-900/40 border-slate-800/80 hover:bg-slate-900/60"
@@ -2250,76 +2396,58 @@ export default function CrmLayout() {
               </div>
 
               {/* Department Specific Table */}
-              <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl">
-                <h3 className="text-sm font-bold text-white mb-4">
-                  {countryFilter === "All" ? "Select a country above to filter files" : `${countryFilter} Desk - File Registrations`}
-                </h3>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-slate-500 font-bold">
-                        <th className="pb-2.5">Client Name</th>
-                        <th className="pb-2.5">Sub Visa Type</th>
-                        <th className="pb-2.5">Workflow Status</th>
-                        {countryFilter === "Canada" && <th className="pb-2.5">Biometrics Scan</th>}
-                        {countryFilter === "USA" && <th className="pb-2.5">Interview Booking</th>}
-                        <th className="pb-2.5">counselor</th>
-                        <th className="pb-2.5 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leads
-                        .filter(l => l.status !== "Dropped" && (countryFilter === "All" || l.country === countryFilter))
-                        .map((lead) => (
-                          <tr key={lead.id} className="border-b border-slate-900/50 hover:bg-slate-900/20 text-slate-300">
-                            <td className="py-3 font-semibold text-slate-200">{lead.name}</td>
-                            <td className="py-3">{lead.visaType}</td>
-                            <td className="py-3">
-                              <span className={`px-2 py-0.5 text-[10px] font-bold rounded-lg ${getStatusColor(lead.status)}`}>
-                                {lead.status}
-                              </span>
-                            </td>
-                            {countryFilter === "Canada" && (
-                              <td className="py-3 font-bold text-slate-300">
-                                {lead.checklist.biometricsCompleted ? (
-                                  <span className="text-emerald-400 font-bold">Completed</span>
-                                ) : (
-                                  <span className="text-yellow-500/80 font-bold">Pending Call</span>
-                                )}
-                              </td>
-                            )}
-                            {countryFilter === "USA" && (
-                              <td className="py-3 font-bold text-slate-300">
-                                {lead.usaSlots?.interviewScheduled ? (
-                                  <span className="text-emerald-400 font-bold">{lead.usaSlots?.interviewDate}</span>
-                                ) : (
-                                  <span className="text-yellow-500/80 font-bold">Not Booked</span>
-                                )}
-                              </td>
-                            )}
-                            <td className="py-3 text-slate-300 font-semibold">{lead.counselor}</td>
-                            <td className="py-3 text-right">
-                              <button
-                                onClick={() => {
-                                  if (lead.country === "USA") {
-                                    setCurrentTab("USASlots");
-                                  } else {
-                                    setCurrentTab("Leads");
-                                    setSelectedLeadId(lead.id);
-                                  }
-                                }}
-                                className="text-violet-400 hover:text-violet-300 font-bold hover:underline"
-                              >
-                                {lead.country === "USA" ? "Manage Slots" : "View File"}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <DataTable
+                title={countryFilter === "All" ? "Select a country above to filter files" : `${countryFilter} Desk - File Registrations`}
+                rows={leads.filter(l => l.status !== "Dropped" && (countryFilter === "All" || l.country === countryFilter))}
+                getRowId={(l) => l.id}
+                onExport={() =>
+                  exportRowsToCsv(
+                    `${countryFilter.toLowerCase()}-files`,
+                    ["#", "Client Name", "Sub Visa Type", "Status", "Counselor"],
+                    leads
+                      .filter(l => l.status !== "Dropped" && (countryFilter === "All" || l.country === countryFilter))
+                      .map((l, i) => [i + 1, l.name, l.visaType, l.status, l.counselor])
+                  )
+                }
+                columns={[
+                  {
+                    header: "Client Name",
+                    render: (lead) => (
+                      <span className="font-semibold text-gray-900 dark:text-slate-100 text-[13px]">{lead.name}</span>
+                    ),
+                  },
+                  { header: "Sub Visa Type", render: (lead) => <span className="text-gray-600 dark:text-slate-300">{lead.visaType}</span> },
+                  { header: "Workflow Status", render: (lead) => <StatusPill status={lead.status} /> },
+                  ...(countryFilter === "Canada"
+                    ? [{
+                        header: "Biometrics Scan",
+                        render: (lead: typeof leads[number]) =>
+                          lead.checklist.biometricsCompleted
+                            ? <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Completed</span>
+                            : <span className="text-amber-600 dark:text-amber-400 font-semibold">Pending Call</span>,
+                      }]
+                    : []),
+                  ...(countryFilter === "USA"
+                    ? [{
+                        header: "Interview Booking",
+                        render: (lead: typeof leads[number]) =>
+                          lead.usaSlots?.interviewScheduled
+                            ? <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{lead.usaSlots?.interviewDate}</span>
+                            : <span className="text-amber-600 dark:text-amber-400 font-semibold">Not Booked</span>,
+                      }]
+                    : []),
+                  { header: "Counselor", render: (lead) => <span className="text-gray-600 dark:text-slate-300 font-medium">{lead.counselor}</span> },
+                ]}
+                actions={(lead) => [
+                  lead.country === "USA"
+                    ? { icon: FiGlobe, title: "Manage slots", onClick: () => setCurrentTab("USASlots") }
+                    : { icon: FiEye, title: "View file", onClick: (l) => { setCurrentTab("Leads"); setSelectedLeadId(l.id); } },
+                  { icon: FiPhone, title: "Call", onClick: (l) => window.open(`tel:${l.phone}`) },
+                  { icon: FaWhatsapp, title: "Message", onClick: (l) => window.open(`https://wa.me/${l.phone.replace(/[^0-9]/g, "")}`, "_blank") },
+                  { icon: FiMail, title: "Email", onClick: (l) => window.open(`mailto:${l.email}`) },
+                ]}
+                emptyText={countryFilter === "All" ? "Select a country desk above." : "No files in this desk yet."}
+              />
 
             </div>
           )}
@@ -2341,65 +2469,56 @@ export default function CrmLayout() {
               {/* USA Files list */}
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 
-                <div className="xl:col-span-2 p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-4">
-                  <h3 className="text-sm font-bold text-white mb-4">USA Client Profiles</h3>
-                  
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-800 text-slate-500 font-bold">
-                          <th className="pb-2.5">Name</th>
-                          <th className="pb-2.5">DS-160 Form</th>
-                          <th className="pb-2.5">Embassy Fee Paid</th>
-                          <th className="pb-2.5">Slot Status</th>
-                          <th className="pb-2.5">Interview Date</th>
-                          <th className="pb-2.5 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {leads
-                          .filter((l) => l.country === "USA" && l.status !== "Dropped")
-                          .map((lead) => (
-                            <tr 
-                              key={lead.id}
-                              onClick={() => setSelectedLeadId(lead.id)}
-                              className={`border-b border-slate-900/50 hover:bg-slate-900/20 cursor-pointer ${
-                                selectedLeadId === lead.id ? "bg-violet-950/20 border-violet-800/40" : ""
-                              }`}
-                            >
-                              <td className="py-3 font-semibold text-slate-200">{lead.name}</td>
-                              <td className="py-3">
-                                <span className={`px-2 py-0.5 text-[9px] font-bold rounded ${
-                                  lead.usaSlots?.ds160Submitted ? "bg-emerald-500/10 text-emerald-400" : "bg-yellow-500/10 text-yellow-400"
-                                }`}>
-                                  {lead.usaSlots?.ds160Submitted ? "Submitted" : "Pending"}
-                                </span>
-                              </td>
-                              <td className="py-3">
-                                <span className={`px-2 py-0.5 text-[9px] font-bold rounded ${
-                                  lead.usaSlots?.slotsPaid ? "bg-emerald-500/10 text-emerald-400" : "bg-yellow-500/10 text-yellow-400"
-                                }`}>
-                                  {lead.usaSlots?.slotsPaid ? "Fee Paid" : "Fee Unpaid"}
-                                </span>
-                              </td>
-                              <td className="py-3">
-                                <span className={`px-2 py-0.5 text-[9px] font-bold rounded ${
-                                  lead.usaSlots?.slotsBooked ? "bg-emerald-500/20 text-emerald-300" : "bg-rose-500/10 text-rose-400"
-                                }`}>
-                                  {lead.usaSlots?.slotsBooked ? "Booked" : "No Booking"}
-                                </span>
-                              </td>
-                              <td className="py-3 text-slate-300 font-semibold">
-                                {lead.usaSlots?.interviewScheduled ? lead.usaSlots.interviewDate : "N/A"}
-                              </td>
-                              <td className="py-3 text-right">
-                                <span className="text-violet-400 font-bold hover:underline text-xs">Edit Panel</span>
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
+                <div className="xl:col-span-2">
+                  <DataTable
+                    title="USA Client Profiles"
+                    rows={leads.filter((l) => l.country === "USA" && l.status !== "Dropped")}
+                    getRowId={(l) => l.id}
+                    onRowClick={(l) => setSelectedLeadId(l.id)}
+                    selectedRowId={selectedLeadId}
+                    columns={[
+                      {
+                        header: "Name",
+                        render: (lead) => (
+                          <span className="font-semibold text-gray-900 dark:text-slate-100 text-[13px]">{lead.name}</span>
+                        ),
+                      },
+                      {
+                        header: "DS-160 Form",
+                        render: (lead) => (
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${lead.usaSlots?.ds160Submitted ? "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20" : "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"}`}>
+                            {lead.usaSlots?.ds160Submitted ? "Submitted" : "Pending"}
+                          </span>
+                        ),
+                      },
+                      {
+                        header: "Embassy Fee Paid",
+                        render: (lead) => (
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${lead.usaSlots?.slotsPaid ? "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20" : "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"}`}>
+                            {lead.usaSlots?.slotsPaid ? "Fee Paid" : "Fee Unpaid"}
+                          </span>
+                        ),
+                      },
+                      {
+                        header: "Slot Status",
+                        render: (lead) => (
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${lead.usaSlots?.slotsBooked ? "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20" : "bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20"}`}>
+                            {lead.usaSlots?.slotsBooked ? "Booked" : "No Booking"}
+                          </span>
+                        ),
+                      },
+                      {
+                        header: "Interview Date",
+                        render: (lead) => <span className="text-gray-600 dark:text-slate-300 font-medium">{lead.usaSlots?.interviewScheduled ? lead.usaSlots.interviewDate : "N/A"}</span>,
+                      },
+                    ]}
+                    actions={(lead) => [
+                      { icon: FiSettings, title: "Edit slot panel", onClick: (l) => setSelectedLeadId(l.id) },
+                      { icon: FiPhone, title: "Call", onClick: (l) => window.open(`tel:${l.phone}`) },
+                      { icon: FiMail, title: "Email", onClick: (l) => window.open(`mailto:${l.email}`) },
+                    ]}
+                    emptyText="No USA leads yet."
+                  />
                 </div>
 
                 {/* Edit USA Slot side panel */}
@@ -2492,54 +2611,145 @@ export default function CrmLayout() {
               </div>
 
               {/* Selector and Checklist flow */}
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
                 
                 {/* Active lead selector */}
-                <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-4 h-fit">
-                  <h3 className="text-sm font-bold text-white border-b border-slate-800 pb-3">Active Audits</h3>
-                  <div className="space-y-2">
+                <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl flex flex-col h-[750px] space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 className="text-sm font-bold text-white">Active Audits</h3>
+                    <span className="text-[10px] bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-0.5 rounded-full font-bold text-slate-600 dark:text-slate-400">
+                      {leads.filter(l => l.status !== "Dropped").length} files
+                    </span>
+                  </div>
+
+                  {/* Search bar */}
+                  <div className="relative">
+                    <FaSearch className="absolute left-3 top-2.5 text-slate-500 text-[11px]" />
+                    <input
+                      type="text"
+                      placeholder="Search client profile..."
+                      value={checklistSearch}
+                      onChange={(e) => setChecklistSearch(e.target.value)}
+                      className="w-full pl-8 pr-8 py-1.5 bg-slate-950 border border-slate-900 rounded-xl text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-violet-500/50 placeholder-slate-500"
+                    />
+                    {checklistSearch && (
+                      <button
+                        onClick={() => setChecklistSearch("")}
+                        className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-350 cursor-pointer"
+                      >
+                        <FaTimes className="text-[10px]" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 overflow-y-auto flex-1 pr-1">
                     {leads
-                      .filter(l => l.status !== "Dropped")
-                      .map((lead) => (
-                        <button
-                          key={lead.id}
-                          onClick={() => setSelectedLeadId(lead.id)}
-                          className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
-                            selectedLeadId === lead.id
-                              ? "bg-violet-950/20 border-violet-500/50 text-slate-100 font-bold"
-                              : "bg-slate-950 border-slate-900/80 text-slate-400 hover:text-slate-200"
-                          }`}
-                        >
-                          <div className="space-y-0.5">
-                            <span className="text-xs block">{lead.name}</span>
-                            <span className="text-[9px] uppercase font-bold text-slate-500">{lead.country} - {lead.visaType}</span>
-                          </div>
-                          <span className="text-[10px] bg-slate-900 border border-slate-800 px-2 py-0.5 rounded font-bold">
-                            {Object.values(lead.checklist).filter(Boolean).length} Verified
-                          </span>
-                        </button>
-                      ))}
+                      .filter(l => l.status !== "Dropped" && (
+                        checklistSearch === "" ||
+                        l.name.toLowerCase().includes(checklistSearch.toLowerCase()) ||
+                        l.phone.includes(checklistSearch) ||
+                        l.country.toLowerCase().includes(checklistSearch.toLowerCase()) ||
+                        l.visaType.toLowerCase().includes(checklistSearch.toLowerCase())
+                      ))
+                      .map((lead) => {
+                        const leadPct = Math.round(
+                          (Object.values(lead.checklist).filter(Boolean).length /
+                            Object.values(lead.checklist).length) *
+                            100
+                        );
+                        const isSelected = selectedLeadId === lead.id;
+                        const isFullyVerified = leadPct === 100;
+                        return (
+                          <button
+                            key={lead.id}
+                            onClick={() => setSelectedLeadId(lead.id)}
+                            className={`audit-list-item w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition-all ${
+                              isSelected
+                                ? "bg-violet-950/20 border-violet-500/50 text-slate-100 font-bold shadow-[0_2px_8px_-3px_rgba(99,102,241,0.15)]"
+                                : "bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-900 text-slate-700 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/40"
+                            }`}
+                          >
+                            <div className="flex flex-col min-w-0 flex-1 space-y-0.5">
+                              <span className={`text-[12px] block truncate font-bold ${isSelected ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}>{lead.name}</span>
+                              <span className="text-[9px] uppercase font-bold text-slate-500 block truncate">{lead.country} - {lead.visaType}</span>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              {/* 4-segment progress bar */}
+                              <div className="flex gap-0.5 w-[36px] shrink-0">
+                                {[1, 2, 3, 4].map((seg) => {
+                                  const filledCount = leadPct === 0 ? 0 : Math.ceil(leadPct / 25);
+                                  return (
+                                    <div
+                                      key={seg}
+                                      className={`h-2.5 w-1.5 rounded-[1px] ${
+                                        seg <= filledCount
+                                          ? "bg-emerald-500"
+                                          : "bg-slate-200 dark:bg-slate-800"
+                                      }`}
+                                    />
+                                  );
+                                })}
+                              </div>
+                              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 tabular-nums shrink-0 w-9 text-right">
+                                {leadPct}%
+                              </span>
+                              <span className={`text-[10px] py-0.5 rounded font-bold border shrink-0 text-center w-[82px] ${
+                                isFullyVerified
+                                  ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400"
+                                  : isSelected
+                                    ? "bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800/40 text-violet-700 dark:text-violet-400"
+                                    : "bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-350"
+                              }`}>
+                                {isFullyVerified ? "Done" : `${Object.values(lead.checklist).filter(Boolean).length} Verified`}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
                   </div>
                 </div>
 
                 {/* Audit checklist pane */}
                 {selectedLead && (
-                  <div className="xl:col-span-2 p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-6">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                      <div>
-                        <h4 className="text-sm font-bold text-white">Compliance Checklist: {selectedLead.name}</h4>
-                        <p className="text-[10px] text-slate-400">Click to change state. Verified scans show verified icon.</p>
+                  <div className="xl:col-span-2 p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl flex flex-col h-[750px] space-y-6">
+                    <div className="flex flex-col space-y-4 border-b border-slate-800 pb-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-bold text-white">Compliance Checklist: {selectedLead.name}</h4>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Click to change state. Verified scans show verified icon.</p>
+                        </div>
+                        
+                        <div className="p-1.5 px-2.5 bg-slate-950 border border-slate-900 rounded-lg text-[10px] font-semibold text-slate-400 select-all shrink-0">
+                          ID: <span className="font-mono text-slate-700 dark:text-slate-300 font-bold">
+                            {leads.filter(l => l.status !== "Dropped").findIndex(l => l.id === selectedLead.id) !== -1
+                              ? leads.filter(l => l.status !== "Dropped").findIndex(l => l.id === selectedLead.id) + 1
+                              : selectedLead.id}
+                          </span>
+                        </div>
                       </div>
-                      
-                      <div className="text-xs font-semibold text-slate-400 shrink-0">
-                        Total Audit Complete: <span className="text-emerald-400 font-extrabold">{
-                          Math.round(
-                            (Object.values(selectedLead.checklist).filter(Boolean).length /
-                              Object.values(selectedLead.checklist).length) *
-                              100
-                          )
-                        }%</span>
-                      </div>
+
+                      {/* Progress bar */}
+                      {(() => {
+                        const pct = Math.round(
+                          (Object.values(selectedLead.checklist).filter(Boolean).length /
+                            Object.values(selectedLead.checklist).length) *
+                            100
+                        );
+                        return (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px] font-semibold">
+                              <span className="text-slate-500 dark:text-slate-400">Total Verification Audit</span>
+                              <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">{pct}% Complete</span>
+                            </div>
+                            <div className="audit-progress-container w-full bg-slate-100 dark:bg-slate-950 rounded-[4px] h-2 overflow-hidden border border-slate-200/40 dark:border-slate-800/50">
+                              <div
+                                className="audit-progress-fill bg-emerald-500 h-full rounded-[2px] transition-all duration-500"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {uploadError && (
@@ -2549,7 +2759,7 @@ export default function CrmLayout() {
                       </div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto flex-1 pr-1 pb-2">
                       {(Object.keys(selectedLead.checklist) as (keyof DocumentChecklist)[]).map((key) => {
                         const value = selectedLead.checklist[key];
                         const doc = getLeadDocuments(selectedLead.id).find((d) => d.docType === key);
@@ -2558,44 +2768,47 @@ export default function CrmLayout() {
                         return (
                           <div
                             key={key}
-                            className={`flex items-center justify-between p-3.5 border rounded-xl transition-all ${
+                            className={`flex items-center justify-between p-3.5 border rounded-xl transition-all shadow-[0_2px_8px_-3px_rgba(0,0,0,0.03)] hover:shadow-sm ${
                               value
-                                ? "bg-emerald-950/10 border-emerald-500/30"
-                                : "bg-slate-950 border-slate-900"
+                                ? "bg-emerald-50 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-500/30 shadow-[0_2px_8px_-3px_rgba(16,185,129,0.08)]"
+                                : "bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-900"
                             }`}
                           >
-                            <div className="min-w-0 flex-1">
-                              <span className={`text-xs font-bold capitalize block truncate ${value ? "text-emerald-400" : "text-slate-400"}`}>
+                            <div className="min-w-0 flex-1 pr-2">
+                              <span className={`text-xs font-bold capitalize block truncate ${value ? "text-emerald-700 dark:text-emerald-400" : "text-slate-700 dark:text-slate-400"}`}>
                                 {key.replace(/([A-Z])/g, ' $1')}
                               </span>
                               {doc ? (
-                                <a
-                                  href={doc.fileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-[10px] text-violet-400 hover:text-violet-300 hover:underline inline-flex items-center space-x-1 mt-0.5"
-                                >
-                                  <FaFileDownload className="text-[9px]" />
-                                  <span className="truncate max-w-[140px]">{doc.fileName}</span>
-                                </a>
+                                <div className="flex items-center mt-1">
+                                  <a
+                                    href={doc.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-100/50 dark:hover:bg-emerald-950/50 transition-colors truncate max-w-[170px]"
+                                    title={doc.fileName}
+                                  >
+                                    <FaFileDownload className="text-[9px] shrink-0" />
+                                    <span className="truncate">{doc.fileName}</span>
+                                  </a>
+                                </div>
                               ) : (
-                                <span className="text-[10px] text-slate-600 block mt-0.5">No file uploaded</span>
+                                <span className="text-[10px] text-slate-500 block mt-0.5">No file uploaded</span>
                               )}
                             </div>
 
-                            <div className="shrink-0 ml-3">
+                            <div className="shrink-0">
                               {value ? (
-                                <span className="inline-flex items-center space-x-1 text-emerald-400 text-[10px] font-bold">
+                                <span className="inline-flex items-center space-x-1 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold">
                                   <FaCheckCircle className="text-xs" />
                                   <span>Verified</span>
                                 </span>
                               ) : (
-                                <div className="flex items-center space-x-2">
+                                <div className="flex items-center space-x-1.5">
                                   <label
-                                    className={`inline-flex items-center space-x-1 text-[10px] font-bold rounded-lg px-2.5 py-1.5 border cursor-pointer transition-all ${
+                                    className={`inline-flex items-center space-x-1 text-[10px] font-bold rounded-lg px-2.5 py-1.5 border cursor-pointer transition-all active:scale-95 shadow-sm hover:shadow ${
                                       !canVerifyDocs || isUploading
                                         ? "opacity-40 cursor-not-allowed border-slate-800 text-slate-600"
-                                        : "border-violet-500/40 text-violet-400 hover:bg-violet-500/10"
+                                        : "border-violet-200 dark:border-violet-500/40 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10"
                                     }`}
                                     title="Upload local file"
                                   >
@@ -2635,10 +2848,10 @@ export default function CrmLayout() {
                                     }}
                                     disabled={!canVerifyDocs || isUploading}
                                     title="Add external link URL"
-                                    className={`inline-flex items-center space-x-1 text-[10px] font-bold rounded-lg px-2.5 py-1.5 border cursor-pointer transition-all ${
+                                    className={`inline-flex items-center space-x-1 text-[10px] font-bold rounded-lg px-2.5 py-1.5 border cursor-pointer transition-all active:scale-95 shadow-sm hover:shadow ${
                                       !canVerifyDocs || isUploading
                                         ? "opacity-40 cursor-not-allowed border-slate-800 text-slate-600"
-                                        : "border-violet-500/40 text-violet-400 hover:bg-violet-500/10"
+                                        : "border-violet-200 dark:border-violet-500/40 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10"
                                     }`}
                                   >
                                     <FaGlobe className="text-[9px]" />
@@ -2653,7 +2866,7 @@ export default function CrmLayout() {
                     </div>
 
                     {/* Auto status notice banner */}
-                    <div className="p-3 bg-violet-500/5 border border-violet-500/20 text-violet-400 rounded-xl text-[10px] font-semibold flex items-center space-x-2">
+                    <div className="p-3 bg-violet-50 dark:bg-violet-500/5 border border-violet-100 dark:border-violet-500/20 text-violet-700 dark:text-violet-400 rounded-xl text-[10px] font-semibold flex items-center space-x-2 shrink-0">
                       <FaInfoCircle className="text-xs shrink-0" />
                       <span>Staff uploads each document manually (received via WhatsApp/email). Files are stored in Supabase. Once all required docs are uploaded, status auto-updates to <strong>READY FOR SUBMISSION</strong>.</span>
                     </div>
@@ -2840,67 +3053,62 @@ export default function CrmLayout() {
               {/* Active Ledger table */}
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 
-                <div className="xl:col-span-2 p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-white">Clients Accounts Ledger</h3>
-                    <button
-                      onClick={() => {
-                        if (!canManagePayments) return;
-                        setIsAddPaymentOpen(true);
-                      }}
-                      disabled={!canManagePayments}
-                      className="py-1 px-3 bg-violet-600 hover:bg-violet-500 text-white font-semibold text-[11px] rounded-xl transition-all disabled:opacity-40"
-                    >
-                      Record Client Deposit
-                    </button>
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-800 text-slate-500 font-bold">
-                          <th className="pb-2.5">Client Name</th>
-                          <th className="pb-2.5">Destination</th>
-                          <th className="pb-2.5">Invoiced Package</th>
-                          <th className="pb-2.5">Realized Paid</th>
-                          <th className="pb-2.5">Remaining Balance</th>
-                          <th className="pb-2.5 text-right">Receipts</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {leads
-                          .filter((l) => l.status !== "Dropped")
-                          .map((lead) => {
-                            const total = lead.payments[0]?.totalPackage || 0;
-                            const paid = lead.payments.reduce((acc, pay) => acc + pay.amountPaid, 0);
-                            const balance = total > 0 ? Math.max(0, total - paid) : 0;
-                            return (
-                              <tr key={lead.id} className="border-b border-slate-900/50 hover:bg-slate-900/20 text-slate-300">
-                                <td className="py-3 font-semibold text-slate-200">{lead.name}</td>
-                                <td className="py-3">{lead.country}</td>
-                                <td className="py-3 font-bold text-slate-400">
-                                  {total > 0 ? `₹${total.toLocaleString()}` : "Not Decided"}
-                                </td>
-                                <td className="py-3 text-emerald-400 font-bold">₹{paid.toLocaleString()}</td>
-                                <td className={`py-3 font-bold ${balance > 0 ? "text-rose-400" : "text-emerald-400"}`}>
-                                  ₹{balance.toLocaleString()}
-                                </td>
-                                <td className="py-3 text-right">
-                                  <button
-                                    onClick={() => {
-                                      setInvoiceLeadId(lead.id);
-                                    }}
-                                    className="text-violet-400 hover:text-violet-300 font-bold hover:underline cursor-pointer"
-                                  >
-                                    Invoices
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
+                <div className="xl:col-span-2">
+                  <DataTable
+                    title="Clients Accounts Ledger"
+                    rows={leads.filter((l) => l.status !== "Dropped")}
+                    getRowId={(l) => l.id}
+                    rightSlot={
+                      <button
+                        onClick={() => {
+                          if (!canManagePayments) return;
+                          setIsAddPaymentOpen(true);
+                        }}
+                        disabled={!canManagePayments}
+                        className="py-2 px-3.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold text-[11px] rounded-full transition-all disabled:opacity-40"
+                      >
+                        Record Client Deposit
+                      </button>
+                    }
+                    columns={[
+                      {
+                        header: "Client Name",
+                        render: (lead) => (
+                          <span className="font-semibold text-gray-900 dark:text-slate-100 text-[13px]">{lead.name}</span>
+                        ),
+                      },
+                      { header: "Destination", render: (lead) => <span className="text-gray-600 dark:text-slate-300">{lead.country}</span> },
+                      {
+                        header: "Invoiced Package",
+                        render: (lead) => {
+                          const total = lead.payments[0]?.totalPackage || 0;
+                          return <span className="font-semibold text-gray-700 dark:text-slate-200">{total > 0 ? `₹${total.toLocaleString()}` : "Not Decided"}</span>;
+                        },
+                      },
+                      {
+                        header: "Realized Paid",
+                        render: (lead) => {
+                          const paid = lead.payments.reduce((acc, pay) => acc + pay.amountPaid, 0);
+                          return <span className="text-emerald-600 dark:text-emerald-400 font-semibold">₹{paid.toLocaleString()}</span>;
+                        },
+                      },
+                      {
+                        header: "Remaining Balance",
+                        render: (lead) => {
+                          const total = lead.payments[0]?.totalPackage || 0;
+                          const paid = lead.payments.reduce((acc, pay) => acc + pay.amountPaid, 0);
+                          const balance = total > 0 ? Math.max(0, total - paid) : 0;
+                          return <span className={`font-semibold ${balance > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>₹{balance.toLocaleString()}</span>;
+                        },
+                      },
+                    ]}
+                    actions={(lead) => [
+                      { icon: FaFileInvoiceDollar, title: "View invoices", onClick: (l) => setInvoiceLeadId(l.id) },
+                      { icon: FaEnvelope, title: "Email", onClick: (l) => window.open(`mailto:${l.email}`) },
+                    ]}
+                    actionsHeader="Receipts"
+                    emptyText="No active client accounts."
+                  />
                 </div>
 
                 {/* Country Breakdown finance card */}
@@ -2959,27 +3167,50 @@ export default function CrmLayout() {
               {/* Meetings grid display */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {meetings.map((meet) => (
-                  <div key={meet.id} className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-4 hover:-translate-y-0.5 transition-all">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-100">{meet.clientName}</h4>
-                        <span className="text-[10px] text-slate-500 font-bold uppercase block mt-0.5">Host: {meet.counselorAssigned}</span>
+                  <div
+                    key={meet.id}
+                    className="meeting-card relative p-5 bg-white dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/80 border-l-4 rounded-2xl space-y-4 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.04)] dark:shadow-none hover:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between"
+                  >
+                    <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800/60 pb-3">
+                      <div className="min-w-0 pr-2">
+                        <h4 className="text-[14px] font-extrabold text-slate-900 dark:text-slate-100 truncate leading-snug">{meet.clientName}</h4>
+                        <span className="text-[9px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1.5 mt-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-violet-500 dark:bg-violet-400 shrink-0" />
+                          Host: {meet.counselorAssigned}
+                        </span>
                       </div>
-                      <span className="px-2 py-1 bg-slate-950 border border-slate-900 rounded-lg text-slate-300 font-bold text-[10px]">
-                        {meet.meetingDate}
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-violet-50 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-800/40 rounded-lg text-violet-700 dark:text-violet-400 font-bold text-[10px] tracking-wide whitespace-nowrap">
+                          <FaCalendarAlt className="text-[9px]" />
+                          {meet.meetingDate}
+                        </span>
+                        {canModifyLeads && (
+                          <button
+                            onClick={() => {
+                              setSelectedMeeting(meet);
+                              setIsEditMeetingOpen(true);
+                            }}
+                            className="p-1 text-slate-400 hover:text-violet-500 dark:hover:text-violet-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors"
+                            title="Edit Meeting"
+                          >
+                            <FiSettings className="text-[11px]" />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="space-y-2 text-xs">
+                    <div className="space-y-3 text-xs flex-1">
                       <div>
-                        <span className="text-[9px] uppercase text-slate-500 font-bold block">Reminder Details</span>
-                        <p className="text-slate-300 font-semibold mt-0.5">{meet.reminderText}</p>
+                        <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider block">Reminder Details</span>
+                        <p className="text-[12px] font-bold text-slate-700 dark:text-slate-250 mt-1 pl-2.5 border-l border-slate-200 dark:border-slate-800">{meet.reminderText}</p>
                       </div>
                       
                       {meet.notes && (
                         <div>
-                          <span className="text-[9px] uppercase text-slate-500 font-bold block">Agenda & Remarks</span>
-                          <p className="text-slate-400 mt-0.5 italic">{meet.notes}</p>
+                          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider block">Agenda & Remarks</span>
+                          <div className="mt-1 pl-2.5 border-l border-slate-200 dark:border-slate-800">
+                            <p className="text-[11px] font-medium text-slate-655 dark:text-slate-400 italic bg-slate-50/50 dark:bg-slate-950/30 p-2 rounded-lg border border-slate-100/50 dark:border-slate-900/50 leading-relaxed">{meet.notes}</p>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -3000,50 +3231,35 @@ export default function CrmLayout() {
               </div>
 
               {/* Dropped leads log table */}
-              <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-slate-500 font-bold">
-                        <th className="pb-2.5">Client Name</th>
-                        <th className="pb-2.5">Destination Desk</th>
-                        <th className="pb-2.5">Sub Visa Type</th>
-                        <th className="pb-2.5 font-bold">Last counselor Assigned</th>
-                        <th className="pb-2.5">Date Created</th>
-                        <th className="pb-2.5 text-right">Restore Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leads
-                        .filter((l) => l.status === "Dropped")
-                        .map((lead) => (
-                          <tr key={lead.id} className="border-b border-slate-900/50 hover:bg-slate-900/20 text-slate-300 text-xs">
-                            <td className="py-3 font-semibold text-slate-200">{lead.name}</td>
-                            <td className="py-3">{lead.country}</td>
-                            <td className="py-3 text-slate-400">{lead.visaType}</td>
-                            <td className="py-3 text-slate-300 font-semibold">{lead.counselor}</td>
-                            <td className="py-3">{lead.dateCreated}</td>
-                            <td className="py-3 text-right">
-                              <button
-                                onClick={() => restoreLead(lead.id)}
-                                disabled={!canModifyLeads}
-                                className="text-emerald-400 hover:text-emerald-300 font-bold hover:underline inline-flex items-center space-x-1.5 disabled:opacity-30"
-                              >
-                                <FaUndo className="text-xs" />
-                                <span>Re-Activate Lead</span>
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      {leads.filter((l) => l.status === "Dropped").length === 0 && (
-                        <tr>
-                          <td colSpan={6} className="text-center py-6 text-slate-500 font-bold text-xs">Archive log is currently empty.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <DataTable
+                title="Archived & Dropped Leads"
+                rows={leads.filter((l) => l.status === "Dropped")}
+                getRowId={(l) => l.id}
+                onExport={() =>
+                  exportRowsToCsv(
+                    "dropped-leads",
+                    ["#", "Client Name", "Destination", "Sub Visa Type", "Counselor", "Date Created"],
+                    leads.filter((l) => l.status === "Dropped").map((l, i) => [i + 1, l.name, l.country, l.visaType, l.counselor, l.dateCreated])
+                  )
+                }
+                columns={[
+                  {
+                    header: "Client Name",
+                    render: (lead) => (
+                      <span className="font-semibold text-gray-900 dark:text-slate-100 text-[13px]">{lead.name}</span>
+                    ),
+                  },
+                  { header: "Destination Desk", render: (lead) => <span className="text-gray-600 dark:text-slate-300">{lead.country}</span> },
+                  { header: "Sub Visa Type", render: (lead) => <span className="text-gray-500 dark:text-slate-400">{lead.visaType}</span> },
+                  { header: "Last Counselor", render: (lead) => <span className="text-gray-600 dark:text-slate-300 font-medium">{lead.counselor}</span> },
+                  { header: "Date Created", render: (lead) => <span className="text-gray-500 dark:text-slate-400">{lead.dateCreated}</span> },
+                ]}
+                actions={(lead) => [
+                  { icon: FaUndo, title: "Re-activate lead", disabled: () => !canModifyLeads, onClick: (l) => restoreLead(l.id) },
+                ]}
+                actionsHeader="Restore"
+                emptyText="Archive log is currently empty."
+              />
 
             </div>
           )}
@@ -3557,6 +3773,118 @@ export default function CrmLayout() {
                 className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-bold text-white rounded-xl shadow-lg"
               >
                 Log Appointment File
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* C.5 EDIT EXISTING MEETING MODAL */}
+      {isEditMeetingOpen && selectedMeeting && (
+        <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5">
+            <button 
+              onClick={() => {
+                setIsEditMeetingOpen(false);
+                setSelectedMeeting(null);
+              }}
+              className="absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-200 rounded-lg"
+            >
+              <FaTimes />
+            </button>
+
+            <h3 className="text-sm font-bold text-white border-b border-slate-900 pb-3">Edit Consultation Slot</h3>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                const clientName = fd.get("clientName") as string;
+                const meetingDate = fd.get("meetingDate") as string;
+                const reminderText = fd.get("reminderText") as string;
+                const counselorAssigned = fd.get("counselorAssigned") as string;
+                const notes = fd.get("notes") as string;
+
+                updateMeeting({
+                  id: selectedMeeting.id,
+                  clientName,
+                  meetingDate,
+                  reminderText,
+                  counselorAssigned,
+                  notes,
+                });
+
+                showToast("Consultation meeting updated!");
+                setIsEditMeetingOpen(false);
+                setSelectedMeeting(null);
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div className="space-y-1">
+                <label className="text-slate-400 font-bold block">Client Name</label>
+                <input 
+                  required 
+                  name="clientName" 
+                  defaultValue={selectedMeeting.clientName} 
+                  placeholder="e.g. Rahul Kapoor" 
+                  type="text" 
+                  className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none" 
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-slate-400 font-bold block">Meeting Date</label>
+                  <input 
+                    required 
+                    name="meetingDate" 
+                    defaultValue={selectedMeeting.meetingDate} 
+                    type="date" 
+                    className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none" 
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-400 font-bold block">Consultant</label>
+                  <select 
+                    name="counselorAssigned" 
+                    defaultValue={selectedMeeting.counselorAssigned} 
+                    className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none"
+                  >
+                    <option value="Priya Mehta">Priya Mehta</option>
+                    <option value="Rohit Verma">Rohit Verma</option>
+                    <option value="Simran Kaur">Simran Kaur</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-400 font-bold block">Notification Reminder Text</label>
+                <input 
+                  required 
+                  name="reminderText" 
+                  defaultValue={selectedMeeting.reminderText} 
+                  placeholder="Pre-visa documentation verify slot" 
+                  type="text" 
+                  className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none" 
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-400 font-bold block">Agenda Notes</label>
+                <textarea 
+                  rows={2} 
+                  name="notes" 
+                  defaultValue={selectedMeeting.notes} 
+                  placeholder="Discuss finances, salary statement scans..." 
+                  className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl focus:outline-none" 
+                />
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-bold text-white rounded-xl shadow-lg"
+              >
+                Save Meeting Changes
               </button>
             </form>
           </div>
