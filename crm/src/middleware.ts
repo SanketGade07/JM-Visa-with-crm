@@ -38,5 +38,7 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Skip Next internals, favicon, and any path with a file extension
+  // (e.g. logo.webp, world-110m.json) so public static assets aren't redirected.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

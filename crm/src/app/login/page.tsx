@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FaGlobe, FaLock, FaEnvelope, FaSignInAlt } from "react-icons/fa";
+import { FaLock, FaEnvelope, FaSignInAlt } from "react-icons/fa";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -50,10 +50,10 @@ export default function LoginPage() {
 
         {/* Brand */}
         <div className="flex flex-col items-center space-y-3">
-          <img src="/logo.webp" alt="JM Visa Logo" className="h-16 w-auto object-contain rounded-2xl" />
+          <img src="/logo.webp" alt="JM Visa Services Logo" className="h-16 w-auto object-contain rounded-2xl" />
           <div className="text-center">
             <h1 className="text-2xl font-extrabold text-white">
-              JM VISA
+              JM VISA SERVICES
             </h1>
             <p className="text-xs uppercase font-bold text-violet-400/80 tracking-widest mt-0.5">
               Immigration CRM

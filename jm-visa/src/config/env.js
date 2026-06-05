@@ -6,8 +6,10 @@ const env = {
   NEXT_PUBLIC_SANITY_API_VERSION: process.env.NEXT_PUBLIC_SANITY_API_VERSION || '2024-03-13',
 
   // Email Configuration
+  // NOTE: never hardcode the app password here — it must come from an env var only.
+  // The previous hardcoded value was leaked and MUST be rotated in the Google account.
   NEXT_PUBLIC_EMAIL_USER: process.env.NEXT_PUBLIC_EMAIL_USER || 'info@jmvisaservices.com',
-  NEXT_PUBLIC_EMAIL_APP_PASS: process.env.NEXT_PUBLIC_EMAIL_APP_PASS || 'gdwv vyog pcjn fhpo',
+  NEXT_PUBLIC_EMAIL_APP_PASS: process.env.NEXT_PUBLIC_EMAIL_APP_PASS || '',
   NEXT_PUBLIC_EMAIL_RECEIVER: process.env.NEXT_PUBLIC_EMAIL_RECEIVER || 'info@jmvisaservices.com',
 
   // Google reCAPTCHA
