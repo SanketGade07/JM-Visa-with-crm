@@ -737,7 +737,6 @@ export default function CrmLayout() {
             {/* Theme Toggle Switch */}
             <button
               onClick={toggleTheme}
-              title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
               className="p-2 rounded-xl bg-slate-900 border border-slate-800/80 text-slate-400 hover:text-violet-400 hover:border-violet-500/30 transition-all flex items-center justify-center shadow-md cursor-pointer group"
             >
               {theme === "dark" ? (
@@ -753,7 +752,6 @@ export default function CrmLayout() {
                 setIsAddLeadOpen(true);
               }}
               disabled={!canModifyLeads}
-              title={!canModifyLeads ? `${currentRole} cannot create leads` : "Add a new lead"}
               className={`flex items-center space-x-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs py-2 px-3.5 rounded-xl transition-all shadow-md shadow-violet-500/10 ${
                 !canModifyLeads ? "opacity-40 cursor-not-allowed" : ""
               }`}
@@ -1482,7 +1480,6 @@ export default function CrmLayout() {
                             setCardMapZoom(prev => Math.min(5, prev + 0.3));
                           }}
                           className="w-7 h-7 flex items-center justify-center text-slate-800 dark:text-slate-200 text-[13px] font-semibold hover:bg-gray-50 dark:hover:bg-slate-750 transition-colors"
-                          title="Zoom In"
                         >
                           +
                         </button>
@@ -1492,7 +1489,6 @@ export default function CrmLayout() {
                             setCardMapZoom(prev => Math.max(0.1, prev - 0.2));
                           }}
                           className="w-7 h-7 flex items-center justify-center text-slate-800 dark:text-slate-200 text-[13px] font-semibold hover:bg-gray-50 dark:hover:bg-slate-750 transition-colors"
-                          title="Zoom Out"
                         >
                           -
                         </button>
@@ -1776,7 +1772,6 @@ export default function CrmLayout() {
                               ? "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm" 
                               : "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750"
                           }`}
-                          title="Zoom In"
                         >
                           <FaPlus />
                         </button>
@@ -1787,7 +1782,6 @@ export default function CrmLayout() {
                               ? "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm" 
                               : "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750"
                           }`}
-                          title="Zoom Out"
                         >
                           <FaMinus />
                         </button>
@@ -1798,7 +1792,6 @@ export default function CrmLayout() {
                               ? "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm" 
                               : "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750"
                           }`}
-                          title="Reset Viewport"
                         >
                           Reset
                         </button>
@@ -2810,7 +2803,7 @@ export default function CrmLayout() {
                                         ? "opacity-40 cursor-not-allowed border-slate-800 text-slate-600"
                                         : "border-violet-200 dark:border-violet-500/40 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10"
                                     }`}
-                                    title="Upload local file"
+
                                   >
                                     <FaFileUpload className="text-[9px]" />
                                     <span>{isUploading ? "..." : "File"}</span>
@@ -2847,7 +2840,7 @@ export default function CrmLayout() {
                                       });
                                     }}
                                     disabled={!canVerifyDocs || isUploading}
-                                    title="Add external link URL"
+
                                     className={`inline-flex items-center space-x-1 text-[10px] font-bold rounded-lg px-2.5 py-1.5 border cursor-pointer transition-all active:scale-95 shadow-sm hover:shadow ${
                                       !canVerifyDocs || isUploading
                                         ? "opacity-40 cursor-not-allowed border-slate-800 text-slate-600"
@@ -3191,7 +3184,7 @@ export default function CrmLayout() {
                               setIsEditMeetingOpen(true);
                             }}
                             className="p-1 text-slate-400 hover:text-violet-500 dark:hover:text-violet-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors"
-                            title="Edit Meeting"
+
                           >
                             <FiSettings className="text-[11px]" />
                           </button>
@@ -3310,7 +3303,7 @@ export default function CrmLayout() {
                               }
                             }}
                             className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer"
-                            title="Delete Account"
+
                           >
                             <FaTrash className="text-xs" />
                           </button>
@@ -4039,7 +4032,7 @@ export default function CrmLayout() {
                                           }
                                         }}
                                         className="p-1 text-slate-500 hover:text-rose-400 cursor-pointer"
-                                        title="Remove attachment"
+
                                       >
                                         <FaTrash className="text-[10px]" />
                                       </button>

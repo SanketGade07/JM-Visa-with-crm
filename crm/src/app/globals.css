@@ -856,3 +856,81 @@ html.dark button.audit-list-item:hover div.bg-emerald-500,
 button.audit-list-item:hover div.bg-emerald-500 {
   background-color: #4ade80 !important; /* Bright green on hover for high contrast */
 }
+
+/* ==========================================
+   PREMIUM CUSTOM CSS TOOLTIPS
+   ========================================== */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translate(-50%, 4px);
+  background-color: rgba(37, 99, 235, 0.98) !important; /* Vibrant primary blue #2563eb */
+  border: 1px solid rgba(255, 255, 255, 0.15) !important; /* Soft white border overlay */
+  color: #ffffff !important;
+  padding: 5px 9px !important;
+  border-radius: 6px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
+  z-index: 9999 !important;
+  text-transform: none !important;
+}
+
+[data-tooltip]::after {
+  content: '';
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translate(-50%, 8px);
+  border-width: 5px 5px 0;
+  border-style: solid;
+  border-color: rgba(37, 99, 235, 0.98) transparent transparent; /* Vibrant blue arrow */
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  z-index: 9999 !important;
+}
+
+[data-tooltip]:hover::before {
+  opacity: 1 !important;
+  transform: translate(-50%, 0) !important;
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1 !important;
+  transform: translate(-50%, 4px) !important;
+}
+
+/* Tooltips positioned at the bottom */
+[data-tooltip][data-tooltip-position="bottom"]::before {
+  bottom: auto !important;
+  top: 125% !important;
+  transform: translate(-50%, -4px) !important;
+}
+
+[data-tooltip][data-tooltip-position="bottom"]::after {
+  bottom: auto !important;
+  top: 125% !important;
+  transform: translate(-50%, -8px) !important;
+  border-width: 0 5px 5px 5px !important;
+  border-color: transparent transparent rgba(37, 99, 235, 0.98) transparent !important;
+}
+
+[data-tooltip][data-tooltip-position="bottom"]:hover::before {
+  transform: translate(-50%, 0) !important;
+}
+
+[data-tooltip][data-tooltip-position="bottom"]:hover::after {
+  transform: translate(-50%, -4px) !important;
+}

@@ -67,7 +67,6 @@ function ToolbarButton({
   return (
     <button
       type="button"
-      title={title}
       onClick={onClick}
       className="w-9 h-9 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
     >
@@ -162,7 +161,7 @@ export default function DataTable<T>({
     columns.length + (showCheckbox ? 1 : 0) + (showIndex ? 1 : 0) + (actions ? 1 : 0);
 
   const cardCls =
-    `bg-white dark:bg-slate-900/50 rounded-2xl border border-gray-200/70 dark:border-slate-800 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-16px_rgba(16,24,40,0.12)] dark:shadow-none overflow-hidden ${className}`;
+    `bg-white dark:bg-slate-900/50 rounded-2xl border border-gray-200/70 dark:border-slate-800 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-16px_rgba(16,24,40,0.12)] dark:shadow-none ${className}`;
 
   return (
     <div className={cardCls}>
@@ -295,7 +294,7 @@ export default function DataTable<T>({
                              <button
                               key={ai}
                               type="button"
-                              title={action.title}
+                              data-tooltip={action.title}
                               disabled={disabled}
                               onClick={() => action.onClick(row)}
                               className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
