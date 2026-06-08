@@ -934,3 +934,530 @@ button.audit-list-item:hover div.bg-emerald-500 {
 [data-tooltip][data-tooltip-position="bottom"]:hover::after {
   transform: translate(-50%, -4px) !important;
 }
+
+/* ==========================================================================
+   MOBILE & TABLET DASHBOARD RESPONSIVE OVERRIDES
+   Pure media-query approach — desktop remains completely untouched.
+   ========================================================================== */
+
+/* ── MOBILE (max-width: 639px) ─────────────────────────────────────────── */
+@media (max-width: 639px) {
+
+  /* ── Top Metrics Cards: compact 2-col grid ── */
+  .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-4 > div {
+    padding: 12px !important;
+    height: auto !important;
+    min-height: 90px !important;
+    border-radius: 14px !important;
+  }
+
+  /* Scale down metric value text */
+  .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-4 > div .text-2xl {
+    font-size: 1.25rem !important;
+    line-height: 1.3 !important;
+  }
+
+  /* Scale down metric label text */
+  .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-4 > div .text-\[12\.5px\] {
+    font-size: 11px !important;
+  }
+
+  /* Scale down icon containers */
+  .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-4 > div .w-\[28px\] {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  /* Hide subtext on very small screens to keep cards clean */
+  .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-4 > div .text-\[10\.5px\] {
+    display: none !important;
+  }
+
+  /* ── Revenue Overview Card ── */
+  .lg\:col-span-2.rounded-xl {
+    padding: 14px 12px !important;
+  }
+
+  /* Revenue header: stack title and period selector vertically */
+  .lg\:col-span-2.rounded-xl > .flex.items-start.justify-between {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  /* Revenue big value: scale down */
+  .lg\:col-span-2.rounded-xl .text-\[32px\] {
+    font-size: 22px !important;
+  }
+
+  /* Revenue growth text */
+  .lg\:col-span-2.rounded-xl .text-\[13px\].text-slate-400 {
+    font-size: 10px !important;
+  }
+
+  /* Period selector buttons: make scrollable horizontally */
+  .lg\:col-span-2.rounded-xl .flex.items-center.rounded-xl.overflow-hidden {
+    overflow-x: auto !important;
+    max-width: 100% !important;
+    flex-shrink: 0 !important;
+  }
+
+  .lg\:col-span-2.rounded-xl .flex.items-center.rounded-xl.overflow-hidden button {
+    padding: 5px 8px !important;
+    font-size: 10px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ── Revenue Chart: mobile-optimized ── */
+
+  /* Card: allow tooltip to overflow above bars (was hidden, clipped the tooltip) */
+  .lg\:col-span-2.rounded-xl {
+    overflow: visible !important;
+    padding-right: 6px !important;
+    padding-left: 6px !important;
+  }
+
+  /* Chart Area: reduce paddingLeft for mobile */
+  .lg\:col-span-2.rounded-xl > .relative.flex-1.flex.items-end {
+    min-height: 140px !important;
+    padding-left: 28px !important;
+  }
+
+  /* Y-axis labels: compact */
+  .lg\:col-span-2.rounded-xl > .relative.flex-1.flex.items-end > .absolute.left-0 {
+    width: 24px !important;
+  }
+
+  .lg\:col-span-2.rounded-xl > .relative.flex-1.flex.items-end > .absolute.left-0 span {
+    font-size: 8px !important;
+  }
+
+  /* Chart grid canvas: no min-width */
+  .lg\:col-span-2.rounded-xl > .relative.flex-1.flex.items-end > .relative.flex-1 {
+    min-width: 0 !important;
+  }
+
+  /* Bars container: zero out inline padding so bars fill edge-to-edge */
+  .lg\:col-span-2.rounded-xl > .relative.flex-1.flex.items-end .absolute.inset-0.flex.items-end {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+  }
+
+  /* X-axis labels row: SAME paddingLeft as chart area */
+  .lg\:col-span-2.rounded-xl > .flex[style*="padding-left"] {
+    padding-left: 28px !important;
+  }
+
+  /* X-axis label items: zero out inline padding to match bars container */
+  .lg\:col-span-2.rounded-xl > .flex[style*="padding-left"] > div {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+  }
+
+  /* X-axis: hide every other label for breathing room */
+  .lg\:col-span-2.rounded-xl > .flex[style*="padding-left"] > div:nth-child(even) span {
+    visibility: hidden !important;
+  }
+
+  /* X-axis labels: readable size */
+  .lg\:col-span-2.rounded-xl > .flex[style*="padding-left"] span {
+    font-size: 9px !important;
+  }
+
+  /* ── Calendar Widget ── */
+  /* Event card: stack title and time vertically */
+  .rounded-\[14px\] > .flex.justify-between.items-start {
+    flex-direction: column !important;
+    gap: 2px !important;
+  }
+
+  /* Event bottom row: stack avatars and action button */
+  .rounded-\[14px\] > .flex.justify-between.items-center {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  /* ── Bottom Row: Leads Mgmt + Country + Retention ── */
+  .grid.grid-cols-1.md\:grid-cols-12 {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* Reset all col-span overrides to full width on mobile */
+  .grid.grid-cols-1.md\:grid-cols-12 > .md\:col-span-3,
+  .grid.grid-cols-1.md\:grid-cols-12 > .md\:col-span-5,
+  .grid.grid-cols-1.md\:grid-cols-12 > .md\:col-span-4 {
+    grid-column: span 1 !important;
+  }
+
+  /* ── Leads Management Card ── */
+  .grid.grid-cols-1.md\:grid-cols-12 > .md\:col-span-3 {
+    padding: 14px !important;
+  }
+
+  /* Leads management progress bar labels */
+  .grid.grid-cols-1.md\:grid-cols-12 > .md\:col-span-3 .text-\[13px\].font-medium.w-20 {
+    width: auto !important;
+    min-width: 60px !important;
+    font-size: 12px !important;
+  }
+
+  /* ── Top Country Card ── */
+  /* Stack map and info column vertically */
+  .grid.grid-cols-12.gap-5 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .grid.grid-cols-12.gap-5 > .col-span-12.sm\:col-span-7,
+  .grid.grid-cols-12.gap-5 > .col-span-12.sm\:col-span-5 {
+    grid-column: span 1 !important;
+  }
+
+  /* Map container minimum height */
+  .grid.grid-cols-12.gap-5 > .col-span-12.sm\:col-span-7 {
+    min-height: 180px !important;
+  }
+
+  /* Country ranking items */
+  .grid.grid-cols-12.gap-5 .space-y-2\.5 > div {
+    padding: 6px 8px !important;
+  }
+
+  /* ── Retention Rate Card ── */
+  .grid.grid-cols-1.md\:grid-cols-12 > .md\:col-span-4 {
+    padding: 14px !important;
+  }
+
+  /* Retention legend: wrap items */
+  .grid.grid-cols-1.md\:grid-cols-12 > .md\:col-span-4 .flex.items-center.space-x-4 {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+
+  /* Retention stacked chart: ensure minimum height */
+  .grid.grid-cols-1.md\:grid-cols-12 > .md\:col-span-4 .flex-1.flex.items-end {
+    min-height: 160px !important;
+  }
+
+  /* Retention bar width on mobile */
+  .grid.grid-cols-1.md\:grid-cols-12 > .md\:col-span-4 .w-8 {
+    width: 24px !important;
+  }
+
+  /* ── Global spacing tweaks ── */
+  .space-y-6 > :not(:first-child) {
+    margin-top: 14px !important;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     HEADER — Premium Mobile Alignment
+     Consistent 12px side padding, uniform 32px touch targets,
+     even 8px gaps between all action icons.
+     ══════════════════════════════════════════════════════════ */
+
+  /* Header bar itself */
+  header.h-16 {
+    height: 52px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  /* Left group: hamburger + title + badge */
+  header.h-16 > div:first-child {
+    gap: 8px !important;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    align-items: center !important;
+  }
+
+  /* Hamburger button */
+  header.h-16 > div:first-child > button:first-child {
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    border-radius: 8px !important;
+  }
+
+  /* Title text: clean truncation */
+  header.h-16 h2 {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    max-width: 100px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1.2 !important;
+    flex-shrink: 1 !important;
+    min-width: 0 !important;
+  }
+
+  /* Role badge: tiny pill */
+  header.h-16 > div:first-child > div {
+    padding: 2px 6px !important;
+    font-size: 8px !important;
+    line-height: 1.4 !important;
+    border-radius: 4px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    letter-spacing: 0.04em !important;
+  }
+
+  /* Right group: search + theme + add */
+  header.h-16 > div:last-child {
+    gap: 8px !important;
+    flex-shrink: 0 !important;
+    align-items: center !important;
+  }
+
+  /* ── Search: icon-only tap target ── */
+  header.h-16 .relative.w-28 {
+    width: 32px !important;
+    height: 32px !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+    border-radius: 8px !important;
+  }
+
+  /* Search icon positioning */
+  header.h-16 .relative.w-28 > span {
+    left: 0 !important;
+    right: 0 !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    z-index: 2 !important;
+  }
+
+  header.h-16 .relative.w-28 > span svg {
+    font-size: 13px !important;
+  }
+
+  /* Hide the text input behind the icon */
+  header.h-16 .relative.w-28 input {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    color: transparent !important;
+    cursor: pointer !important;
+    caret-color: transparent !important;
+    z-index: 3 !important;
+  }
+
+  header.h-16 .relative.w-28 input::placeholder {
+    color: transparent !important;
+  }
+
+  /* Focus: expand to full-width overlay */
+  header.h-16 .relative.w-28 input:focus {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    height: 52px !important;
+    z-index: 200 !important;
+    padding: 0 16px 0 44px !important;
+    border-radius: 0 !important;
+    background: #0a0a1a !important;
+    border: none !important;
+    border-bottom: 2px solid rgba(59, 130, 246, 0.5) !important;
+    color: #e2e8f0 !important;
+    caret-color: #3b82f6 !important;
+    cursor: text !important;
+    font-size: 14px !important;
+  }
+
+  html.light header.h-16 .relative.w-28 input:focus {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-bottom-color: #3b82f6 !important;
+  }
+
+  header.h-16 .relative.w-28 input:focus::placeholder {
+    color: #64748b !important;
+  }
+
+  header.h-16 .relative.w-28 input:focus ~ span {
+    position: fixed !important;
+    left: 12px !important;
+    top: 0 !important;
+    height: 52px !important;
+    z-index: 201 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  /* Theme toggle button: uniform size */
+  header.h-16 > div:last-child > button.p-2 {
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    border-radius: 8px !important;
+  }
+
+  /* Add-lead button: uniform icon circle with centered icon */
+  header.h-16 > div:last-child > button:last-child {
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    border-radius: 8px !important;
+    gap: 0 !important;
+  }
+
+  /* Remove the space-x gap from add-lead button children */
+  header.h-16 > div:last-child > button:last-child > * {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+}
+
+/* ── TABLET (640px - 1023px) ───────────────────────────────────────────── */
+@media (min-width: 640px) and (max-width: 1023px) {
+
+  /* ── Top Metrics: 2x2 grid on tablet ── */
+  .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 14px !important;
+  }
+
+  /* ── Revenue Overview Card ── */
+  .lg\:col-span-2.rounded-xl {
+    padding: 18px 16px !important;
+  }
+
+  /* Revenue header: stack vertically on tablet too */
+  .lg\:col-span-2.rounded-xl > .flex.items-start.justify-between {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  /* Revenue value: moderate scale */
+  .lg\:col-span-2.rounded-xl .text-\[32px\] {
+    font-size: 26px !important;
+  }
+
+  /* Chart canvas: fit in viewport on tablet too — no scroll */
+  .lg\:col-span-2.rounded-xl > .relative.flex-1.flex.items-end {
+    overflow: hidden !important;
+  }
+
+  .lg\:col-span-2.rounded-xl > .relative.flex-1.flex.items-end > .relative.flex-1 {
+    min-width: 0 !important;
+  }
+
+  /* ── Bottom Row: stack columns on tablet ── */
+  .grid.grid-cols-1.md\:grid-cols-12 {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* Make the Country Map card span full width */
+  .grid.grid-cols-1.md\:grid-cols-12 > .md\:col-span-5 {
+    grid-column: span 2 !important;
+  }
+
+  /* Leads Mgmt and Retention side by side */
+  .grid.grid-cols-1.md\:grid-cols-12 > .md\:col-span-3,
+  .grid.grid-cols-1.md\:grid-cols-12 > .md\:col-span-4 {
+    grid-column: span 1 !important;
+  }
+
+  /* Retention chart min height */
+  .grid.grid-cols-1.md\:grid-cols-12 > .md\:col-span-4 .flex-1.flex.items-end {
+    min-height: 160px !important;
+  }
+}
+
+/* ── SHARED MOBILE + TABLET (max-width: 1023px) ───────────────────────── */
+@media (max-width: 1023px) {
+
+  /* Revenue + Calendar: stack vertically instead of side-by-side */
+  .grid.grid-cols-1.lg\:grid-cols-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .grid.grid-cols-1.lg\:grid-cols-3 > .lg\:col-span-2 {
+    grid-column: span 1 !important;
+  }
+
+  /* Revenue chart: ensure visible min-height when stacked */
+  .lg\:col-span-2.rounded-xl > .relative.flex-1.flex.items-end {
+    min-height: 180px !important;
+  }
+
+  /* Calendar card: ensure comfortable padding */
+  .grid.grid-cols-1.lg\:grid-cols-3 > .p-5.rounded-xl {
+    padding: 16px !important;
+  }
+
+  /* X-axis labels: fit without scroll */
+  .lg\:col-span-2.rounded-xl > .flex[style*="padding-left"] {
+    overflow: hidden !important;
+  }
+
+  /* Tooltip: prevent overflow off-screen on small screens */
+  .lg\:col-span-2.rounded-xl .pointer-events-none[style*="minWidth"] {
+    min-width: 110px !important;
+  }
+
+  /* Retention tooltip: reposition for stacked layout */
+  .md\:col-span-4 .absolute.bottom-\[175px\] {
+    bottom: calc(100% + 8px) !important;
+  }
+}
+
+/* ==========================================
+   REVENUE CHART TOOLTIP OVERRIDES
+   ========================================== */
+.revenue-tooltip-card {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+  color: #0f172a !important;
+}
+
+html.dark .revenue-tooltip-card {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+.revenue-tooltip-month {
+  color: #64748b !important;
+}
+
+html.dark .revenue-tooltip-month {
+  color: #94a3b8 !important;
+}
+
+.revenue-tooltip-value {
+  color: #0f172a !important;
+}
+
+html.dark .revenue-tooltip-value {
+  color: #ffffff !important;
+}

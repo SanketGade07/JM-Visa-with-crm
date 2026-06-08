@@ -18,7 +18,7 @@ export type VisaStatus =
   | "Closed"
   | "Dropped";
 
-export type CountryType = "UK" | "USA" | "Canada" | "Europe";
+export type CountryType = string;
 
 export type LeadSource =
   | "WEBSITE"

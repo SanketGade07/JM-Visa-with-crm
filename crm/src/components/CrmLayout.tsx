@@ -16,8 +16,9 @@ import {
   FaMinus, FaExpand, FaEye, FaPhone, FaCommentDots, FaCog, FaEnvelope,
   FaWhatsapp, FaExternalLinkAlt, FaSignOutAlt
 } from "react-icons/fa";
-import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiEye, FiSettings, FiGlobe } from "react-icons/fi";
+import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiEye, FiSettings, FiGlobe, FiMenu } from "react-icons/fi";
 import DataTable, { exportRowsToCsv, StatusPill, getPillClasses, ProgressBar } from "@/components/ui/DataTable";
+import { SearchableCountrySelect, PhoneInput } from "@/components/ui/FormInputs";
 
 // @ts-ignore
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
@@ -111,6 +112,12 @@ export default function CrmLayout() {
   const [searchTerm, setSearchTerm] = useState("");
   const [checklistSearch, setChecklistSearch] = useState("");
 
+  // Responsive Layout States
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
+  const [isMobileSlotSettingsOpen, setIsMobileSlotSettingsOpen] = useState(false);
+  const [isMobileChecklistOpen, setIsMobileChecklistOpen] = useState(false);
+
   // Theme State
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [shouldAnimate, setShouldAnimate] = useState(true);
@@ -167,11 +174,14 @@ export default function CrmLayout() {
   const [uploadingInvoiceKey, setUploadingInvoiceKey] = useState<string | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [kpiFilter, setKpiFilter] = useState<string>("Total");
   const [countryFilter, setCountryFilter] = useState<string>("All");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
 
   // Modals
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
+  const [addLeadStep, setAddLeadStep] = useState<"initial" | "visa-options" | "form">("initial");
+  const [addLeadSelectedCategory, setAddLeadSelectedCategory] = useState<string>("");
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [isAddMeetingOpen, setIsAddMeetingOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
@@ -186,9 +196,14 @@ export default function CrmLayout() {
 
   // Dashboard Interactive States
   const [leadsMgmtTab, setLeadsMgmtTab] = useState<"Status" | "Sources" | "Qualification">("Status");
-  const [selectedRevenuePeriod, setSelectedRevenuePeriod] = useState("1 Y");
+  const [selectedRevenuePeriod, setSelectedRevenuePeriod] = useState("ALL");
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
+  const [countrySortOrder, setCountrySortOrder] = useState<"asc" | "desc">("asc");
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<number>(8);
+  const [dateRangeStart, setDateRangeStart] = useState<string | null>(null);
+  const [dateRangeEnd, setDateRangeEnd] = useState<string | null>(null);
+  const [calMonth, setCalMonth] = useState<number>(new Date().getMonth());
+  const [calYear, setCalYear] = useState<number>(new Date().getFullYear());
 
   // States for Bottom Row Dashboard Widgets
   const [hoveredRetentionMonth, setHoveredRetentionMonth] = useState<string | null>(null);
@@ -383,24 +398,146 @@ export default function CrmLayout() {
     return { monthName, currentYear, days, todayDate: today.getDate() };
   })();
 
-  const dashboardRevenueData = [
-    { month: "Mar", year: 2025, revenue: 23000, trend: 5000, valueStr: "$23.000", growth: "↑ 4%" },
-    { month: "Apr", year: 2025, revenue: 16000, trend: 6500, valueStr: "$16.000", growth: "↑ 1%" },
-    { month: "May", year: 2025, revenue: 20000, trend: 4000, valueStr: "$20.000", growth: "↑ 3%" },
-    { month: "Jun", year: 2025, revenue: 13000, trend: 7000, valueStr: "$13.000", growth: "↓ 2%" },
-    { month: "Jul", year: 2025, revenue: 20000, trend: 9500, valueStr: "$20.000", growth: "↑ 5%" },
-    { month: "Aug", year: 2025, revenue: 6000, trend: 8000, valueStr: "$6.000", growth: "↓ 4%" },
-    { month: "Sept", year: 2025, revenue: 20000, trend: 12000, valueStr: "$20.000", growth: "↑ 2%" },
-    { month: "Oct", year: 2025, revenue: 16000, trend: 5000, valueStr: "$16.000", growth: "↑ 1%" },
-    { month: "Nov", year: 2025, revenue: 19000, trend: 9000, valueStr: "$18.202", growth: "↑ 2%" },
-    { month: "Des", year: 2025, revenue: 10000, trend: 8000, valueStr: "$10.000", growth: "↓ 1%" },
-    { month: "Jan", year: 2026, revenue: 6000, trend: 5000, valueStr: "$6.000", growth: "↑ 2%" },
-    { month: "Feb", year: 2026, revenue: 8000, trend: 7000, valueStr: "$8.000", growth: "↑ 3%" }
-  ];
+  const filteredLeads = useMemo(() => {
+    return leads.filter((lead) => {
+      if (lead.isDeleted) return false;
+      if (dateRangeStart) {
+        const dateCreated = lead.dateCreated || "";
+        if (dateRangeEnd) {
+          return dateCreated >= dateRangeStart && dateCreated <= dateRangeEnd;
+        } else {
+          return dateCreated === dateRangeStart;
+        }
+      }
+      return true;
+    });
+  }, [leads, dateRangeStart, dateRangeEnd]);
 
-  const maxRevenue = 40000;
-  
-  const yLabels = ["40k", "30k", "20k", "10k", "0k"];
+  const countryBarChartData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredLeads.forEach((lead) => {
+      const country = lead.country || "Unknown";
+      counts[country] = (counts[country] || 0) + 1;
+    });
+
+    const sorted = Object.entries(counts)
+      .map(([country, count]) => ({ country, count }))
+      .sort((a, b) => b.count - a.count);
+
+    const top11 = sorted.slice(0, 11);
+    const othersList = sorted.slice(11);
+    const othersCount = othersList.reduce((sum, item) => sum + item.count, 0);
+
+    const result = [...top11];
+    while (result.length < 11) {
+      result.push({ country: "-", count: 0 });
+    }
+
+    if (countrySortOrder === "asc") {
+      result.sort((a, b) => a.count - b.count);
+    } else {
+      result.sort((a, b) => b.count - a.count);
+    }
+
+    result.push({ country: "Others", count: othersCount });
+    return result;
+  }, [filteredLeads, countrySortOrder]);
+
+  const maxLeadsCount = useMemo(() => {
+    const counts = countryBarChartData.map((d) => d.count);
+    const maxVal = Math.max(...counts, 1);
+    if (maxVal <= 5) return 5;
+    if (maxVal <= 10) return 10;
+    if (maxVal <= 25) return 25;
+    if (maxVal <= 50) return 50;
+    if (maxVal <= 100) return 100;
+    return Math.ceil(maxVal / 10) * 10;
+  }, [countryBarChartData]);
+
+  const yLabels = useMemo(() => {
+    const labels = [];
+    for (let i = 4; i >= 0; i--) {
+      const val = Math.round((maxLeadsCount / 4) * i);
+      labels.push(val >= 1000 ? `${(val / 1000).toFixed(1)}k` : String(val));
+    }
+    return labels;
+  }, [maxLeadsCount]);
+
+  const getCountryAbbreviation = (name: string) => {
+    if (!name || name === "-") return "-";
+    if (name === "Others") return "OTH";
+    if (name.length <= 4) return name.toUpperCase();
+    return name.slice(0, 3).toUpperCase();
+  };
+
+  const handlePeriodChange = (period: string) => {
+    setSelectedRevenuePeriod(period);
+    const today = new Date();
+    const format = (d: Date) => d.toISOString().split("T")[0];
+
+    if (period === "1 D") {
+      setDateRangeStart(format(today));
+      setDateRangeEnd(format(today));
+    } else if (period === "1 W") {
+      const start = new Date(today);
+      start.setDate(today.getDate() - 7);
+      setDateRangeStart(format(start));
+      setDateRangeEnd(format(today));
+    } else if (period === "1 M") {
+      const start = new Date(today);
+      start.setMonth(today.getMonth() - 1);
+      setDateRangeStart(format(start));
+      setDateRangeEnd(format(today));
+    } else if (period === "6 M") {
+      const start = new Date(today);
+      start.setMonth(today.getMonth() - 6);
+      setDateRangeStart(format(start));
+      setDateRangeEnd(format(today));
+    } else if (period === "1 Y") {
+      const start = new Date(today);
+      start.setFullYear(today.getFullYear() - 1);
+      setDateRangeStart(format(start));
+      setDateRangeEnd(format(today));
+    } else if (period === "ALL") {
+      setDateRangeStart(null);
+      setDateRangeEnd(null);
+    }
+  };
+
+  const handleCalendarDateClick = (day: number) => {
+    const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    if (!dateRangeStart || (dateRangeStart && dateRangeEnd)) {
+      setDateRangeStart(dateStr);
+      setDateRangeEnd(null);
+    } else {
+      if (dateStr < dateRangeStart) {
+        setDateRangeStart(dateStr);
+        setDateRangeEnd(null);
+      } else {
+        setDateRangeEnd(dateStr);
+      }
+    }
+    setSelectedRevenuePeriod(""); // Clear default period selector
+  };
+
+  const getDaysInMonth = (year: number, month: number) => {
+    const date = new Date(year, month, 1);
+    const days = [];
+    const startDay = date.getDay();
+    for (let i = 0; i < startDay; i++) {
+      days.push(null);
+    }
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    for (let i = 1; i <= totalDays; i++) {
+      days.push(i);
+    }
+    return days;
+  };
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
 
   const leadsMgmtData = (() => {
     if (leadsMgmtTab === "Status") {
@@ -663,13 +800,25 @@ export default function CrmLayout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#070712] text-slate-100 font-sans">
+    <div className="relative flex min-h-screen bg-[#070712] text-slate-100 font-sans overflow-x-hidden">
       
+      {/* Mobile Sidebar backdrop overlay */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden transition-opacity duration-300"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* ----------------- SIDEBAR ----------------- */}
-      <aside className="w-64 border-r border-slate-800/80 bg-[#0a0a1a] flex flex-col justify-between shrink-0">
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 border-r border-slate-800/80 bg-[#0a0a1a] flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0
+        lg:static lg:translate-x-0 lg:z-auto lg:flex
+        ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"}
+      `}>
         <div>
           {/* Brand */}
-          <div className="p-6 border-b border-slate-800/60 flex items-center space-x-3">
+          <div className="h-16 px-6 border-b border-slate-800/60 flex items-center space-x-3">
             <img src="/logo.webp" alt="JM Visa Logo" className="w-10 h-10 object-contain rounded-xl shadow-lg shadow-violet-500/10" />
             <div>
               <h1 className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400 leading-tight">
@@ -697,7 +846,7 @@ export default function CrmLayout() {
               { id: "Checklist", label: "Document Checklist", icon: FaCheckSquare },
               { id: "Submissions", label: "Visa Submission", icon: FaPaperPlane },
               { id: "Payments", label: "Payments & Finance", icon: FaFileInvoiceDollar },
-              { id: "Meetings", label: "Meetings & Reminders", icon: FaCalendarAlt },
+              // { id: "Meetings", label: "Meetings & Reminders", icon: FaCalendarAlt },
               { id: "DropLeads", label: "Drop Leads Log", icon: FaTrash },
               { id: "Staff", label: "Staff Directory", icon: FaUserLock },
             ].filter((tab) => userAllowedTabs.includes(tab.id)).map((tab) => {
@@ -706,7 +855,10 @@ export default function CrmLayout() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setCurrentTab(tab.id)}
+                  onClick={() => {
+                    setCurrentTab(tab.id);
+                    setIsMobileSidebarOpen(false);
+                  }}
                   className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive
                       ? "bg-gradient-to-r from-violet-600/25 to-indigo-600/5 text-violet-300 border-l-4 border-violet-500 shadow-inner"
@@ -758,19 +910,25 @@ export default function CrmLayout() {
       <main className="flex-1 flex flex-col min-w-0">
         
         {/* TOP BAR / HEADER */}
-        <header className="h-16 border-b border-slate-800/80 bg-[#0a0a1a] px-8 flex items-center justify-between shrink-0">
-          <div className="flex items-center space-x-4">
-            <h2 className="text-lg font-bold text-slate-100">
+        <header className="h-16 border-b border-slate-800/80 bg-[#0a0a1a] px-4 md:px-8 flex items-center justify-between shrink-0">
+          <div className="flex items-center space-x-2 md:space-x-4">
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="p-2 -ml-2 mr-1 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 lg:hidden flex items-center justify-center cursor-pointer"
+            >
+              <FiMenu className="text-lg" />
+            </button>
+            <h2 className="text-sm md:text-lg font-bold text-slate-100 truncate max-w-[120px] md:max-w-none">
               Staff Operations Pane
             </h2>
-            <div className="px-2.5 py-1 text-[10px] font-extrabold uppercase bg-violet-500/10 border border-violet-500/30 text-violet-400 rounded-md tracking-wider">
-              {`ROLE: ${currentRole}`}
+            <div className="px-2 py-0.5 md:px-2.5 md:py-1 text-[9px] md:text-[10px] font-extrabold uppercase bg-violet-500/10 border border-violet-500/30 text-violet-400 rounded-md tracking-wider">
+              <span className="hidden sm:inline">ROLE: </span>{currentRole}
             </div>
           </div>
 
           {/* Search bar inside header (only visible for dashboard/leads) */}
-          <div className="flex items-center space-x-4">
-            <div className="relative w-64">
+          <div className="flex items-center space-x-2 md:space-x-4">
+            <div className="relative w-28 sm:w-48 md:w-64">
               <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                 <FaSearch className="text-xs" />
               </span>
@@ -798,21 +956,23 @@ export default function CrmLayout() {
             <button
               onClick={() => {
                 if (!canModifyLeads) return;
+                setAddLeadStep("initial");
+                setAddLeadSelectedCategory("");
                 setIsAddLeadOpen(true);
               }}
               disabled={!canModifyLeads}
-              className={`flex items-center space-x-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs py-2 px-3.5 rounded-xl transition-all shadow-md shadow-violet-500/10 ${
+              className={`flex items-center space-x-1 sm:space-x-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs py-2 px-2.5 sm:px-3.5 rounded-xl transition-all shadow-md shadow-violet-500/10 ${
                 !canModifyLeads ? "opacity-40 cursor-not-allowed" : ""
               }`}
             >
               <FaPlus />
-              <span>Add New Lead</span>
+              <span className="hidden sm:inline">Add New Lead</span>
             </button>
           </div>
         </header>
 
         {/* TAB VIEWS CONTAINER */}
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
           
           {/* 1. DASHBOARD OVERVIEW */}
           {currentTab === "Dashboard" && (
@@ -829,13 +989,21 @@ export default function CrmLayout() {
                     subtext: "vs last week",
                     icon: FaUserFriends
                   },
+                  // {
+                  //   label: "Consultations",
+                  //   value: meetings.length,
+                  //   badge: "Active",
+                  //   badgeColor: "bg-cyan-500/10 border-cyan-500/20 text-[#00C1D4]",
+                  //   subtext: "reminders set",
+                  //   icon: FaCalendarAlt
+                  // },
                   {
-                    label: "Consultations",
-                    value: meetings.length,
+                    label: "Active Leads",
+                    value: leads.filter(l => !["Dropped", "Closed", "Approved / Rejected"].includes(l.status)).length,
                     badge: "Active",
                     badgeColor: "bg-cyan-500/10 border-cyan-500/20 text-[#00C1D4]",
-                    subtext: "reminders set",
-                    icon: FaCalendarAlt
+                    subtext: "in progress",
+                    icon: FaUserFriends
                   },
                   {
                     label: "Conversion Rate",
@@ -927,9 +1095,9 @@ export default function CrmLayout() {
                 })}
               </div>
  
-              {/* MIDDLE ROW (Revenue Overview + Calendar Widget) */}
+              {/* MIDDLE ROW (Leads by Country + Calendar Widget) */}
               <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${getAnimClass("delay-200")}`}>
-                {/* ── Revenue Overview Card ── */}
+                {/* ── Leads by Country Card ── */}
                 <div className={`lg:col-span-2 rounded-xl flex flex-col shadow-sm border overflow-hidden ${
                   theme === "light" 
                     ? "bg-white border-[#E5E7EB]" 
@@ -940,21 +1108,52 @@ export default function CrmLayout() {
                   <div className="flex items-start justify-between">
                     <div>
                       {/* Title */}
-                      <div className="flex items-center space-x-1.5 cursor-pointer select-none">
-                        <span className={`text-[15px] font-semibold tracking-[-0.01em] ${
-                          theme === "light" ? "text-slate-800" : "text-slate-100"
-                        }`}>Revenue</span>
-                        <svg className="w-3.5 h-3.5 text-slate-400 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                      <div 
+                        onClick={() => setCountrySortOrder(prev => prev === "desc" ? "asc" : "desc")}
+                        title={countrySortOrder === "desc" ? "Sorted: Highest first. Click to sort Lowest first." : "Sorted: Lowest first. Click to sort Highest first."}
+                        className="group flex items-center space-x-1.5 cursor-pointer select-none"
+                      >
+                        <span className={`text-[15px] font-semibold tracking-[-0.01em] transition-colors ${
+                          theme === "light" ? "text-slate-800 group-hover:text-slate-950" : "text-slate-100 group-hover:text-white"
+                        }`}>Leads by Country</span>
+                        <svg className="w-3.5 h-3.5 mt-px transition-transform duration-200 group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          {/* Up arrow */}
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            d="M8.25 9L12 5.25L15.75 9" 
+                            className={`transition-colors duration-200 ${
+                              countrySortOrder === "asc"
+                                ? (theme === "light" ? "text-violet-600" : "text-violet-400")
+                                : (theme === "light" ? "text-slate-300" : "text-slate-600 opacity-45")
+                            }`}
+                          />
+                          {/* Down arrow */}
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            d="M8.25 15L12 18.75L15.75 15" 
+                            className={`transition-colors duration-200 ${
+                              countrySortOrder === "desc"
+                                ? (theme === "light" ? "text-violet-600" : "text-violet-400")
+                                : (theme === "light" ? "text-slate-300" : "text-slate-600 opacity-45")
+                            }`}
+                          />
                         </svg>
                       </div>
-                      {/* Value + growth */}
+                      {/* Value + dynamic range */}
                       <div className="flex items-baseline mt-1">
                         <span className={`text-[32px] font-bold tracking-tight leading-none ${
                           theme === "light" ? "text-slate-900" : "text-white"
-                        }`}>$32.209</span>
+                        }`}>{filteredLeads.length} Leads</span>
                         <span className="text-[13px] text-slate-400 font-normal ml-3 leading-none self-end pb-1">
-                          +22% vs last month
+                          {dateRangeStart ? (
+                            <span>
+                              filtered: {dateRangeStart}{dateRangeEnd ? ` to ${dateRangeEnd}` : " (Single Day)"}
+                            </span>
+                          ) : (
+                            "all time"
+                          )}
                         </span>
                       </div>
                     </div>
@@ -968,7 +1167,8 @@ export default function CrmLayout() {
                       {["1 D", "1 W", "1 M", "6 M", "1 Y", "ALL"].map((period) => (
                         <button
                           key={period}
-                          onClick={() => setSelectedRevenuePeriod(period)}
+                          type="button"
+                          onClick={() => handlePeriodChange(period)}
                           className={`transition-all text-[12px] font-medium leading-none ${
                             selectedRevenuePeriod === period 
                               ? (theme === "light" 
@@ -994,10 +1194,13 @@ export default function CrmLayout() {
                       {yLabels.map((lbl, idx) => (
                         <span 
                           key={idx} 
-                          className={`absolute right-0 -translate-y-1/2 text-[11px] font-medium tabular-nums ${
+                          className={`absolute right-0 text-[11px] font-medium tabular-nums ${
                             theme === "light" ? "text-slate-400" : "text-slate-500"
                           }`}
-                          style={{ top: `${idx * 25}%` }}
+                          style={{ 
+                            top: `${idx * 25}%`,
+                            transform: idx === 0 ? "translateY(0)" : idx === yLabels.length - 1 ? "translateY(-100%)" : "translateY(-50%)"
+                          }}
                         >
                           {lbl}
                         </span>
@@ -1022,27 +1225,11 @@ export default function CrmLayout() {
                         />
                       ))}
 
-                      {/* Trend Line (dotted curve behind bars) */}
-                      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 20 }} viewBox="0 0 1200 200" preserveAspectRatio="none">
-                        <path
-                          d={dashboardRevenueData.map((item, idx) => {
-                            const x = 50 + idx * (1100 / 11);
-                            const y = 200 - (item.trend / 40000) * 200;
-                            return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`;
-                          }).join(' ')}
-                          fill="none"
-                          stroke={theme === "light" ? "#CBD5E1" : "#475569"}
-                          strokeWidth="1.5"
-                          strokeDasharray="3 5"
-                          opacity="0.6"
-                        />
-                      </svg>
-
                       {/* Bar Columns */}
                       <div className="absolute inset-0 flex items-end" style={{ paddingLeft: "8px", paddingRight: "8px" }}>
-                        {dashboardRevenueData.map((item, idx) => {
-                          const heightPct = (item.revenue / maxRevenue) * 100;
-                          const isHovered = hoveredBarIndex === idx;
+                        {countryBarChartData.map((item, idx) => {
+                          const heightPct = (item.count / maxLeadsCount) * 100;
+                          const isHovered = hoveredBarIndex === idx && item.country !== "-";
                           return (
                             <div
                               key={idx}
@@ -1092,7 +1279,7 @@ export default function CrmLayout() {
                                   }}
                                 >
                                   <div 
-                                    className="bg-white border border-[#E5E7EB] flex flex-col items-start"
+                                    className="revenue-tooltip-card flex flex-col items-start border shadow-lg"
                                     style={{
                                       borderRadius: "16px",
                                       padding: "10px 16px",
@@ -1100,40 +1287,27 @@ export default function CrmLayout() {
                                       boxShadow: "0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)"
                                     }}
                                   >
-                                    <span className="text-[12px] text-slate-400 font-medium">
-                                      Sept, {item.year}
+                                    <span className="revenue-tooltip-month text-[12px] font-medium text-slate-400">
+                                      {item.country}
                                     </span>
                                     <div className="flex items-center mt-0.5" style={{ gap: "8px" }}>
-                                      <span className="text-[20px] font-bold text-slate-800 tracking-tight">
-                                        {item.valueStr}
+                                      <span className="revenue-tooltip-value text-[20px] font-bold tracking-tight text-white">
+                                        {item.count} Leads
                                       </span>
-                                      {(() => {
-                                        const isDown = item.growth.includes("↓");
-                                        const cleanGrowth = item.growth.replace(/[↑↓\s%]/g, "");
-                                        return (
-                                          <span 
-                                            className="flex items-center font-semibold"
-                                            style={{
-                                              fontSize: "11.5px",
-                                              color: isDown ? "#e11d48" : "#16a34a",
-                                              backgroundColor: isDown ? "#fff1f2" : "#f0fdf4",
-                                              padding: "2px 7px",
-                                              borderRadius: "6px"
-                                            }}
-                                          >
-                                            {isDown ? (
-                                              <svg className="mr-0.5 shrink-0" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                                              </svg>
-                                            ) : (
-                                              <svg className="mr-0.5 shrink-0" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-                                              </svg>
-                                            )}
-                                            {cleanGrowth}%
-                                          </span>
-                                        );
-                                      })()}
+                                      {filteredLeads.length > 0 && (
+                                        <span 
+                                          className="flex items-center font-semibold"
+                                          style={{
+                                            fontSize: "11.5px",
+                                            color: "#2563EB",
+                                            backgroundColor: "rgba(37, 99, 235, 0.15)",
+                                            padding: "2px 7px",
+                                            borderRadius: "6px"
+                                          }}
+                                        >
+                                          {Math.round((item.count / filteredLeads.length) * 100)}%
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
@@ -1184,16 +1358,16 @@ export default function CrmLayout() {
                     </div>
                   </div>
 
-                  {/* X-Axis Month Labels */}
-                  <div className="flex" style={{ paddingLeft: "44px", marginTop: "2px" }}>
-                    {dashboardRevenueData.map((item, idx) => (
+                  {/* X-Axis Labels */}
+                  <div className="flex" style={{ paddingLeft: "44px", marginTop: "4px" }}>
+                    {countryBarChartData.map((item, idx) => (
                       <div key={idx} className="flex-1 flex justify-center" style={{ paddingLeft: "8px", paddingRight: "8px" }}>
-                        <span className={`text-[12px] font-medium transition-colors ${
+                        <span className={`text-[11px] font-bold transition-colors select-none ${
                           hoveredBarIndex === idx 
                             ? (theme === "light" ? "text-slate-800" : "text-white") 
                             : (theme === "light" ? "text-slate-400" : "text-slate-500")
-                        }`}>
-                          {item.month}
+                        }`} title={item.country}>
+                          {getCountryAbbreviation(item.country)}
                         </span>
                       </div>
                     ))}
@@ -1212,34 +1386,55 @@ export default function CrmLayout() {
                       <h3 className={`text-[16px] font-semibold tracking-tight ${
                         theme === "light" ? "text-gray-900" : "text-white"
                       }`}>
-                        Calendar
+                        Date Filter Calendar
                       </h3>
-                      <button className={`w-9 h-9 flex items-center justify-center rounded-[12px] border transition-all duration-200 ${
-                        theme === "light" 
-                          ? "bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50 shadow-[0_2px_8px_rgb(0,0,0,0.04)]" 
-                          : "bg-slate-800/60 border-slate-700/50 text-slate-300 hover:bg-slate-750 shadow-md"
-                      }`}>
-                        <FaEllipsisV className="text-sm" />
-                      </button>
+                      {(dateRangeStart || dateRangeEnd) && (
+                        <button 
+                          onClick={() => {
+                            setDateRangeStart(null);
+                            setDateRangeEnd(null);
+                            setSelectedRevenuePeriod("ALL");
+                          }}
+                          className="text-[11px] text-blue-500 hover:text-blue-400 font-bold px-2.5 py-1 rounded-lg border border-blue-500/20 hover:border-blue-500/40 bg-blue-500/5 transition-all"
+                        >
+                          Clear Filter
+                        </button>
+                      )}
                     </div>
 
                     {/* Navigation */}
                     <div className="flex items-center justify-between mt-[18px] mb-4">
                       <button 
-                        onClick={() => showToast("Previous week")}
+                        type="button"
+                        onClick={() => {
+                          if (calMonth === 0) {
+                            setCalMonth(11);
+                            setCalYear(calYear - 1);
+                          } else {
+                            setCalMonth(calMonth - 1);
+                          }
+                        }}
                         className={`p-1 transition-colors ${
                           theme === "light" ? "text-gray-400 hover:text-gray-600" : "text-slate-500 hover:text-slate-300"
                         }`}
                       >
                         <FaChevronLeft className="text-[11px]" />
                       </button>
-                      <span className={`text-[14px] font-medium tracking-wide ${
+                      <span className={`text-[14px] font-semibold tracking-wide ${
                         theme === "light" ? "text-gray-800" : "text-slate-200"
                       }`}>
-                        October 2025
+                        {monthNames[calMonth]} {calYear}
                       </span>
                       <button 
-                        onClick={() => showToast("Next week")}
+                        type="button"
+                        onClick={() => {
+                          if (calMonth === 11) {
+                            setCalMonth(0);
+                            setCalYear(calYear + 1);
+                          } else {
+                            setCalMonth(calMonth + 1);
+                          }
+                        }}
                         className={`p-1 transition-colors ${
                           theme === "light" ? "text-gray-400 hover:text-gray-600" : "text-slate-500 hover:text-slate-300"
                         }`}
@@ -1260,153 +1455,110 @@ export default function CrmLayout() {
                     </div>
 
                     {/* Dates */}
-                    <div className="grid grid-cols-7 text-center items-center mb-4">
-                      {[5, 6, 7, 8, 9, 10, 11].map((date) => {
-                        const isSelected = selectedCalendarDate === date;
+                    <div className="grid grid-cols-7 text-center items-center gap-y-1.5 mb-4">
+                      {getDaysInMonth(calYear, calMonth).map((day, idx) => {
+                        if (day === null) {
+                          return <div key={`empty-${idx}`} className="h-8" />;
+                        }
+                        const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                        const isStart = dateStr === dateRangeStart;
+                        const isEnd = dateStr === dateRangeEnd;
+                        const inRange = dateRangeStart && dateRangeEnd && dateStr > dateRangeStart && dateStr < dateRangeEnd;
+                        const isToday = (() => {
+                          const t = new Date();
+                          return t.getFullYear() === calYear && t.getMonth() === calMonth && t.getDate() === day;
+                        })();
+
                         return (
-                          <div key={date} className="flex justify-center items-center h-8">
+                          <div key={day} className="flex justify-center items-center h-8 relative">
+                            {/* Range highlight connector */}
+                            {inRange && (
+                              <div className="absolute inset-y-1 left-0 right-0 bg-[#2563EB]/10 dark:bg-[#2563EB]/20" />
+                            )}
+                            {isStart && dateRangeEnd && (
+                              <div className="absolute inset-y-1 left-1/2 right-0 bg-[#2563EB]/10 dark:bg-[#2563EB]/20" />
+                            )}
+                            {isEnd && dateRangeStart && (
+                              <div className="absolute inset-y-1 left-0 right-1/2 bg-[#2563EB]/10 dark:bg-[#2563EB]/20" />
+                            )}
                             <button
-                              onClick={() => setSelectedCalendarDate(date)}
-                              className={`w-[30px] h-[30px] flex items-center justify-center rounded-full text-[13px] font-medium transition-all duration-200 ${
-                                isSelected
-                                  ? "bg-[#2563EB] text-white shadow-[0_4px_10px_rgba(37,99,235,0.35)] scale-105"
-                                  : theme === "light"
-                                    ? "text-gray-700 hover:bg-gray-100"
-                                    : "text-slate-300 hover:bg-slate-800"
+                              type="button"
+                              onClick={() => handleCalendarDateClick(day)}
+                              className={`w-[28px] h-[28px] flex items-center justify-center rounded-full text-[12px] font-medium transition-all duration-150 relative z-10 ${
+                                isStart || isEnd
+                                  ? "bg-[#2563EB] text-white shadow-[0_3px_8px_rgba(37,99,235,0.4)] font-bold scale-105"
+                                  : inRange
+                                    ? "text-[#2563EB] dark:text-blue-400 font-semibold"
+                                    : isToday
+                                      ? "border border-[#2563EB] text-[#2563EB] dark:text-blue-400 font-semibold"
+                                      : theme === "light"
+                                        ? "text-gray-700 hover:bg-gray-100"
+                                        : "text-slate-300 hover:bg-slate-800"
                               }`}
                             >
-                              {date}
+                              {day}
                             </button>
                           </div>
                         );
                       })}
                     </div>
 
-                    {/* Dashed Divider */}
+                    {/* Divider */}
                     <div className={`border-t border-dashed my-4 ${
-                      theme === "light" ? "border-gray-200/80" : "border-slate-800/80"
+                      theme === "light" ? "border-gray-200" : "border-slate-800"
                     }`} />
 
-                    {/* Scheduled Events Container */}
+                    {/* Selection Summary (Replaces meetings list) */}
                     <div className="space-y-3">
-                      {/* Event 1 */}
-                      <div className={`p-4 rounded-[14px] flex flex-col transition-all duration-205 ${
-                        theme === "light" ? "bg-[#F8F9FB] hover:bg-[#F3F4F6]" : "bg-slate-800/30 hover:bg-slate-800/40"
+                      <div className={`p-4 rounded-xl flex flex-col transition-all duration-200 border ${
+                        theme === "light" 
+                          ? "bg-slate-50 border-gray-150" 
+                          : "bg-slate-800/20 border-slate-800"
                       }`}>
-                        <div className="flex justify-between items-start">
-                          <span className={`text-[14px] font-semibold tracking-tight ${
-                            theme === "light" ? "text-gray-900" : "text-white"
-                          }`}>
-                            Mesh Weekly Meeting
-                          </span>
-                          <span className={`text-[12px] font-medium tracking-tight ${
-                            theme === "light" ? "text-gray-400" : "text-slate-400"
-                          }`}>
-                            9.00 am - 10.00 am
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center mt-[14px]">
-                          {/* Avatars */}
-                          <div className="flex -space-x-1.5 items-center">
-                            <img 
-                              className={`w-[26px] h-[26px] rounded-full border-2 object-cover z-30 ${
-                                theme === "light" ? "border-[#F8F9FB]" : "border-slate-850"
-                              }`}
-                              src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80"
-                              alt="Avatar 1"
-                            />
-                            <img 
-                              className={`w-[26px] h-[26px] rounded-full border-2 object-cover z-20 ${
-                                theme === "light" ? "border-[#F8F9FB]" : "border-slate-850"
-                              }`}
-                              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80"
-                              alt="Avatar 2"
-                            />
-                            <img 
-                              className={`w-[26px] h-[26px] rounded-full border-2 object-cover z-10 ${
-                                theme === "light" ? "border-[#F8F9FB]" : "border-slate-850"
-                              }`}
-                              src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80"
-                              alt="Avatar 3"
-                            />
-                            <div className={`w-[26px] h-[26px] rounded-full border-2 flex items-center justify-center text-[9px] font-semibold z-0 bg-purple-50 text-purple-600 ${
-                              theme === "light" 
-                                ? "border-[#F8F9FB]" 
-                                : "border-slate-850 bg-purple-950/40 text-purple-300"
-                            }`}>
-                              +7
+                        <span className={`text-[13px] font-bold tracking-tight mb-2 block ${
+                          theme === "light" ? "text-gray-900" : "text-white"
+                        }`}>
+                          Filter Status
+                        </span>
+                        
+                        <div className="space-y-2 text-[12px]">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Date Range:</span>
+                            <span className={`font-semibold ${theme === "light" ? "text-slate-700" : "text-slate-200"}`}>
+                              {dateRangeStart ? (
+                                <span>
+                                  {(() => {
+                                    const [y, m, d] = dateRangeStart.split("-");
+                                    const dateObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+                                    return dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                                  })()}
+                                  {dateRangeEnd && (
+                                    <>
+                                      {" - "}
+                                      {(() => {
+                                        const [y, m, d] = dateRangeEnd.split("-");
+                                        const dateObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+                                        return dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                                      })()}
+                                    </>
+                                  )}
+                                </span>
+                              ) : (
+                                "All Time"
+                              )}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Total Leads Found:</span>
+                            <span className="font-bold text-blue-500">{filteredLeads.length} Leads</span>
+                          </div>
+
+                          {dateRangeStart && !dateRangeEnd && (
+                            <div className="text-[11px] text-orange-500 dark:text-orange-400 font-medium pt-1">
+                              💡 Click a second date to set end of range.
                             </div>
-                          </div>
-
-                          {/* Action Button */}
-                          <button 
-                            onClick={() => showToast("Joining Google Meet...")}
-                            className={`px-3 py-1.5 rounded-[10px] border text-[11px] font-medium flex items-center shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200 ${
-                              theme === "light" 
-                                ? "bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50 hover:border-gray-300" 
-                                : "bg-slate-800 border-slate-700/60 text-slate-200 hover:bg-slate-750 hover:border-slate-650"
-                            }`}
-                          >
-                            On Google Meet
-                            <FaChevronRight className="text-[8px] text-gray-400/90 ml-1.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Event 2 */}
-                      <div className={`p-4 rounded-[14px] flex flex-col transition-all duration-205 ${
-                        theme === "light" ? "bg-[#F8F9FB] hover:bg-[#F3F4F6]" : "bg-slate-800/30 hover:bg-slate-800/40"
-                      }`}>
-                        <div className="flex justify-between items-start">
-                          <span className={`text-[14px] font-semibold tracking-tight ${
-                            theme === "light" ? "text-gray-900" : "text-white"
-                          }`}>
-                            Gamification Demo
-                          </span>
-                          <span className={`text-[12px] font-medium tracking-tight ${
-                            theme === "light" ? "text-gray-400" : "text-slate-400"
-                          }`}>
-                            10.45 am - 11.45 am
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center mt-[14px]">
-                          {/* Avatars */}
-                          <div className="flex -space-x-1.5 items-center">
-                            <img 
-                              className={`w-[26px] h-[26px] rounded-full border-2 object-cover z-30 ${
-                                theme === "light" ? "border-[#F8F9FB]" : "border-slate-850"
-                              }`}
-                              src="https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=80"
-                              alt="Avatar 4"
-                            />
-                            <img 
-                              className={`w-[26px] h-[26px] rounded-full border-2 object-cover z-20 ${
-                                theme === "light" ? "border-[#F8F9FB]" : "border-slate-850"
-                              }`}
-                              src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80"
-                              alt="Avatar 5"
-                            />
-                            <img 
-                              className={`w-[26px] h-[26px] rounded-full border-2 object-cover z-10 ${
-                                theme === "light" ? "border-[#F8F9FB]" : "border-slate-850"
-                              }`}
-                              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80"
-                              alt="Avatar 6"
-                            />
-                          </div>
-
-                          {/* Action Button */}
-                          <button 
-                            onClick={() => showToast("Opening Slack...")}
-                            className={`px-3 py-1.5 rounded-[10px] border text-[11px] font-medium flex items-center shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200 ${
-                              theme === "light" 
-                                ? "bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50 hover:border-gray-300" 
-                                : "bg-slate-800 border-slate-700/60 text-slate-200 hover:bg-slate-750 hover:border-slate-650"
-                            }`}
-                          >
-                            On Slack
-                            <FaChevronRight className="text-[8px] text-gray-400/90 ml-1.5" />
-                          </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1519,7 +1671,7 @@ export default function CrmLayout() {
                 }`}>
                   <div className="grid grid-cols-12 gap-5 items-stretch h-full flex-1">
                     {/* Left: Map */}
-                    <div className="col-span-7 relative rounded-xl border border-gray-100 dark:border-slate-800/80 bg-gray-50/50 dark:bg-slate-950/20 overflow-hidden flex items-center justify-center group min-h-[220px]">
+                    <div className="col-span-12 sm:col-span-7 relative rounded-xl border border-gray-100 dark:border-slate-800/80 bg-gray-50/50 dark:bg-slate-950/20 overflow-hidden flex items-center justify-center group min-h-[220px]">
                       
                       {/* Card Map Zoom Controls */}
                       <div className="absolute bottom-3 left-3 flex items-center rounded-[8px] border border-[#E5E7EB] dark:border-slate-700/80 bg-white dark:bg-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.06)] z-10 overflow-hidden divide-x divide-[#E5E7EB] dark:divide-slate-700/80">
@@ -1563,7 +1715,7 @@ export default function CrmLayout() {
                     </div>
 
                     {/* Right: Info Column */}
-                    <div className="col-span-5 flex flex-col justify-between">
+                    <div className="col-span-12 sm:col-span-5 flex flex-col justify-between">
                       <div>
                         {/* Header Row */}
                         <div className="flex items-center justify-between mb-4">
@@ -1902,7 +2054,7 @@ export default function CrmLayout() {
 
           {/* 2. LEAD MANAGEMENT */}
           {currentTab === "Leads" && (
-            <div className="-m-8 p-6 bg-gray-50 dark:bg-transparent min-h-[calc(100vh-4rem)] space-y-5">
+            <div className="-m-4 md:-m-8 p-4 md:p-6 bg-gray-50 dark:bg-transparent min-h-[calc(100vh-4rem)] space-y-5">
 
               {/* Page header */}
               <div className="flex items-start justify-between gap-4">
@@ -1917,17 +2069,17 @@ export default function CrmLayout() {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 {[
                   {
-                    label: "Total Leads",
-                    value: leads.filter(l => l.status !== "Dropped").length,
-                    icon: FiUsers,
-                    trend: "↑ 12%",
-                    up: true,
-                    bgColor: "bg-[#eff6ff] dark:bg-blue-950/45",
-                    textColor: "text-[#2563eb] dark:text-blue-400",
-                    trendColor: "text-emerald-600 dark:text-emerald-500",
-                    color: "#3b82f6",
-                    linePath: "M 5 30 C 12 28, 18 20, 25 25 C 32 30, 38 12, 45 15 C 52 18, 58 22, 65 18 C 72 14, 78 10, 85 14 C 92 18, 96 10, 100 8",
-                    areaPath: "M 5 30 C 12 28, 18 20, 25 25 C 32 30, 38 12, 45 15 C 52 18, 58 22, 65 18 C 72 14, 78 10, 85 14 C 92 18, 96 10, 100 8 L 100 40 L 5 40 Z"
+                    label: "New Today",
+                    value: leads.filter(l => l.dateCreated === new Date().toISOString().split("T")[0]).length,
+                    icon: FiCalendar,
+                    trend: "↓ 16%",
+                    up: false,
+                    bgColor: "bg-[#fef2f2] dark:bg-rose-950/45",
+                    textColor: "text-[#ef4444] dark:text-rose-450",
+                    trendColor: "text-rose-600 dark:text-rose-500",
+                    color: "#ef4444",
+                    linePath: "M 5 20 C 12 18, 18 35, 24 30 C 30 25, 36 22, 42 26 C 48 30, 54 28, 60 20 C 66 12, 72 35, 78 30 C 84 25, 92 28, 100 26",
+                    areaPath: "M 5 20 C 12 18, 18 35, 24 30 C 30 25, 36 22, 42 26 C 48 30, 54 28, 60 20 C 66 12, 72 35, 78 30 C 84 25, 92 28, 100 26 L 100 40 L 5 40 Z"
                   },
                   {
                     label: "In Progress",
@@ -1943,37 +2095,72 @@ export default function CrmLayout() {
                     areaPath: "M 5 32 C 12 32, 18 35, 24 25 C 30 15, 36 32, 42 32 C 48 32, 54 18, 60 16 C 66 14, 72 25, 78 14 C 84 4, 92 14, 100 12 L 100 40 L 5 40 Z"
                   },
                   {
-                    label: "New Today",
-                    value: leads.filter(l => l.dateCreated === new Date().toISOString().split("T")[0]).length,
-                    icon: FiCalendar,
-                    trend: "↓ 16%",
-                    up: false,
-                    bgColor: "bg-[#fef2f2] dark:bg-rose-950/45",
-                    textColor: "text-[#ef4444] dark:text-rose-450",
-                    trendColor: "text-rose-600 dark:text-rose-500",
-                    color: "#ef4444",
-                    linePath: "M 5 20 C 12 18, 18 35, 24 30 C 30 25, 36 22, 42 26 C 48 30, 54 28, 60 20 C 66 12, 72 35, 78 30 C 84 25, 92 28, 100 26",
-                    areaPath: "M 5 20 C 12 18, 18 35, 24 30 C 30 25, 36 22, 42 26 C 48 30, 54 28, 60 20 C 66 12, 72 35, 78 30 C 84 25, 92 28, 100 26 L 100 40 L 5 40 Z"
+                    label: "Total Leads",
+                    value: leads.filter(l => l.status !== "Dropped").length,
+                    icon: FiUsers,
+                    trend: "↑ 12%",
+                    up: true,
+                    bgColor: "bg-[#eff6ff] dark:bg-blue-950/45",
+                    textColor: "text-[#2563eb] dark:text-blue-400",
+                    trendColor: "text-emerald-600 dark:text-emerald-500",
+                    color: "#3b82f6",
+                    linePath: "M 5 30 C 12 28, 18 20, 25 25 C 32 30, 38 12, 45 15 C 52 18, 58 22, 65 18 C 72 14, 78 10, 85 14 C 92 18, 96 10, 100 8",
+                    areaPath: "M 5 30 C 12 28, 18 20, 25 25 C 32 30, 38 12, 45 15 C 52 18, 58 22, 65 18 C 72 14, 78 10, 85 14 C 92 18, 96 10, 100 8 L 100 40 L 5 40 Z"
                   },
                   {
-                    label: "Meetings Booked",
-                    value: meetings.length,
-                    icon: FiCalendar,
-                    trend: "↑ 15%",
+                    label: "Visa Success",
+                    value: leads.filter(l => l.status === "Approved / Rejected").length,
+                    icon: FaCheckCircle,
+                    trend: "↑ 10%",
                     up: true,
-                    bgColor: "bg-[#faf5ff] dark:bg-purple-950/45",
-                    textColor: "text-[#7c3aed] dark:text-purple-400",
+                    bgColor: "bg-[#ecfdf5] dark:bg-emerald-950/45",
+                    textColor: "text-[#10b981] dark:text-emerald-400",
                     trendColor: "text-emerald-600 dark:text-emerald-500",
-                    color: "#a855f7",
-                    linePath: "M 5 32 C 15 32, 25 30, 35 28 C 45 26, 55 24, 65 18 C 75 12, 85 14, 95 8 C 97 6, 99 5, 100 4",
-                    areaPath: "M 5 32 C 15 32, 25 30, 35 28 C 45 26, 55 24, 65 18 C 75 12, 85 14, 95 8 C 97 6, 99 5, 100 4 L 100 40 L 5 40 Z"
+                    color: "#10b981",
+                    linePath: "M 5 35 C 15 35, 25 32, 35 25 C 45 20, 55 15, 65 10 C 75 5, 85 8, 95 4",
+                    areaPath: "M 5 35 C 15 35, 25 32, 35 25 C 45 20, 55 15, 65 10 C 75 5, 85 8, 95 4 L 100 40 L 5 40 Z"
                   },
+                  // {
+                  //   label: "Meetings Booked",
+                  //   value: meetings.length,
+                  //   icon: FiCalendar,
+                  //   trend: "↑ 15%",
+                  //   up: true,
+                  //   bgColor: "bg-[#faf5ff] dark:bg-purple-950/45",
+                  //   textColor: "text-[#7c3aed] dark:text-purple-400",
+                  //   trendColor: "text-emerald-600 dark:text-emerald-500",
+                  //   color: "#a855f7",
+                  //   linePath: "M 5 32 C 15 32, 25 30, 35 28 C 45 26, 55 24, 65 18 C 75 12, 85 14, 95 8 C 97 6, 99 5, 100 4",
+                  //   areaPath: "M 5 32 C 15 32, 25 30, 35 28 C 45 26, 55 24, 65 18 C 75 12, 85 14, 95 8 C 97 6, 99 5, 100 4 L 100 40 L 5 40 Z"
+                  // },
                 ].map((kpi, i) => {
                   const Icon = kpi.icon;
+                  const isFilterActive =
+                    (kpi.label === "New Today" && kpiFilter === "New Today") ||
+                    (kpi.label === "In Progress" && kpiFilter === "In Progress") ||
+                    (kpi.label === "Total Leads" && kpiFilter === "Total") ||
+                    (kpi.label === "Visa Success" && kpiFilter === "Visa Success");
+                  
                   return (
                     <div
                       key={i}
-                      className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none hover:shadow-[0_4px_25px_-2px_rgba(0,0,0,0.08)] transition-all duration-300 flex gap-4 items-start"
+                      onClick={() => {
+                        if (kpi.label === "New Today") {
+                          setKpiFilter("New Today");
+                        } else if (kpi.label === "In Progress") {
+                          setKpiFilter("In Progress");
+                        } else if (kpi.label === "Total Leads") {
+                          setKpiFilter("Total");
+                        } else if (kpi.label === "Visa Success") {
+                          setKpiFilter("Visa Success");
+                        }
+                        setStatusFilter("All");
+                      }}
+                      className={`bg-white dark:bg-slate-900/50 rounded-2xl border p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none hover:shadow-[0_4px_25px_-2px_rgba(0,0,0,0.08)] transition-all duration-300 flex gap-4 items-start cursor-pointer hover:border-violet-500/50 dark:hover:border-violet-500/50 ${
+                        isFilterActive
+                          ? "border-violet-500 ring-2 ring-violet-500/10 dark:border-violet-500 bg-violet-500/5 dark:bg-violet-500/5"
+                          : "border-slate-100 dark:border-slate-800"
+                      }`}
                     >
                       <div className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 ${kpi.bgColor} ${kpi.textColor}`}>
                         <Icon className="text-lg" />
@@ -2020,20 +2207,36 @@ export default function CrmLayout() {
               </div>
 
               {/* Lead detail split-screen */}
-              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-stretch h-[600px]">
+              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-stretch h-auto xl:h-[600px]">
                 
                 {/* Leads list (reusable DataTable) */}
-                <div className="xl:col-span-3 flex flex-col h-full">
+                <div className="xl:col-span-4 flex flex-col h-full">
                   <DataTable
                     className="h-full flex flex-col"
-                    rows={leads.filter(l =>
-                      (statusFilter === "Dropped" ? l.status === "Dropped" : l.status !== "Dropped") &&
-                      (statusFilter === "All" || l.status === statusFilter) &&
-                      (countryFilter === "All" || l.country === countryFilter) &&
-                      (l.name.toLowerCase().includes(searchTerm.toLowerCase()) || l.phone.includes(searchTerm))
-                    )}
+                    pagination={true}
+                    defaultPageSize={8}
+                    rows={leads.filter(l => {
+                      if (kpiFilter === "New Today") {
+                        const todayStr = new Date().toISOString().split("T")[0];
+                        if (l.dateCreated !== todayStr) return false;
+                      } else if (kpiFilter === "In Progress") {
+                        const inProgressStatuses = ["Contacted", "Follow-Up", "Interested", "Documents Pending", "Documents Received", "Under Verification", "Ready For Submission", "Visa Submitted"];
+                        if (!inProgressStatuses.includes(l.status)) return false;
+                      } else if (kpiFilter === "Total") {
+                        if (l.status === "Dropped") return false;
+                      } else if (kpiFilter === "Visa Success") {
+                        if (l.status !== "Approved / Rejected") return false;
+                      }
+                      return (statusFilter === "Dropped" ? l.status === "Dropped" : l.status !== "Dropped") &&
+                        (statusFilter === "All" || l.status === statusFilter) &&
+                        (countryFilter === "All" || l.country === countryFilter) &&
+                        (l.name.toLowerCase().includes(searchTerm.toLowerCase()) || l.phone.includes(searchTerm));
+                    })}
                     getRowId={(l) => l.id}
-                    onRowClick={(l) => setSelectedLeadId(l.id)}
+                    onRowClick={(l) => {
+                      setSelectedLeadId(l.id);
+                      setIsMobileDetailOpen(true);
+                    }}
                     selectedRowId={selectedLeadId}
                     title="Lead List"
                     search={searchTerm}
@@ -2083,13 +2286,24 @@ export default function CrmLayout() {
                       exportRowsToCsv(
                         "leads",
                         ["#", "Name", "Phone", "Destination", "Visa Class", "Doc %", "Status", "Counselor"],
-                        leads
-                          .filter(l =>
-                            (statusFilter === "Dropped" ? l.status === "Dropped" : l.status !== "Dropped") &&
-                            (statusFilter === "All" || l.status === statusFilter) &&
-                            (countryFilter === "All" || l.country === countryFilter) &&
-                            (l.name.toLowerCase().includes(searchTerm.toLowerCase()) || l.phone.includes(searchTerm))
-                          )
+                         leads
+                          .filter(l => {
+                            if (kpiFilter === "New Today") {
+                              const todayStr = new Date().toISOString().split("T")[0];
+                              if (l.dateCreated !== todayStr) return false;
+                            } else if (kpiFilter === "In Progress") {
+                              const inProgressStatuses = ["Contacted", "Follow-Up", "Interested", "Documents Pending", "Documents Received", "Under Verification", "Ready For Submission", "Visa Submitted"];
+                              if (!inProgressStatuses.includes(l.status)) return false;
+                            } else if (kpiFilter === "Total") {
+                              if (l.status === "Dropped") return false;
+                            } else if (kpiFilter === "Visa Success") {
+                              if (l.status !== "Approved / Rejected") return false;
+                            }
+                            return (statusFilter === "Dropped" ? l.status === "Dropped" : l.status !== "Dropped") &&
+                              (statusFilter === "All" || l.status === statusFilter) &&
+                              (countryFilter === "All" || l.country === countryFilter) &&
+                              (l.name.toLowerCase().includes(searchTerm.toLowerCase()) || l.phone.includes(searchTerm));
+                          })
                           .map((l, i) => [i + 1, l.name, l.phone, l.country, l.visaType, `${Math.round(docProgress(l.checklist))}%`, l.status, l.counselor])
                       )
                     }
@@ -2250,17 +2464,38 @@ export default function CrmLayout() {
                   />
                 </div>
 
+                {/* Mobile detail drawer backdrop */}
+                {isMobileDetailOpen && (
+                  <div 
+                    className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm xl:hidden"
+                    onClick={() => setIsMobileDetailOpen(false)}
+                  />
+                )}
+
                 {/* Lead Detail Panel Side Card */}
                 {selectedLead && (
-                  <div className="xl:col-span-1 bg-white dark:bg-slate-900/50 border border-gray-200/70 dark:border-slate-800 rounded-2xl shadow-sm dark:shadow-none p-5 flex flex-col h-full space-y-5 overflow-y-auto">
+                  <div className={`
+                    fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white dark:bg-slate-900 border-l border-gray-250 dark:border-slate-800 p-5 flex flex-col h-full space-y-5 overflow-y-auto shadow-2xl transition-transform duration-300
+                    xl:static xl:z-auto xl:w-auto xl:max-w-none xl:shadow-none xl:border-l-0 xl:rounded-2xl xl:bg-white xl:dark:bg-slate-900/50 xl:translate-x-0 xl:flex
+                    ${isMobileDetailOpen ? "translate-x-0" : "translate-x-full xl:translate-x-0"}
+                    ${!isMobileDetailOpen ? "hidden xl:flex" : "flex"}
+                  `}>
                     <div className="space-y-5">
                       {/* Details header */}
                       <div className="flex items-center justify-between">
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <h4 className="text-sm font-bold text-gray-900 dark:text-slate-100 truncate leading-snug">{selectedLead.name}</h4>
                           <span className="text-[10px] text-gray-400 dark:text-slate-500 font-semibold tracking-wider uppercase block truncate mt-0.5">{selectedLead.id}</span>
                         </div>
-                        <StatusPill status={selectedLead.status} />
+                        <div className="flex items-center space-x-2 shrink-0">
+                          <StatusPill status={selectedLead.status} />
+                          <button
+                            onClick={() => setIsMobileDetailOpen(false)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 xl:hidden flex items-center justify-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
+                          >
+                            <FaTimes className="text-xs" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Dropdowns and Meta Fields */}
@@ -2332,7 +2567,7 @@ export default function CrmLayout() {
                     </div>
 
                     {/* Completed scans footer */}
-                    <div className="p-4 bg-gray-50/50 dark:bg-slate-800/20 border border-gray-100 dark:border-slate-800/80 rounded-xl flex items-center justify-between mt-auto">
+                    {/* <div className="p-4 bg-gray-50/50 dark:bg-slate-800/20 border border-gray-100 dark:border-slate-800/80 rounded-xl flex items-center justify-between mt-auto">
                       <div>
                         <span className="text-[10px] uppercase text-gray-400 dark:text-slate-500 font-bold tracking-wider block">Completed Scans</span>
                         <span className="text-emerald-500 dark:text-emerald-400 font-bold text-sm mt-0.5 block">
@@ -2348,7 +2583,7 @@ export default function CrmLayout() {
                       >
                         Review Vault →
                       </button>
-                    </div>
+                    </div> */}
                   </div>
                 )}
 
@@ -2526,7 +2761,10 @@ export default function CrmLayout() {
                     title="USA Client Profiles"
                     rows={leads.filter((l) => l.country === "USA" && l.status !== "Dropped")}
                     getRowId={(l) => l.id}
-                    onRowClick={(l) => setSelectedLeadId(l.id)}
+                    onRowClick={(l) => {
+                      setSelectedLeadId(l.id);
+                      setIsMobileSlotSettingsOpen(true);
+                    }}
                     selectedRowId={selectedLeadId}
                     columns={[
                       {
@@ -2565,7 +2803,14 @@ export default function CrmLayout() {
                       },
                     ]}
                     actions={(lead) => [
-                      { icon: FiSettings, title: "Edit slot panel", onClick: (l) => setSelectedLeadId(l.id) },
+                      { 
+                        icon: FiSettings, 
+                        title: "Edit slot panel", 
+                        onClick: (l) => {
+                          setSelectedLeadId(l.id);
+                          setIsMobileSlotSettingsOpen(true);
+                        } 
+                      },
                       { icon: FiPhone, title: "Call", onClick: (l) => window.open(`tel:${l.phone}`) },
                       { icon: FiMail, title: "Email", onClick: (l) => window.open(`mailto:${l.email}`) },
                     ]}
@@ -2573,12 +2818,34 @@ export default function CrmLayout() {
                   />
                 </div>
 
+                {/* Mobile USA slot drawer backdrop */}
+                {isMobileSlotSettingsOpen && selectedLead && selectedLead.country === "USA" && (
+                  <div 
+                    className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm xl:hidden"
+                    onClick={() => setIsMobileSlotSettingsOpen(false)}
+                  />
+                )}
+
                 {/* Edit USA Slot side panel */}
                 {selectedLead && selectedLead.country === "USA" && (
-                  <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-6">
-                    <h3 className="text-sm font-bold text-white border-b border-slate-800 pb-3">
-                      Slot Settings: {selectedLead.name}
-                    </h3>
+                  <div className={`
+                    fixed inset-y-0 right-0 z-50 w-full max-w-md bg-slate-900 border-l border-slate-800 p-6 flex flex-col h-full space-y-6 overflow-y-auto shadow-2xl transition-transform duration-300
+                    xl:static xl:z-auto xl:w-auto xl:max-w-none xl:shadow-none xl:border-l-0 xl:rounded-2xl xl:bg-slate-900/60 xl:translate-x-0 xl:flex
+                    ${isMobileSlotSettingsOpen ? "translate-x-0" : "translate-x-full xl:translate-x-0"}
+                    ${!isMobileSlotSettingsOpen ? "hidden xl:flex" : "flex"}
+                  `}>
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                      <h3 className="text-sm font-bold text-white">
+                        Slot Settings: {selectedLead.name}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setIsMobileSlotSettingsOpen(false)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 xl:hidden flex items-center justify-center cursor-pointer hover:bg-slate-800"
+                      >
+                        <FaTimes className="text-xs" />
+                      </button>
+                    </div>
 
                     <div className="space-y-4 text-xs">
                       
@@ -2666,7 +2933,7 @@ export default function CrmLayout() {
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
                 
                 {/* Active lead selector */}
-                <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl flex flex-col h-[750px] space-y-4">
+                <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl flex flex-col h-[400px] xl:h-[750px] space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                     <h3 className="text-sm font-bold text-white">Active Audits</h3>
                     <span className="text-[10px] bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-0.5 rounded-full font-bold text-slate-600 dark:text-slate-400">
@@ -2714,7 +2981,10 @@ export default function CrmLayout() {
                         return (
                           <button
                             key={lead.id}
-                            onClick={() => setSelectedLeadId(lead.id)}
+                            onClick={() => {
+                              setSelectedLeadId(lead.id);
+                              setIsMobileChecklistOpen(true);
+                            }}
                             className={`audit-list-item w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition-all ${
                               isSelected
                                 ? "bg-violet-950/20 border-violet-500/50 text-slate-100 font-bold shadow-[0_2px_8px_-3px_rgba(99,102,241,0.15)]"
@@ -2761,9 +3031,22 @@ export default function CrmLayout() {
                   </div>
                 </div>
 
+                {/* Mobile checklist drawer backdrop */}
+                {isMobileChecklistOpen && selectedLead && (
+                  <div 
+                    className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm xl:hidden"
+                    onClick={() => setIsMobileChecklistOpen(false)}
+                  />
+                )}
+
                 {/* Audit checklist pane */}
                 {selectedLead && (
-                  <div className="xl:col-span-2 p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl flex flex-col h-[750px] space-y-6">
+                  <div className={`
+                    fixed inset-y-0 right-0 z-50 w-full max-w-2xl bg-slate-900 border-l border-slate-800 p-6 flex flex-col h-full space-y-6 overflow-y-auto shadow-2xl transition-transform duration-300
+                    xl:static xl:z-auto xl:w-auto xl:shadow-none xl:border-l-0 xl:rounded-2xl xl:bg-slate-900/60 xl:translate-x-0 xl:flex xl:h-[750px]
+                    ${isMobileChecklistOpen ? "translate-x-0" : "translate-x-full xl:translate-x-0"}
+                    ${!isMobileChecklistOpen ? "hidden xl:flex" : "flex"}
+                  `}>
                     <div className="flex flex-col space-y-4 border-b border-slate-800 pb-4">
                       <div className="flex items-center justify-between">
                         <div>
@@ -2771,12 +3054,21 @@ export default function CrmLayout() {
                           <p className="text-[10px] text-slate-400 mt-0.5">Click to change state. Verified scans show verified icon.</p>
                         </div>
                         
-                        <div className="p-1.5 px-2.5 bg-slate-950 border border-slate-900 rounded-lg text-[10px] font-semibold text-slate-400 select-all shrink-0">
-                          ID: <span className="font-mono text-slate-700 dark:text-slate-300 font-bold">
-                            {leads.filter(l => l.status !== "Dropped").findIndex(l => l.id === selectedLead.id) !== -1
-                              ? leads.filter(l => l.status !== "Dropped").findIndex(l => l.id === selectedLead.id) + 1
-                              : selectedLead.id}
-                          </span>
+                        <div className="flex items-center space-x-3 shrink-0">
+                          <div className="p-1.5 px-2.5 bg-slate-950 border border-slate-900 rounded-lg text-[10px] font-semibold text-slate-400 select-all">
+                            ID: <span className="font-mono text-slate-700 dark:text-slate-300 font-bold">
+                              {leads.filter(l => l.status !== "Dropped").findIndex(l => l.id === selectedLead.id) !== -1
+                                ? leads.filter(l => l.status !== "Dropped").findIndex(l => l.id === selectedLead.id) + 1
+                                : selectedLead.id}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setIsMobileChecklistOpen(false)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 xl:hidden flex items-center justify-center cursor-pointer hover:bg-slate-800"
+                          >
+                            <FaTimes className="text-xs" />
+                          </button>
                         </div>
                       </div>
 
@@ -3193,7 +3485,7 @@ export default function CrmLayout() {
           )}
 
           {/* 9. MEETINGS & REMINDERS */}
-          {currentTab === "Meetings" && (
+          {/* {currentTab === "Meetings" && (
             <div className="space-y-6">
               
               <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl flex items-center justify-between">
@@ -3214,7 +3506,6 @@ export default function CrmLayout() {
                 </button>
               </div>
 
-              {/* Meetings grid display */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {meetings.map((meet) => (
                   <div
@@ -3269,7 +3560,7 @@ export default function CrmLayout() {
               </div>
 
             </div>
-          )}
+          )} */}
 
           {/* 10. DROP LEADS */}
           {currentTab === "DropLeads" && (
@@ -3413,17 +3704,64 @@ export default function CrmLayout() {
       
       {/* A. ADD NEW LEAD MODAL */}
       {isAddLeadOpen && (
-        <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5">
+        <div className="fixed inset-0 z-50 bg-[#020207]/80 dark:bg-[#020207]/80 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-lg bg-white dark:bg-[#0a0a1a] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5 overflow-visible">
             <button 
               onClick={() => setIsAddLeadOpen(false)}
-              className="absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-200 rounded-lg"
+              className="absolute top-4 right-4 p-2 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg"
             >
               <FaTimes />
             </button>
 
-            <h3 className="text-sm font-bold text-white border-b border-slate-900 pb-3">Initiate New Lead File</h3>
+            <h3 className="text-sm font-bold text-slate-800 dark:text-white border-b border-slate-200 dark:border-slate-900 pb-3">Initiate New Lead File</h3>
 
+            {addLeadStep === "initial" && (
+              <div className="flex flex-col space-y-4 py-4">
+                <button 
+                  onClick={() => {
+                    setAddLeadSelectedCategory("Study Abroad");
+                    setAddLeadStep("form");
+                  }}
+                  className="group w-full py-4 px-6 bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600 rounded-2xl text-slate-700 dark:text-slate-200 font-bold transition-all duration-200 text-left flex justify-between items-center shadow-sm"
+                >
+                  <span className="text-sm font-bold text-slate-800 dark:text-white">Study Abroad</span>
+                  <FaChevronRight className="text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 group-hover:translate-x-0.5 transition-all" />
+                </button>
+                <button 
+                  onClick={() => {
+                    setAddLeadStep("visa-options");
+                  }}
+                  className="group w-full py-4 px-6 bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600 rounded-2xl text-slate-700 dark:text-slate-200 font-bold transition-all duration-200 text-left flex justify-between items-center shadow-sm"
+                >
+                  <span className="text-sm font-bold text-slate-800 dark:text-white">Visa</span>
+                  <FaChevronRight className="text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 group-hover:translate-x-0.5 transition-all" />
+                </button>
+              </div>
+            )}
+
+            {addLeadStep === "visa-options" && (
+              <div className="flex flex-col space-y-4 py-4">
+                <div className="flex items-center space-x-2 text-slate-500 dark:text-slate-400 mb-2">
+                  <button onClick={() => setAddLeadStep("initial")} className="hover:text-slate-800 dark:hover:text-white transition-colors p-1"><FaChevronLeft /></button>
+                  <span className="text-xs font-bold uppercase tracking-wider">Select Visa Type</span>
+                </div>
+                {["Work", "Business", "Residence", "Tourist"].map((visaOpt) => (
+                  <button 
+                    key={visaOpt}
+                    onClick={() => {
+                      setAddLeadSelectedCategory(visaOpt + " Visa");
+                      setAddLeadStep("form");
+                    }}
+                    className="group w-full py-4 px-6 bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600 rounded-2xl text-slate-700 dark:text-slate-200 font-bold transition-all duration-200 text-left flex justify-between items-center shadow-sm"
+                  >
+                    <span className="text-sm font-bold text-slate-800 dark:text-white">{visaOpt} Visa</span>
+                    <FaChevronRight className="text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 group-hover:translate-x-0.5 transition-all" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {addLeadStep === "form" && (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -3489,52 +3827,47 @@ export default function CrmLayout() {
                 showToast("Lead initialized successfully!");
                 setIsAddLeadOpen(false);
               }}
-              className="space-y-4 text-xs"
+              className="space-y-4 text-xs px-1.5 -mx-1.5 py-1 overflow-visible"
             >
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-slate-400 font-bold block">Client Full Name</label>
-                  <input required name="name" placeholder="e.g. John Doe" type="text" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none" />
+                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Client Full Name</label>
+                  <input required name="name" placeholder="e.g. John Doe" type="text" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl focus:outline-none" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-slate-400 font-bold block">Contact Number</label>
-                  <input required name="phone" placeholder="+91 99999 99999" type="text" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none" />
+                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Contact Number</label>
+                  <PhoneInput name="phone" required placeholder="9876543210" />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-slate-400 font-bold block">Email Address</label>
-                <input required name="email" placeholder="e.g. john.doe@example.com" type="email" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none" />
+                <label className="text-slate-500 dark:text-slate-400 font-bold block">Email Address</label>
+                <input required name="email" placeholder="e.g. john.doe@example.com" type="email" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl focus:outline-none" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-slate-400 font-bold block">Immigration Country</label>
-                  <select name="country" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none">
-                    <option value="USA">USA</option>
-                    <option value="UK">UK</option>
-                    <option value="Canada">Canada</option>
-                    <option value="Europe">Europe</option>
-                  </select>
+                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Immigration Country</label>
+                  <SearchableCountrySelect name="country" required />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-slate-400 font-bold block">Visa Subtype</label>
-                  <input required name="visaType" placeholder="e.g. Student (F-1)" type="text" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none" />
+                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Visa Subtype</label>
+                  <input required name="visaType" defaultValue={addLeadSelectedCategory} placeholder="e.g. Student (F-1)" type="text" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl focus:outline-none" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-slate-400 font-bold block">Assign Case Officer</label>
-                  <select name="counselor" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none">
+                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Assign Case Officer</label>
+                  <select name="counselor" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl focus:outline-none">
                     <option value="Priya Mehta">Priya Mehta</option>
                     <option value="Rohit Verma">Rohit Verma</option>
                     <option value="Simran Kaur">Simran Kaur</option>
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-slate-400 font-bold block">Lead Source</label>
-                  <select name="source" defaultValue="MANUAL" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none">
+                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Lead Source</label>
+                  <select name="source" defaultValue="MANUAL" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl focus:outline-none">
                     <option value="MANUAL">Manual Entry</option>
                     <option value="WEBSITE">Website</option>
                     <option value="REFERRAL">Referral</option>
@@ -3546,14 +3879,14 @@ export default function CrmLayout() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-slate-400 font-bold block">Initial Invoiced Package (INR)</label>
-                  <input min="0" name="totalPackage" placeholder="50000 (optional)" type="number" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none" />
+                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Initial Invoiced Package (INR)</label>
+                  <input min="0" name="totalPackage" placeholder="50000 (optional)" type="number" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl focus:outline-none" />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-slate-400 font-bold block">Initial File Notes</label>
-                <textarea rows={2} name="notes" placeholder="Any initial information provided by client..." className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl focus:outline-none" />
+                <label className="text-slate-500 dark:text-slate-400 font-bold block">Initial File Notes</label>
+                <textarea rows={2} name="notes" placeholder="Any initial information provided by client..." className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 p-3 rounded-xl focus:outline-none" />
               </div>
 
               <button 
@@ -3563,6 +3896,7 @@ export default function CrmLayout() {
                 Open Case Roster
               </button>
             </form>
+            )}
           </div>
         </div>
       )}
@@ -3570,7 +3904,7 @@ export default function CrmLayout() {
       {/* B. RECORD PAYMENT DEPOSIT MODAL */}
       {isAddPaymentOpen && (
         <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5">
+          <div className="w-full max-w-md bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => setIsAddPaymentOpen(false)}
               className="absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-200 rounded-lg"
@@ -3755,7 +4089,7 @@ export default function CrmLayout() {
       {/* C. SCHEDULE NEW MEETING MODAL */}
       {isAddMeetingOpen && (
         <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5">
+          <div className="w-full max-w-md bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => setIsAddMeetingOpen(false)}
               className="absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-200 rounded-lg"
@@ -3832,7 +4166,7 @@ export default function CrmLayout() {
       {/* C.5 EDIT EXISTING MEETING MODAL */}
       {isEditMeetingOpen && selectedMeeting && (
         <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5">
+          <div className="w-full max-w-md bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => {
                 setIsEditMeetingOpen(false);
@@ -3944,7 +4278,7 @@ export default function CrmLayout() {
       {/* D. PASTE URL MODAL */}
       {urlModalData && (
         <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5">
+          <div className="w-full max-w-md bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => setUrlModalData(null)}
               className="absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-200 rounded-lg"
@@ -4004,7 +4338,7 @@ export default function CrmLayout() {
       {/* E. INVOICES MANAGER MODAL */}
       {invoiceLeadId && (
         <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5">
+          <div className="w-full max-w-2xl bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => {
                 setInvoiceLeadId(null);
@@ -4042,7 +4376,8 @@ export default function CrmLayout() {
                         No transactions recorded for this client. Log a deposit first.
                       </p>
                     ) : (
-                      <table className="w-full text-left text-xs border-collapse">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs border-collapse min-w-[500px]">
                         <thead>
                           <tr className="border-b border-slate-800/60 text-slate-500 font-bold">
                             <th className="pb-2">Invoice #</th>
@@ -4144,6 +4479,7 @@ export default function CrmLayout() {
                           })}
                         </tbody>
                       </table>
+                      </div>
                     )}
                   </div>
                 </>
@@ -4156,7 +4492,7 @@ export default function CrmLayout() {
       {/* F. PASTE INVOICE URL MODAL */}
       {urlInvoiceData && (
         <div className="fixed inset-0 z-[60] bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5">
+          <div className="w-full max-w-md bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => setUrlInvoiceData(null)}
               className="absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-200 rounded-lg cursor-pointer"
@@ -4216,7 +4552,7 @@ export default function CrmLayout() {
       {/* G. ADD NEW STAFF MODAL */}
       {isAddStaffOpen && (
         <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-xl bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5">
+          <div className="w-full max-w-xl bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => setIsAddStaffOpen(false)}
               className="absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-200 rounded-lg cursor-pointer"
@@ -4353,7 +4689,7 @@ export default function CrmLayout() {
       {/* H. EDIT STAFF / CONFIGURE ACCESS MODAL */}
       {isEditStaffOpen && editingStaff && (
         <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-xl bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5">
+          <div className="w-full max-w-xl bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => {
                 setIsEditStaffOpen(false);

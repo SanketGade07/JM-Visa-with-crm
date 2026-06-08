@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["192.168.1.103", "192.168.1.103:3000", "http://192.168.1.103:3000"],
   async headers() {
     return [
       {
@@ -19,7 +20,7 @@ const nextConfig: NextConfig = {
         // Internal CRM API — allow same-origin only (no wildcard)
         source: "/api/:path*",
         headers: [
-          { key: "Access-Control-Allow-Origin", value: "same-origin" },
+          { key: "Access-Control-Allow-Origin", value: "http://192.168.1.103:3000" },
           {
             key: "Access-Control-Allow-Methods",
             value: "GET, POST, PUT, DELETE, OPTIONS",
