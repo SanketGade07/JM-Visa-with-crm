@@ -1,7 +1,30 @@
 "use client";
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import Select from 'react-select';
+import Select, { type ClearIndicatorProps, type StylesConfig } from 'react-select';
+
+type FilterOption = { value: string; label: string };
+
+function PremiumClearIndicator(props: ClearIndicatorProps<FilterOption>) {
+  const { innerProps } = props;
+  return (
+    <div
+      {...innerProps}
+      className={`filter-clear-btn${innerProps.className ? ` ${innerProps.className}` : ""}`}
+      title="Reset filter"
+      aria-label="Reset filter"
+    >
+      <svg viewBox="0 0 12 12" fill="none" aria-hidden="true" className="filter-clear-icon">
+        <path
+          d="M3.25 3.25l5.5 5.5M8.75 3.25l-5.5 5.5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
+    </div>
+  );
+}
 import { getNames } from 'country-list';
 import { defaultCountries, parseCountry, FlagImage } from 'react-international-phone';
 import 'react-international-phone/style.css';
@@ -9,19 +32,39 @@ import { PhoneNumberUtil } from 'google-libphonenumber';
 
 const countryOptions = getNames().map(name => ({ value: name, label: name })).sort((a, b) => a.label.localeCompare(b.label));
 
-export function SearchableCountrySelect({ name, value, onChange, required }: { name?: string, value?: string, onChange?: (val: string) => void, required?: boolean }) {
+export const destinationFilterOptions = [
+  { value: "All", label: "All Countries" },
+  ...countryOptions,
+];
+
+export const leadStatusFilterOptions = [
+  { value: "All", label: "All Statuses" },
+  { value: "New Lead", label: "New Lead" },
+  { value: "Contacted", label: "Contacted" },
+  { value: "Follow-Up", label: "Follow-Up" },
+  { value: "Interested", label: "Interested" },
+  { value: "Documents Pending", label: "Documents Pending" },
+  { value: "Documents Received", label: "Documents Received" },
+  { value: "Under Verification", label: "Under Verification" },
+  { value: "Ready For Submission", label: "Ready For Submission" },
+  { value: "Visa Submitted", label: "Visa Submitted" },
+  { value: "Approved / Rejected", label: "Approved / Rejected" },
+  { value: "Closed", label: "Closed" },
+  { value: "Dropped", label: "Dropped" },
+];
+
+function useSelectPortal(id: string) {
   const [portalNode, setPortalNode] = React.useState<HTMLElement | null>(null);
 
   React.useEffect(() => {
-    // Create a dedicated div for the portal, appended to body
-    const el = document.createElement('div');
-    el.setAttribute('id', 'country-select-portal');
-    el.style.position = 'absolute';
-    el.style.top = '0';
-    el.style.left = '0';
-    el.style.width = '0';
-    el.style.height = '0';
-    el.style.zIndex = '99999';
+    const el = document.createElement("div");
+    el.setAttribute("id", id);
+    el.style.position = "absolute";
+    el.style.top = "0";
+    el.style.left = "0";
+    el.style.width = "0";
+    el.style.height = "0";
+    el.style.zIndex = "99999";
     document.body.appendChild(el);
     setPortalNode(el);
     return () => {
@@ -29,7 +72,276 @@ export function SearchableCountrySelect({ name, value, onChange, required }: { n
         document.body.removeChild(el);
       }
     };
-  }, []);
+  }, [id]);
+
+  return portalNode;
+}
+
+const filterSelectStyles: StylesConfig<FilterOption> = {
+  menuPortal: (base) => ({ ...base, zIndex: 99999 }),
+  valueContainer: (base) => ({
+    ...base,
+    padding: "2px 10px",
+    overflow: "hidden",
+  }),
+  input: (base, props) => ({
+    ...base,
+    margin: 0,
+    padding: 0,
+    border: "none",
+    outline: "none",
+    boxShadow: "none",
+    background: "transparent",
+    color: "var(--form-text)",
+    opacity: props.selectProps.menuIsOpen ? 1 : 0,
+    width: props.selectProps.menuIsOpen ? "100%" : 0,
+    minWidth: props.selectProps.menuIsOpen ? "2px" : 0,
+    caretColor: "var(--form-focus)",
+  }),
+  placeholder: (base) => ({ ...base, margin: 0, fontSize: "11px" }),
+  singleValue: (base, props) => ({
+    ...base,
+    display: props.selectProps.menuIsOpen ? "none" : "block",
+    margin: 0,
+    paddingLeft: 0,
+    color: "var(--form-text)",
+    fontSize: "11px",
+    maxWidth: "calc(100% - 20px)",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  }),
+  indicatorsContainer: (base) => ({
+    ...base,
+    paddingRight: "4px",
+  }),
+  indicatorSeparator: () => ({
+    display: "none",
+  }),
+  dropdownIndicator: (base) => ({
+    ...base,
+    padding: "2px 4px",
+  }),
+  clearIndicator: (base) => ({
+    ...base,
+    padding: 0,
+    marginRight: "2px",
+    cursor: "pointer",
+  }),
+  control: (base, state) => ({
+    ...base,
+    backgroundColor: "var(--form-bg)",
+    borderColor: state.isFocused ? "var(--form-focus)" : "var(--form-border)",
+    color: "var(--form-text)",
+    borderRadius: "0.5rem",
+    minHeight: "30px",
+    minWidth: "155px",
+    fontSize: "11px",
+    overflow: "visible",
+    boxShadow: state.isFocused ? "0 0 0 1px var(--form-focus)" : "none",
+    "&:hover": {
+      borderColor: state.isFocused ? "var(--form-focus)" : "var(--form-border)",
+    },
+  }),
+  menu: (base) => ({
+    ...base,
+    backgroundColor: "var(--form-bg)",
+    border: "1px solid var(--form-border)",
+    borderRadius: "0.5rem",
+    overflow: "hidden",
+    padding: "4px",
+    zIndex: 99999,
+    minWidth: "100%",
+    width: "max-content",
+    maxWidth: "280px",
+  }),
+  menuList: (base) => ({
+    ...base,
+    maxHeight: "280px",
+    paddingRight: "1px",
+    paddingBottom: "4px",
+  }),
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: state.isFocused ? "var(--form-selected-bg)" : "var(--form-bg)",
+    color: state.isSelected ? "var(--form-selected-text)" : "var(--form-text)",
+    cursor: "pointer",
+    borderRadius: "0.375rem",
+    fontSize: "11px",
+    lineHeight: "1.35",
+    padding: "8px 10px",
+    whiteSpace: "nowrap",
+    ":active": {
+      backgroundColor: "var(--form-selected-bg)",
+    },
+  }),
+};
+
+export function SearchableFilterSelect({
+  value,
+  onChange,
+  options,
+  placeholder = "Select...",
+  portalId = "filter-select-portal",
+  clearValue = "All",
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+  portalId?: string;
+  clearValue?: string;
+}) {
+  const portalNode = useSelectPortal(portalId);
+  const selected = options.find((o) => o.value === value) ?? null;
+  const showClear = value !== clearValue;
+
+  return (
+    <>
+      <style>{`
+        :root {
+          --form-bg: #020617;
+          --form-border: #1e293b;
+          --form-text: #e2e8f0;
+          --form-focus: var(--color-violet-500, #3b82f6);
+          --form-hover: #0f172a;
+          --form-selected-bg: #1e293b;
+          --form-selected-text: #a78bfa;
+        }
+        html.light {
+          --form-bg: #ffffff;
+          --form-border: #cbd5e1;
+          --form-text: #0f172a;
+          --form-hover: #f1f5f9;
+          --form-selected-bg: #e2e8f0;
+          --form-selected-text: var(--color-violet-600, #2563eb);
+        }
+        .filter-react-select input,
+        .filter-react-select input:focus,
+        .filter-react-select input:focus-visible,
+        .filter-select__input,
+        .filter-select__input:focus,
+        .filter-select__input:focus-visible,
+        html.light .filter-react-select input,
+        html.light .filter-react-select input:focus,
+        html.light .filter-select__input,
+        html.light .filter-select__input:focus {
+          background: transparent !important;
+          border: none !important;
+          border-color: transparent !important;
+          box-shadow: none !important;
+          outline: none !important;
+          -webkit-appearance: none;
+          appearance: none;
+        }
+        .filter-select__value-container {
+          padding: 2px 10px !important;
+        }
+        .filter-select__input-container,
+        .filter-select__input-container:focus,
+        .filter-select__input-container:focus-within {
+          margin: 0 !important;
+          padding: 0 !important;
+          border: none !important;
+          box-shadow: none !important;
+          outline: none !important;
+          background: transparent !important;
+        }
+        .filter-select__control--menu-is-open .filter-select__single-value {
+          display: none !important;
+        }
+        .filter-select__control:not(.filter-select__control--menu-is-open) .filter-select__input-container {
+          position: absolute !important;
+          width: 0 !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+        .filter-select__single-value {
+          margin-left: 0 !important;
+          padding-left: 0 !important;
+        }
+        .filter-select__menu-list {
+          scrollbar-width: thin;
+          scrollbar-color: #94a3b8 transparent;
+        }
+        .filter-select__menu-list::-webkit-scrollbar {
+          width: 2px;
+        }
+        .filter-select__menu-list::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .filter-select__menu-list::-webkit-scrollbar-thumb {
+          background-color: #94a3b8;
+          border-radius: 999px;
+        }
+        html.light .filter-select__menu-list::-webkit-scrollbar-thumb {
+          background-color: #cbd5e1;
+        }
+        .filter-select__clear-indicator {
+          padding: 0 !important;
+        }
+        .filter-clear-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 20px;
+          height: 20px;
+          border-radius: 9999px;
+          background: rgba(239, 68, 68, 0.12);
+          color: #ef4444;
+          cursor: pointer;
+          transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+          flex-shrink: 0;
+        }
+        .filter-clear-btn:hover {
+          background: rgba(239, 68, 68, 0.2);
+          color: #dc2626;
+          transform: scale(1.06);
+        }
+        .filter-clear-btn:active {
+          transform: scale(0.95);
+        }
+        .filter-clear-icon {
+          width: 11px;
+          height: 11px;
+          display: block;
+        }
+        html.light .filter-clear-btn {
+          background: #fee2e2;
+          color: #ef4444;
+        }
+        html.light .filter-clear-btn:hover {
+          background: #fecaca;
+          color: #dc2626;
+        }
+      `}</style>
+      {portalNode && (
+        <Select
+          className="filter-react-select"
+          classNamePrefix="filter-select"
+          options={options}
+          value={selected}
+          isSearchable
+          isClearable={showClear}
+          components={{ ClearIndicator: PremiumClearIndicator }}
+          menuPortalTarget={portalNode}
+          menuPosition="fixed"
+          menuShouldScrollIntoView={false}
+          styles={filterSelectStyles}
+          maxMenuHeight={280}
+          placeholder={placeholder}
+          onChange={(val) => {
+            const option = !val || Array.isArray(val) ? null : (val as FilterOption);
+            onChange(option?.value ?? clearValue);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+export function SearchableCountrySelect({ name, value, onChange, required }: { name?: string, value?: string, onChange?: (val: string) => void, required?: boolean }) {
+  const portalNode = useSelectPortal("country-select-portal");
 
   return (
     <>

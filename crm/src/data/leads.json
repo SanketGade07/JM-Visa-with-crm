@@ -58,6 +58,11 @@
       "visaFeesPaid": false
     },
     "payments": [],
+    "visaCredentials": {
+      "username": "test2_user",
+      "password": "T3st@1234",
+      "portalUrl": "https://portal.example.com/test2"
+    },
     "id": "lead-1780314836523",
     "dateCreated": "2026-06-01",
     "lastUpdated": "2026-06-01",
@@ -99,6 +104,11 @@
         "date": "2026-06-01"
       }
     ],
+    "visaCredentials": {
+      "username": "edu_user",
+      "password": "EduPass!23",
+      "portalUrl": "https://ds160.example.com/client/test3"
+    },
     "usaSlots": {
       "credentialsProvided": false,
       "slotsAvailable": false,

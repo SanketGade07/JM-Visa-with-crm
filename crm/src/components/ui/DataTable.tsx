@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { InlineColumnSearch } from "@/components/ui/InlineColumnSearch";
+import type { ColumnSearchState } from "@/hooks/useColumnSearch";
 import type { IconType } from "react-icons";
 import { 
   FiSearch, 
@@ -9,7 +11,8 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiChevronsLeft,
-  FiChevronsRight
+  FiChevronsRight,
+  FiRefreshCw
 } from "react-icons/fi";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -29,6 +32,11 @@ export type Column<T> = {
   align?: "left" | "right" | "center";
   cellClassName?: string;
   headerClassName?: string;
+  /** Enables inline column search for this column */
+  searchKey?: string;
+  searchLabel?: string;
+  searchPlaceholder?: string;
+  getSearchValue?: (row: T) => string;
 };
 
 export type RowAction<T> = {
@@ -58,10 +66,12 @@ type DataTableProps<T> = {
   searchPlaceholder?: string;
   onFilter?: () => void;
   onExport?: () => void;
+  onRefresh?: () => void;
   rightSlot?: React.ReactNode;
   className?: string;
   pagination?: boolean;
   defaultPageSize?: number;
+  columnSearch?: ColumnSearchState;
 };
 
 const alignClass = (a?: "left" | "right" | "center") =>
@@ -152,10 +162,12 @@ export default function DataTable<T>({
   searchPlaceholder = "Search…",
   onFilter,
   onExport,
+  onRefresh,
   rightSlot,
   className = "",
   pagination = false,
   defaultPageSize = 5,
+  columnSearch,
 }: DataTableProps<T>) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -220,6 +232,7 @@ export default function DataTable<T>({
                   onClick={() => (onSearchChange ? setSearchOpen(true) : undefined)}
                 />
               )}
+              {onRefresh && <ToolbarButton icon={FiRefreshCw} title="Refresh" onClick={onRefresh} />}
               <ToolbarButton icon={FiDownload} title="Export" onClick={onExport} />
               <ToolbarButton icon={FiMoreVertical} title="More" />
             </div>
@@ -233,10 +246,10 @@ export default function DataTable<T>({
       )}
 
       {/* ── Table ───────────────────────────────────────────────── */}
-      <div className="overflow-x-auto flex-1">
+      <div className="flex-1 overflow-visible">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-gray-50/70 dark:bg-slate-800/30 border-y border-gray-100 dark:border-slate-800 text-gray-400 dark:text-slate-500">
+            <tr className="bg-gray-50/70 dark:bg-slate-800/30 border-y border-gray-100 dark:border-slate-800 text-gray-500 dark:text-slate-400">
               {showCheckbox && (
                 <th className="w-9 pl-5 pr-1 py-2.5">
                   <input
@@ -248,20 +261,45 @@ export default function DataTable<T>({
                 </th>
               )}
               {showIndex && (
-                <th className="w-8 px-1 py-2.5 text-[10px] font-semibold uppercase tracking-wider">#</th>
+                <th className="w-8 px-1 py-2.5 text-[11px] font-semibold tracking-normal">#</th>
               )}
-              {columns.map((col, i) => (
-                <th
-                  key={i}
-                  className={`px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap ${alignClass(
-                    col.align
-                  )} ${col.headerClassName || ""}`}
-                >
-                  {col.header}
-                </th>
-              ))}
+              {columns.map((col, i) => {
+                const searchKey = col.searchKey;
+                const canSearch = Boolean(searchKey && columnSearch);
+                const label =
+                  col.searchLabel ||
+                  (typeof col.header === "string" ? col.header : `Column ${i + 1}`);
+
+                return (
+                  <th
+                    key={searchKey || i}
+                    className={`px-3 py-2.5 text-[11px] font-semibold tracking-normal whitespace-nowrap ${alignClass(
+                      col.align
+                    )} ${col.headerClassName || ""} ${
+                      canSearch && columnSearch?.activeColumn === searchKey ? "min-w-[155px]" : ""
+                    }`}
+                  >
+                    {canSearch && searchKey && columnSearch ? (
+                      <InlineColumnSearch
+                        columnKey={searchKey}
+                        label={label}
+                        placeholder={col.searchPlaceholder || `Search ${label.toLowerCase()}...`}
+                        value={columnSearch.filters[searchKey] ?? ""}
+                        isActive={columnSearch.activeColumn === searchKey}
+                        hasFilter={Boolean(columnSearch.filters[searchKey]?.trim())}
+                        onActivate={() => columnSearch.setActiveColumn(searchKey)}
+                        onDeactivate={() => columnSearch.setActiveColumn(null)}
+                        onChange={(value) => columnSearch.setFilter(searchKey, value)}
+                        onClear={() => columnSearch.clearFilter(searchKey)}
+                      />
+                    ) : (
+                      col.header
+                    )}
+                  </th>
+                );
+              })}
               {actions && (
-                <th className="px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-right whitespace-nowrap">
+                <th className="px-5 py-2.5 text-[11px] font-semibold tracking-normal text-right whitespace-nowrap">
                   {actionsHeader}
                 </th>
               )}

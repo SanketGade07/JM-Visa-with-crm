@@ -247,10 +247,22 @@ html.light select option {
 }
 
 html.light select:focus,
-html.light input:focus,
+html.light input:focus:not(.filter-select__input):not(.react-select__input):not(.column-search__input),
 html.light textarea:focus {
   border-color: #3b82f6 !important;
   box-shadow: 0 0 0 1px #3b82f6 !important;
+}
+
+/* React-select inner search inputs — no extra focus ring */
+html.light .filter-react-select input:focus,
+html.light .filter-select__input:focus,
+html.light .custom-react-select input:focus,
+html.light .react-select__input:focus,
+html.light .column-search__input:focus {
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 /* Keep gradient metrics icons looking amazing (make text contrasting) */
@@ -513,168 +525,190 @@ textarea {
    STATUS DROPDOWN SELECT OVERRIDES
    ========================================== */
 
-select.status-select-pill {
-  text-align: center !important;
-  text-align-last: center !important;
-  padding-left: 0.25rem !important;
-  padding-right: 0.25rem !important;
-  width: 90px !important;
-  max-width: 90px !important;
+.status-select-pill {
+  display: inline-block !important;
+  margin: 0 !important;
+  text-align: left !important;
+  padding: 0.125rem 0.625rem !important;
+  width: auto !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  line-height: 1.25 !important;
+}
+
+.status-select-pill-input {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: transparent !important;
+}
+
+.status-select-pill-input:disabled {
+  cursor: not-allowed !important;
 }
 
 /* Default/Light Mode Status Select Pills */
-html.light select.status-select-pill[data-status="New Lead"],
-select.status-select-pill[data-status="New Lead"] {
+html.light .status-select-pill[data-status="New Lead"],
+.status-select-pill[data-status="New Lead"] {
   background-color: rgba(59, 130, 246, 0.08) !important;
   color: rgb(37, 99, 235) !important;
   border-color: rgba(59, 130, 246, 0.55) !important;
 }
 
-html.light select.status-select-pill[data-status="Contacted"],
-select.status-select-pill[data-status="Contacted"] {
+html.light .status-select-pill[data-status="Contacted"],
+.status-select-pill[data-status="Contacted"] {
   background-color: rgba(16, 185, 129, 0.08) !important;
   color: rgb(5, 150, 105) !important;
   border-color: rgba(16, 185, 129, 0.55) !important;
 }
 
-html.light select.status-select-pill[data-status="Follow-Up"],
-select.status-select-pill[data-status="Follow-Up"] {
+html.light .status-select-pill[data-status="Follow-Up"],
+.status-select-pill[data-status="Follow-Up"] {
   background-color: rgba(249, 115, 22, 0.08) !important;
   color: rgb(217, 119, 6) !important;
   border-color: rgba(249, 115, 22, 0.55) !important;
 }
 
-html.light select.status-select-pill[data-status="Interested"],
-select.status-select-pill[data-status="Interested"] {
+html.light .status-select-pill[data-status="Interested"],
+.status-select-pill[data-status="Interested"] {
   background-color: rgba(168, 85, 247, 0.08) !important;
   color: rgb(147, 51, 234) !important;
   border-color: rgba(168, 85, 247, 0.55) !important;
 }
 
-html.light select.status-select-pill[data-status="Documents Pending"],
-select.status-select-pill[data-status="Documents Pending"] {
+html.light .status-select-pill[data-status="Documents Pending"],
+.status-select-pill[data-status="Documents Pending"] {
   background-color: rgba(59, 130, 246, 0.08) !important;
   color: rgb(37, 99, 235) !important;
   border-color: rgba(59, 130, 246, 0.55) !important;
 }
 
-html.light select.status-select-pill[data-status="Documents Received"],
-select.status-select-pill[data-status="Documents Received"] {
+html.light .status-select-pill[data-status="Documents Received"],
+.status-select-pill[data-status="Documents Received"] {
   background-color: rgba(249, 115, 22, 0.08) !important;
   color: rgb(217, 119, 6) !important;
   border-color: rgba(249, 115, 22, 0.55) !important;
 }
 
-html.light select.status-select-pill[data-status="Under Verification"],
-select.status-select-pill[data-status="Under Verification"] {
+html.light .status-select-pill[data-status="Under Verification"],
+.status-select-pill[data-status="Under Verification"] {
   background-color: rgba(249, 115, 22, 0.08) !important;
   color: rgb(217, 119, 6) !important;
   border-color: rgba(249, 115, 22, 0.55) !important;
 }
 
-html.light select.status-select-pill[data-status="Ready For Submission"],
-select.status-select-pill[data-status="Ready For Submission"] {
+html.light .status-select-pill[data-status="Ready For Submission"],
+.status-select-pill[data-status="Ready For Submission"] {
   background-color: rgba(168, 85, 247, 0.08) !important;
   color: rgb(147, 51, 234) !important;
   border-color: rgba(168, 85, 247, 0.55) !important;
 }
 
-html.light select.status-select-pill[data-status="Visa Submitted"],
-select.status-select-pill[data-status="Visa Submitted"] {
+html.light .status-select-pill[data-status="Visa Submitted"],
+.status-select-pill[data-status="Visa Submitted"] {
   background-color: rgba(59, 130, 246, 0.08) !important;
   color: rgb(37, 99, 235) !important;
   border-color: rgba(59, 130, 246, 0.55) !important;
 }
 
-html.light select.status-select-pill[data-status="Approved / Rejected"],
-select.status-select-pill[data-status="Approved / Rejected"] {
+html.light .status-select-pill[data-status="Approved / Rejected"],
+.status-select-pill[data-status="Approved / Rejected"] {
   background-color: rgba(16, 185, 129, 0.08) !important;
   color: rgb(5, 150, 105) !important;
   border-color: rgba(16, 185, 129, 0.55) !important;
 }
 
-html.light select.status-select-pill[data-status="Closed"],
-select.status-select-pill[data-status="Closed"] {
+html.light .status-select-pill[data-status="Closed"],
+.status-select-pill[data-status="Closed"] {
   background-color: rgba(100, 116, 139, 0.08) !important;
   color: rgb(71, 85, 105) !important;
   border-color: rgba(148, 163, 184, 0.55) !important;
 }
 
-html.light select.status-select-pill[data-status="Dropped"],
-select.status-select-pill[data-status="Dropped"] {
+html.light .status-select-pill[data-status="Dropped"],
+.status-select-pill[data-status="Dropped"] {
   background-color: rgba(244, 63, 94, 0.08) !important;
   color: rgb(225, 29, 72) !important;
   border-color: rgba(244, 63, 94, 0.55) !important;
 }
 
 /* Dark Mode Overrides for Status Select Pills */
-html.dark select.status-select-pill[data-status="New Lead"] {
+html.dark .status-select-pill[data-status="New Lead"] {
   background-color: rgba(96, 165, 250, 0.12) !important;
   color: rgb(147, 197, 253) !important;
   border-color: rgba(96, 165, 250, 0.4) !important;
 }
 
-html.dark select.status-select-pill[data-status="Contacted"] {
+html.dark .status-select-pill[data-status="Contacted"] {
   background-color: rgba(52, 211, 153, 0.12) !important;
   color: rgb(110, 231, 183) !important;
   border-color: rgba(52, 211, 153, 0.4) !important;
 }
 
-html.dark select.status-select-pill[data-status="Follow-Up"] {
+html.dark .status-select-pill[data-status="Follow-Up"] {
   background-color: rgba(251, 146, 60, 0.12) !important;
   color: rgb(253, 186, 116) !important;
   border-color: rgba(251, 146, 60, 0.4) !important;
 }
 
-html.dark select.status-select-pill[data-status="Interested"] {
+html.dark .status-select-pill[data-status="Interested"] {
   background-color: rgba(192, 132, 252, 0.12) !important;
   color: rgb(216, 180, 254) !important;
   border-color: rgba(192, 132, 252, 0.4) !important;
 }
 
-html.dark select.status-select-pill[data-status="Documents Pending"] {
+html.dark .status-select-pill[data-status="Documents Pending"] {
   background-color: rgba(96, 165, 250, 0.12) !important;
   color: rgb(147, 197, 253) !important;
   border-color: rgba(96, 165, 250, 0.4) !important;
 }
 
-html.dark select.status-select-pill[data-status="Documents Received"] {
+html.dark .status-select-pill[data-status="Documents Received"] {
   background-color: rgba(251, 146, 60, 0.12) !important;
   color: rgb(253, 186, 116) !important;
   border-color: rgba(251, 146, 60, 0.4) !important;
 }
 
-html.dark select.status-select-pill[data-status="Under Verification"] {
+html.dark .status-select-pill[data-status="Under Verification"] {
   background-color: rgba(251, 146, 60, 0.12) !important;
   color: rgb(253, 186, 116) !important;
   border-color: rgba(251, 146, 60, 0.4) !important;
 }
 
-html.dark select.status-select-pill[data-status="Ready For Submission"] {
+html.dark .status-select-pill[data-status="Ready For Submission"] {
   background-color: rgba(192, 132, 252, 0.12) !important;
   color: rgb(216, 180, 254) !important;
   border-color: rgba(192, 132, 252, 0.4) !important;
 }
 
-html.dark select.status-select-pill[data-status="Visa Submitted"] {
+html.dark .status-select-pill[data-status="Visa Submitted"] {
   background-color: rgba(96, 165, 250, 0.12) !important;
   color: rgb(147, 197, 253) !important;
   border-color: rgba(96, 165, 250, 0.4) !important;
 }
 
-html.dark select.status-select-pill[data-status="Approved / Rejected"] {
+html.dark .status-select-pill[data-status="Approved / Rejected"] {
   background-color: rgba(52, 211, 153, 0.12) !important;
   color: rgb(110, 231, 183) !important;
   border-color: rgba(52, 211, 153, 0.4) !important;
 }
 
-html.dark select.status-select-pill[data-status="Closed"] {
+html.dark .status-select-pill[data-status="Closed"] {
   background-color: rgba(148, 163, 184, 0.12) !important;
   color: rgb(203, 213, 225) !important;
   border-color: rgba(148, 163, 184, 0.4) !important;
 }
 
-html.dark select.status-select-pill[data-status="Dropped"] {
+html.dark .status-select-pill[data-status="Dropped"] {
   background-color: rgba(244, 63, 94, 0.12) !important;
   color: rgb(253, 164, 175) !important;
   border-color: rgba(244, 63, 94, 0.4) !important;

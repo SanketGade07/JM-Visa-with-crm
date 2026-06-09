@@ -134,6 +134,11 @@ export interface Lead {
   checklist: DocumentChecklist;
   payments: PaymentDetails[];
   usaSlots?: UsaSlotTracking;
+  visaCredentials?: {
+    username?: string;
+    password?: string;
+    portalUrl?: string;
+  };
   notes: string;
   lastUpdated: string;
   isDeleted: boolean;
@@ -175,6 +180,8 @@ interface CrmContextType {
   restoreLead: (leadId: string) => void;
   updateLeadNotes: (leadId: string, notes: string) => void;
   assignCounselor: (leadId: string, counselor: string) => void;
+  setLeadCredentials: (leadId: string, creds: { username?: string; password?: string; portalUrl?: string } | null) => Promise<boolean>;
+  refreshLeads: () => Promise<void>;
   getLeadActivities: (leadId: string) => Activity[];
   uploadDocument: (leadId: string, docType: keyof DocumentChecklist, fileOrUrl: File | string) => Promise<{ ok: boolean; error?: string }>;
   uploadInvoice: (leadId: string, invoiceNumber: string, fileOrUrl: File | string) => Promise<{ ok: boolean; error?: string }>;
@@ -734,6 +741,45 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const setLeadCredentials = async (
+    leadId: string,
+    creds: { username?: string; password?: string; portalUrl?: string } | null
+  ): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/leads/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: leadId, visaCredentials: creds }),
+      });
+      if (!res.ok) return false;
+
+      // Refresh local leads from API so UI reflects change
+      const leadsRes = await fetch("/api/leads?limit=1000");
+      if (leadsRes.ok) {
+        const data = await leadsRes.json();
+        setLeads(Array.isArray(data.leads) ? data.leads : (data.leads ?? []));
+      }
+      return true;
+    } catch (err) {
+      console.error("Failed to set lead credentials:", err);
+      return false;
+    }
+  };
+
+  const refreshLeads = async (): Promise<void> => {
+    try {
+      const leadsRes = await fetch("/api/leads?limit=1000");
+      if (leadsRes.ok) {
+        const data = await leadsRes.json();
+        const leadsData = Array.isArray(data.leads) ? data.leads : (data.leads ?? []);
+        setLeads(leadsData);
+        console.log(`✓ Refreshed ${leadsData.length} leads from Supabase`);
+      }
+    } catch (err) {
+      console.error("Failed to refresh leads:", err);
+    }
+  };
+
   return (
     <CrmContext.Provider
       value={{
@@ -761,6 +807,8 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         restoreLead,
         updateLeadNotes,
         assignCounselor,
+        setLeadCredentials,
+        refreshLeads,
         getLeadActivities,
         uploadDocument,
         uploadInvoice,

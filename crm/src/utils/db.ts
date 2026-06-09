@@ -9,7 +9,27 @@ export const readLeads = async (): Promise<Lead[]> => {
     console.error("Error reading leads from Supabase:", error);
     return [];
   }
-  return (data || []) as Lead[];
+  
+  // Map lowercase visacredentials column to camelCase visaCredentials property
+  const leadsData = (data || []).map((lead: any) => ({
+    ...lead,
+    visaCredentials: lead.visacredentials || lead.visaCredentials,
+  })) as Lead[];
+  
+  // Log sample credential data for debugging
+  const leadsWithCreds = leadsData.filter(l => l.visaCredentials);
+  console.log(`📊 readLeads() returned ${leadsData.length} total leads`);
+  console.log(`✓ ${leadsWithCreds.length} leads have visaCredentials`);
+  if (leadsWithCreds.length > 0) {
+    console.log(`📌 Sample credential (first lead with creds):`, leadsWithCreds[0].visaCredentials);
+  } else {
+    console.log(`⚠️ No leads with credentials found`);
+    if (leadsData.length > 0) {
+      console.log(`📌 Sample lead structure:`, leadsData[0]);
+    }
+  }
+  
+  return leadsData;
 };
 
 export const writeLeads = async (leads: Lead[]): Promise<boolean> => {
@@ -20,6 +40,25 @@ export const writeLeads = async (leads: Lead[]): Promise<boolean> => {
     return false;
   }
   return true;
+};
+
+export const updateLeadCredentials = async (
+  leadId: string,
+  creds: { username?: string; password?: string; portalUrl?: string } | null
+): Promise<boolean> => {
+  const supabase = getSupabase();
+  try {
+    const payload = creds ? { visaCredentials: creds } : { visaCredentials: null };
+    const { error } = await supabase.from("leads").update(payload).eq("id", leadId);
+    if (error) {
+      console.error("Error updating lead credentials in Supabase:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Exception updating lead credentials:", err);
+    return false;
+  }
 };
 
 // ── Meetings ─────────────────────────────────────────────────────────────────
