@@ -15,6 +15,7 @@ import {
   FiChevronsRight,
   FiRefreshCw
 } from "react-icons/fi";
+import { RiWhatsappLine } from "react-icons/ri";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Pixel-faithful "Lead Management" table — theme-aware (light + dark).
@@ -82,6 +83,25 @@ type DataTableProps<T> = {
 
 const alignClass = (a?: "left" | "right" | "center") =>
   a === "right" ? "text-right" : a === "center" ? "text-center" : "text-left";
+
+const COMM_ACTION_TITLES = new Set(["call", "phone", "whatsapp", "message", "email"]);
+
+function resolveActionIcon<T>(action: RowAction<T>): IconType {
+  const key = action.title.toLowerCase();
+  if (key === "whatsapp" || key === "message") return RiWhatsappLine;
+  return action.icon;
+}
+
+function getActionIconClasses(title: string): string {
+  const key = title.toLowerCase();
+  if (key === "call" || key === "phone" || key === "email") {
+    return "text-sky-400 hover:text-sky-300";
+  }
+  if (key === "whatsapp" || key === "message") {
+    return "text-emerald-500 hover:text-emerald-400";
+  }
+  return "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300";
+}
 
 function ToolbarButton({
   icon: Icon,
@@ -377,20 +397,21 @@ export default function DataTable<T>({
                   ))}
                   {actions && (
                     <td className="px-5 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-2.5">
                         {rowActions.map((action, ai) => {
-                          const Icon = action.icon;
+                          const Icon = resolveActionIcon(action);
                           const disabled = action.disabled?.(row) ?? false;
+                          const isCommAction = COMM_ACTION_TITLES.has(action.title.toLowerCase());
                           return (
-                             <button
+                            <button
                               key={ai}
                               type="button"
                               data-tooltip={action.title}
                               disabled={disabled}
                               onClick={() => action.onClick(row)}
-                              className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              className={`flex items-center justify-center p-0.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${getActionIconClasses(action.title)}`}
                             >
-                              <Icon className={action.title === "WhatsApp" ? "text-[16px]" : "text-[13.5px]"} />
+                              <Icon className={isCommAction ? "text-[17px]" : "text-[15px]"} />
                             </button>
                           );
                         })}

@@ -1,169 +1,430 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { createPortal } from "react-dom";
-import { VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Meeting } from "@/context/CrmContext";
-import { ROLE_TABS, AVAILABLE_TABS } from "@/utils/crmConstants";
-import { docProgress, timeAgo, getStatusColor } from "@/utils/leadHelpers";
-import { AustraliaFlag, MalaysiaFlag, IndonesiaFlag, SingaporeFlag } from "@/components/CountryFlags";
+import React, { useMemo, useState } from "react";
+import type { Lead } from "@/context/CrmContext";
+import { timeAgo } from "@/utils/leadHelpers";
+import { getCountryFlag } from "@/components/CountryFlags";
 import {
-  FaUserFriends, FaGlobe, FaCheckSquare, FaCalendarAlt, FaHistory,
-  FaPassport, FaFileInvoiceDollar, FaChartBar, FaUserLock, FaPlus,
-  FaTrash, FaUndo, FaSearch, FaTimes, FaCoins, FaCheckCircle,
-  FaInfoCircle, FaFileDownload, FaFileUpload, FaPaperPlane,
-  FaSun, FaMoon, FaEllipsisV, FaChevronLeft, FaChevronRight,
-  FaMinus, FaExpand, FaEye, FaPhone, FaCommentDots, FaCog, FaEnvelope,
-  FaWhatsapp, FaExternalLinkAlt, FaSignOutAlt, FaKey, FaClipboard, FaEdit, FaSave
-} from "react-icons/fa";
-import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiEye, FiSettings, FiGlobe, FiMenu, FiUser, FiLock } from "react-icons/fi";
-import DataTable, { exportRowsToCsv, StatusPill, getPillClasses, ProgressBar } from "@/components/ui/DataTable";
-import { SearchableCountrySelect, PhoneInput } from "@/components/ui/FormInputs";
-// @ts-ignore
-import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
-import { getLeadAvatar, getLeadDescription, getLeadCompany } from "../helpers/leadDisplayHelpers";
+  FiFilter,
+  FiSend,
+  FiEye,
+  FiArchive,
+  FiCheckCircle,
+} from "react-icons/fi";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 
+function CountryCell({ country }: { country: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 min-w-0 max-w-full">
+      {getCountryFlag(country)}
+      <span className="text-[13px] text-gray-700 dark:text-white truncate">{country}</span>
+    </span>
+  );
+}
+
+function FilterButton({ active, onClick }: { active?: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-colors ${
+        active
+          ? "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-400"
+          : "border-gray-200 text-gray-400 hover:text-gray-600 hover:border-gray-300 dark:border-slate-700/80 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600"
+      }`}
+      aria-label="Filter"
+    >
+      <FiFilter className="text-[14px]" />
+    </button>
+  );
+}
+
+function DeskFooter({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <div className="border-t border-gray-200 dark:border-slate-800/80 px-5 py-3.5">
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full flex items-center justify-center gap-2 text-[13px] font-medium text-blue-600 hover:text-blue-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors"
+      >
+        <FiEye className="text-[14px]" />
+        {label}
+      </button>
+    </div>
+  );
+}
+
+type DeskColumn<T> = {
+  key: string;
+  header: string;
+  className?: string;
+  render: (row: T, index: number) => React.ReactNode;
+};
+
+function SubmissionDeskTable<T>({
+  columns,
+  rows,
+  emptyText,
+  columnWidths,
+}: {
+  columns: DeskColumn<T>[];
+  rows: T[];
+  emptyText: string;
+  columnWidths?: string[];
+}) {
+  return (
+    <div className="w-full overflow-hidden">
+      <table className="w-full table-fixed border-collapse">
+        {columnWidths && (
+          <colgroup>
+            {columnWidths.map((width, i) => (
+              <col key={i} style={{ width }} />
+            ))}
+          </colgroup>
+        )}
+        <thead>
+          <tr className="border-b border-gray-200 dark:border-slate-800/80">
+            {columns.map((col) => (
+              <th
+                key={col.key}
+                className={`px-3 py-2.5 text-left text-[11px] font-medium text-gray-400 dark:text-slate-500 uppercase tracking-wide ${col.className ?? ""}`}
+              >
+                {col.header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr
+              key={index}
+              className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50 dark:border-slate-800/50 dark:hover:bg-slate-800/20 transition-colors"
+            >
+              {columns.map((col) => (
+                <td
+                  key={col.key}
+                  className={`px-3 py-2.5 align-middle max-w-0 ${col.className ?? ""}`}
+                >
+                  {col.render(row, index)}
+                </td>
+              ))}
+            </tr>
+          ))}
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={columns.length} className="px-3 py-10 text-center text-[12px] text-gray-400 dark:text-slate-500">
+                {emptyText}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SubmissionDeskCard({
+  dotColor,
+  title,
+  subtitle,
+  filterActive,
+  onFilterToggle,
+  children,
+  footerLabel,
+  onFooterClick,
+}: {
+  dotColor: "green" | "blue";
+  title: string;
+  subtitle: string;
+  filterActive?: boolean;
+  onFilterToggle: () => void;
+  children: React.ReactNode;
+  footerLabel: string;
+  onFooterClick: () => void;
+}) {
+  return (
+    <div className="bg-white dark:bg-slate-900/60 border border-gray-200/70 dark:border-slate-800/80 rounded-2xl flex flex-col overflow-hidden min-w-0 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-16px_rgba(16,24,40,0.12)] dark:shadow-none">
+      <div className="px-5 pt-5 pb-4 border-b border-gray-200 dark:border-slate-800/80">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-[15px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <span
+                className={`w-2 h-2 rounded-full shrink-0 ${
+                  dotColor === "green" ? "bg-emerald-500" : "bg-sky-500"
+                }`}
+              />
+              {title}
+            </h3>
+            <p className="text-[12px] text-gray-500 dark:text-slate-500 mt-1.5 leading-relaxed">{subtitle}</p>
+          </div>
+          <FilterButton active={filterActive} onClick={onFilterToggle} />
+        </div>
+      </div>
+
+      <div className="flex-1">{children}</div>
+
+      <DeskFooter label={footerLabel} onClick={onFooterClick} />
+    </div>
+  );
+}
 
 export function SubmissionsTab() {
   const {
-    leads, meetings, users, currentUser, currentRole, currentTab, setCurrentTab,
-    setCurrentRole, setCurrentUser, addUser, deleteUser, addLead, updateLeadStatus,
-    updateUsaSlots, addPayment, addMeeting, updateMeeting, restoreLead, updateLeadNotes,
-    assignCounselor, uploadDocument, uploadInvoice, getLeadDocuments,
-    handleLogout, searchTerm, setSearchTerm, checklistSearch, setChecklistSearch,
-    isMobileSidebarOpen, setIsMobileSidebarOpen, isMobileDetailOpen, setIsMobileDetailOpen,
-    isMobileSlotSettingsOpen, setIsMobileSlotSettingsOpen, isMobileChecklistOpen, setIsMobileChecklistOpen,
-    theme, setTheme, shouldAnimate, setShouldAnimate, getAnimClass, toggleTheme,
-    toast, setToast, showToast, uploadingKey, setUploadingKey,
-    urlModalData, setUrlModalData, pastedUrl, setPastedUrl, uploadError, setUploadError,
-    invoiceLeadId, setInvoiceLeadId, urlInvoiceData, setUrlInvoiceData,
-    pastedInvoiceUrl, setPastedInvoiceUrl, uploadInvoiceError, setUploadInvoiceError,
-    uploadingInvoiceKey, setUploadingInvoiceKey, statusFilter, setStatusFilter,
-    kpiFilter, setKpiFilter, countryFilter, setCountryFilter,
-    selectedLeadId, setSelectedLeadId, isAddLeadOpen, setIsAddLeadOpen,
-    addLeadStep, setAddLeadStep, addLeadSelectedCategory, setAddLeadSelectedCategory,
-    isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
-    selectedMeeting, setSelectedMeeting, isEditMeetingOpen, setIsEditMeetingOpen,
-    isAddStaffOpen, setIsAddStaffOpen, isEditStaffOpen, setIsEditStaffOpen,
-    editingStaff, setEditingStaff, addStaffRole, setAddStaffRole,
-    addStaffCustomRole, setAddStaffCustomRole, editStaffRole, setEditStaffRole,
-    editStaffCustomRole, setEditStaffCustomRole, leadsMgmtTab, setLeadsMgmtTab,
-    selectedRevenuePeriod, setSelectedRevenuePeriod, hoveredBarIndex, setHoveredBarIndex,
-    countrySortOrder, setCountrySortOrder, selectedCalendarDate, setSelectedCalendarDate,
-    dateRangeStart, setDateRangeStart, dateRangeEnd, setDateRangeEnd,
-    calMonth, setCalMonth, calYear, setCalYear, hoveredRetentionMonth, setHoveredRetentionMonth,
-    isMapModalOpen, setIsMapModalOpen, mapZoom, setMapZoom, mapCenter, setMapCenter,
-    cardMapZoom, setCardMapZoom, cardMapCenter, setCardMapCenter,
-    hoveredCountry, setHoveredCountry, tooltipRef, tooltipPosRef, isMounted,
-    handleCountryMouseEnter, handleCountryMouseMove, handleCountryMouseLeave,
-    handleCountryClick, resetMap, startDate, setStartDate, endDate, setEndDate,
-    depositLeadId, setDepositLeadId, tempInvoiceFile, setTempInvoiceFile,
-    tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
-    allowedTabs, userAllowedTabs, canModifyLeads, canVerifyDocs, canSubmitVisa, canManagePayments,
-    openSignedUrl, selectedLead, activeLeads, monthlyChart, chartMax, countryColors,
-    countryStats, countryTotal, donutSegments, calendarData, filteredLeads,
-    countryBarChartData, maxLeadsCount, yLabels, getCountryAbbreviation,
-    handlePeriodChange, handleCalendarDateClick, getDaysInMonth, monthNames,
-    leadsMgmtData, topCountryStats, pipelineStats, cardMap, modalMap,
+    leads,
+    updateLeadStatus,
+    canSubmitVisa,
+    setCurrentTab,
+    setStatusFilter,
   } = useCrmLayoutContext();
 
+  const [readyFilterOpen, setReadyFilterOpen] = useState(false);
+  const [dispatchedFilterOpen, setDispatchedFilterOpen] = useState(false);
+  const [readyCountryFilter, setReadyCountryFilter] = useState("All");
+  const [dispatchedCountryFilter, setDispatchedCountryFilter] = useState("All");
+
+  const readyLeads = useMemo(
+    () =>
+      leads.filter(
+        (l) =>
+          !l.isDeleted &&
+          l.status === "Ready For Submission" &&
+          (readyCountryFilter === "All" || l.country === readyCountryFilter)
+      ),
+    [leads, readyCountryFilter]
+  );
+
+  const dispatchedLeads = useMemo(
+    () =>
+      leads.filter(
+        (l) =>
+          !l.isDeleted &&
+          l.status === "Visa Submitted" &&
+          (dispatchedCountryFilter === "All" || l.country === dispatchedCountryFilter)
+      ),
+    [leads, dispatchedCountryFilter]
+  );
+
+  const readyCountries = useMemo(() => {
+    const set = new Set(
+      leads
+        .filter((l) => !l.isDeleted && l.status === "Ready For Submission")
+        .map((l) => l.country)
+    );
+    return ["All", ...Array.from(set).sort()];
+  }, [leads]);
+
+  const dispatchedCountries = useMemo(() => {
+    const set = new Set(
+      leads
+        .filter((l) => !l.isDeleted && l.status === "Visa Submitted")
+        .map((l) => l.country)
+    );
+    return ["All", ...Array.from(set).sort()];
+  }, [leads]);
+
+  const readyColumns: DeskColumn<Lead>[] = [
+    {
+      key: "index",
+      header: "#",
+      className: "w-10",
+      render: (_, index) => (
+        <span className="text-[12px] text-gray-400 dark:text-slate-500 tabular-nums">{index + 1}</span>
+      ),
+    },
+    {
+      key: "applicant",
+      header: "Applicant",
+      render: (lead) => (
+        <div className="min-w-0">
+          <div className="text-[13px] font-semibold text-gray-900 dark:text-white leading-snug truncate">{lead.name}</div>
+          <div className="text-[11px] text-gray-500 dark:text-slate-500 mt-0.5 truncate">{lead.visaType}</div>
+        </div>
+      ),
+    },
+    {
+      key: "visaType",
+      header: "Visa Type",
+      render: (lead) => (
+        <span className="text-[13px] text-gray-700 dark:text-white truncate block">{lead.visaType}</span>
+      ),
+    },
+    {
+      key: "assigned",
+      header: "Assigned To",
+      render: (lead) => (
+        <span className="text-[13px] text-gray-700 dark:text-white truncate block">{lead.counselor}</span>
+      ),
+    },
+    {
+      key: "country",
+      header: "Country",
+      render: (lead) => <CountryCell country={lead.country} />,
+    },
+    {
+      key: "action",
+      header: "Action",
+      className: "text-right",
+      render: (lead) => (
+        <button
+          type="button"
+          disabled={!canSubmitVisa}
+          onClick={() => updateLeadStatus(lead.id, "Visa Submitted")}
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed max-w-full"
+        >
+          <FiSend className="text-[12px] shrink-0" />
+          <span className="truncate">Mark as Dispatched</span>
+        </button>
+      ),
+    },
+  ];
+
+  const dispatchedColumns: DeskColumn<Lead>[] = [
+    {
+      key: "index",
+      header: "#",
+      className: "w-10",
+      render: (_, index) => (
+        <span className="text-[12px] text-gray-400 dark:text-slate-500 tabular-nums">{index + 1}</span>
+      ),
+    },
+    {
+      key: "applicant",
+      header: "Applicant",
+      render: (lead) => (
+        <span className="text-[13px] font-semibold text-gray-900 dark:text-white truncate block">{lead.name}</span>
+      ),
+    },
+    {
+      key: "visaType",
+      header: "Visa Type",
+      render: (lead) => (
+        <span className="text-[13px] text-gray-700 dark:text-white truncate block">{lead.visaType}</span>
+      ),
+    },
+    {
+      key: "dispatched",
+      header: "Dispatched",
+      render: (lead) => (
+        <span className="text-[12px] text-gray-600 dark:text-white truncate block">{timeAgo(lead.lastUpdated)}</span>
+      ),
+    },
+    {
+      key: "assigned",
+      header: "Assigned To",
+      render: (lead) => (
+        <span className="text-[13px] text-gray-700 dark:text-white truncate block">{lead.counselor}</span>
+      ),
+    },
+    {
+      key: "country",
+      header: "Country",
+      render: (lead) => <CountryCell country={lead.country} />,
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: () => (
+        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-500 max-w-full">
+          <FiCheckCircle className="text-[12px] shrink-0" />
+          <span className="truncate">Consulate Approved</span>
+        </span>
+      ),
+    },
+    {
+      key: "action",
+      header: "Action",
+      className: "text-right",
+      render: (lead) => (
+        <button
+          type="button"
+          disabled={!canSubmitVisa}
+          onClick={() => updateLeadStatus(lead.id, "Closed")}
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed max-w-full"
+        >
+          <FiArchive className="text-[12px] shrink-0" />
+          <span className="truncate">Close Case</span>
+        </button>
+      ),
+    },
+  ];
+
   return (
-    <>
-            <div className="space-y-6">
-              
-              <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-bold text-white mb-1">Embassy Submission Desk</h3>
-                  <p className="text-xs text-slate-400">File tracking for ready applications and dispatched submissions.</p>
-                </div>
-                <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-extrabold text-sm rounded-xl">
-                  {leads.filter(l => l.status === "Ready For Submission").length} Ready for Submission
-                </div>
-              </div>
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 min-w-0">
+      <SubmissionDeskCard
+        dotColor="green"
+        title={`Applications Ready (${readyLeads.length})`}
+        subtitle="Applications that are ready to be submitted to embassies."
+        filterActive={readyFilterOpen}
+        onFilterToggle={() => setReadyFilterOpen((v) => !v)}
+        footerLabel="View All Ready Applications"
+        onFooterClick={() => {
+          setStatusFilter("Submitted");
+          setCurrentTab("Leads");
+        }}
+      >
+        {readyFilterOpen && (
+          <div className="px-5 py-2.5 border-b border-gray-200 dark:border-slate-800/60 flex flex-wrap gap-2">
+            {readyCountries.map((country) => (
+              <button
+                key={country}
+                type="button"
+                onClick={() => setReadyCountryFilter(country)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                  readyCountryFilter === country
+                    ? "bg-blue-500/10 text-blue-600 border border-blue-500/30 dark:bg-sky-500/15 dark:text-sky-400 dark:border-sky-500/30"
+                    : "bg-gray-100 text-gray-500 border border-gray-200 hover:text-gray-700 dark:bg-slate-800/60 dark:text-slate-400 dark:border-slate-700/60 dark:hover:text-slate-200"
+                }`}
+              >
+                {country}
+              </button>
+            ))}
+          </div>
+        )}
+        <SubmissionDeskTable
+          columns={readyColumns}
+          rows={readyLeads}
+          columnWidths={["4%", "22%", "16%", "16%", "18%", "24%"]}
+          emptyText="No files ready for submission. Complete document verification first."
+        />
+      </SubmissionDeskCard>
 
-              {/* Submission visual board split */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* Ready Column */}
-                <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-4">
-                  <h3 className="text-sm font-bold text-white flex items-center space-x-2 border-b border-slate-800 pb-3">
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Applications Ready ({leads.filter(l => l.status === "Ready For Submission").length})</span>
-                  </h3>
-
-                  <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-                    {leads
-                      .filter((l) => l.status === "Ready For Submission")
-                      .map((lead) => (
-                        <div key={lead.id} className="p-4 bg-slate-950 border border-slate-900 rounded-xl space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-100">{lead.name}</span>
-                            <span className="text-[10px] bg-slate-900 border border-slate-800 py-0.5 px-2 rounded-lg text-slate-400 font-bold">
-                              {lead.country}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-slate-500">{lead.visaType} - Managed by {lead.counselor}</p>
-                          <button
-                            onClick={() => updateLeadStatus(lead.id, "Visa Submitted")}
-                            disabled={!canSubmitVisa}
-                            className="w-full py-1.5 px-3 bg-violet-600 hover:bg-violet-500 text-white font-semibold text-[10px] rounded-lg transition-all"
-                          >
-                            Mark as Dispatched/Submitted
-                          </button>
-                        </div>
-                      ))}
-                    {leads.filter((l) => l.status === "Ready For Submission").length === 0 && (
-                      <p className="text-center py-6 text-slate-500 font-bold text-xs">No files ready for submission. Complete document verification audits first.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Submitted Column */}
-                <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-4">
-                  <h3 className="text-sm font-bold text-white flex items-center space-x-2 border-b border-slate-800 pb-3">
-                    <div className="w-2.5 h-2.5 rounded-full bg-violet-500" />
-                    <span>Dispatched to Embassy ({leads.filter(l => l.status === "Visa Submitted").length})</span>
-                  </h3>
-
-                  <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-                    {leads
-                      .filter((l) => l.status === "Visa Submitted")
-                      .map((lead) => (
-                        <div key={lead.id} className="p-4 bg-slate-950 border border-slate-900 rounded-xl space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-100">{lead.name}</span>
-                            <span className="text-[10px] bg-slate-900 border border-slate-800 py-0.5 px-2 rounded-lg text-slate-400 font-bold">
-                              {lead.country}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-slate-500">{lead.visaType} - Handled by {lead.counselor}</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              onClick={() => updateLeadStatus(lead.id, "Approved / Rejected")}
-                              disabled={!canSubmitVisa}
-                              className="py-1.5 px-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 font-semibold text-[9px] rounded-lg transition-all"
-                            >
-                              Consulate Approved
-                            </button>
-                            <button
-                              onClick={() => updateLeadStatus(lead.id, "Closed")}
-                              disabled={!canSubmitVisa}
-                              className="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-[9px] rounded-lg transition-all"
-                            >
-                              Close Case
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    {leads.filter((l) => l.status === "Visa Submitted").length === 0 && (
-                      <p className="text-center py-6 text-slate-500 font-bold text-xs">No active submissions currently at the embassy.</p>
-                    )}
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
-    </>
+      <SubmissionDeskCard
+        dotColor="blue"
+        title={`Dispatched to Embassy (${dispatchedLeads.length})`}
+        subtitle="Applications that have been dispatched to embassies."
+        filterActive={dispatchedFilterOpen}
+        onFilterToggle={() => setDispatchedFilterOpen((v) => !v)}
+        footerLabel="View All Dispatched Applications"
+        onFooterClick={() => {
+          setStatusFilter("Submitted");
+          setCurrentTab("Leads");
+        }}
+      >
+        {dispatchedFilterOpen && (
+          <div className="px-5 py-2.5 border-b border-gray-200 dark:border-slate-800/60 flex flex-wrap gap-2">
+            {dispatchedCountries.map((country) => (
+              <button
+                key={country}
+                type="button"
+                onClick={() => setDispatchedCountryFilter(country)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                  dispatchedCountryFilter === country
+                    ? "bg-blue-500/10 text-blue-600 border border-blue-500/30 dark:bg-sky-500/15 dark:text-sky-400 dark:border-sky-500/30"
+                    : "bg-gray-100 text-gray-500 border border-gray-200 hover:text-gray-700 dark:bg-slate-800/60 dark:text-slate-400 dark:border-slate-700/60 dark:hover:text-slate-200"
+                }`}
+              >
+                {country}
+              </button>
+            ))}
+          </div>
+        )}
+        <SubmissionDeskTable
+          columns={dispatchedColumns}
+          rows={dispatchedLeads}
+          columnWidths={["4%", "15%", "12%", "10%", "13%", "14%", "16%", "16%"]}
+          emptyText="No active submissions currently at the embassy."
+        />
+      </SubmissionDeskCard>
+    </div>
   );
 }
