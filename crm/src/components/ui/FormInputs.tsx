@@ -1,7 +1,21 @@
 "use client";
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import Select, { type ClearIndicatorProps, type StylesConfig } from 'react-select';
+import Select, {
+  components,
+  type ClearIndicatorProps,
+  type ControlProps,
+  type StylesConfig,
+} from 'react-select';
+import {
+  COUNTRY_DROPDOWN_MAX_HEIGHT,
+  FILTER_DROPDOWN_MAX_HEIGHT,
+  PHONE_DROPDOWN_LIST_MAX_HEIGHT,
+  PHONE_DROPDOWN_MENU_MAX_HEIGHT,
+} from '@/utils/dropdownConstants';
+import { ThinScrollMenuList } from '@/components/ui/ThinScrollMenuList';
+import { CRM_DROPDOWN_SCROLL_CLASS } from '@/utils/dropdownScrollStyles';
+import { useDropdownPortal } from '@/utils/useDropdownPortal';
 
 type FilterOption = { value: string; label: string };
 
@@ -53,32 +67,35 @@ export const leadStatusFilterOptions = [
   { value: "Dropped", label: "Dropped" },
 ];
 
-function useSelectPortal(id: string) {
-  const [portalNode, setPortalNode] = React.useState<HTMLElement | null>(null);
+/** Individual statuses for lead-management quick tabs (excludes "All"). */
+export const leadQuickTabStatuses = leadStatusFilterOptions
+  .filter((option) => option.value !== "All")
+  .map((option) => option.value);
 
-  React.useEffect(() => {
-    const el = document.createElement("div");
-    el.setAttribute("id", id);
-    el.style.position = "absolute";
-    el.style.top = "0";
-    el.style.left = "0";
-    el.style.width = "0";
-    el.style.height = "0";
-    el.style.zIndex = "99999";
-    document.body.appendChild(el);
-    setPortalNode(el);
-    return () => {
-      if (document.body.contains(el)) {
-        document.body.removeChild(el);
-      }
-    };
-  }, [id]);
+function getMenuPortalTarget(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  return document.body;
+}
 
-  return portalNode;
+function FilterControl(props: ControlProps<FilterOption, false>) {
+  return (
+    <components.Control
+      {...props}
+      innerProps={{
+        ...props.innerProps,
+        style: { ...props.innerProps.style, cursor: "pointer" },
+      }}
+    />
+  );
 }
 
 const filterSelectStyles: StylesConfig<FilterOption> = {
-  menuPortal: (base) => ({ ...base, zIndex: 99999 }),
+  menuPortal: (base) => ({
+    ...base,
+    zIndex: 99999,
+    overflow: "visible",
+    pointerEvents: "auto",
+  }),
   valueContainer: (base) => ({
     ...base,
     padding: "2px 10px",
@@ -121,6 +138,7 @@ const filterSelectStyles: StylesConfig<FilterOption> = {
   dropdownIndicator: (base) => ({
     ...base,
     padding: "2px 4px",
+    cursor: "pointer",
   }),
   clearIndicator: (base) => ({
     ...base,
@@ -138,6 +156,7 @@ const filterSelectStyles: StylesConfig<FilterOption> = {
     minWidth: "155px",
     fontSize: "11px",
     overflow: "visible",
+    cursor: state.isDisabled ? "not-allowed" : "pointer",
     boxShadow: state.isFocused ? "0 0 0 1px var(--form-focus)" : "none",
     "&:hover": {
       borderColor: state.isFocused ? "var(--form-focus)" : "var(--form-border)",
@@ -151,14 +170,18 @@ const filterSelectStyles: StylesConfig<FilterOption> = {
     overflow: "hidden",
     padding: "4px",
     zIndex: 99999,
-    minWidth: "100%",
+    minWidth: "155px",
     width: "max-content",
     maxWidth: "280px",
+    boxSizing: "border-box",
   }),
   menuList: (base) => ({
     ...base,
-    maxHeight: "280px",
-    paddingRight: "1px",
+    maxHeight: `${FILTER_DROPDOWN_MAX_HEIGHT}px`,
+    overflowX: "hidden",
+    overflowY: "auto",
+    boxSizing: "border-box",
+    paddingRight: "2px",
     paddingBottom: "4px",
   }),
   option: (base, state) => ({
@@ -171,6 +194,9 @@ const filterSelectStyles: StylesConfig<FilterOption> = {
     lineHeight: "1.35",
     padding: "8px 10px",
     whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    maxWidth: "100%",
     ":active": {
       backgroundColor: "var(--form-selected-bg)",
     },
@@ -182,7 +208,7 @@ export function SearchableFilterSelect({
   onChange,
   options,
   placeholder = "Select...",
-  portalId = "filter-select-portal",
+  portalId: _portalId = "filter-select-portal",
   clearValue = "All",
 }: {
   value: string;
@@ -192,7 +218,7 @@ export function SearchableFilterSelect({
   portalId?: string;
   clearValue?: string;
 }) {
-  const portalNode = useSelectPortal(portalId);
+  const menuPortalTarget = getMenuPortalTarget();
   const selected = options.find((o) => o.value === value) ?? null;
   const showClear = value !== clearValue;
 
@@ -260,25 +286,23 @@ export function SearchableFilterSelect({
           margin-left: 0 !important;
           padding-left: 0 !important;
         }
-        .filter-select__menu-list {
-          scrollbar-width: thin;
-          scrollbar-color: #94a3b8 transparent;
+        .filter-select__control {
+          cursor: pointer !important;
         }
-        .filter-select__menu-list::-webkit-scrollbar {
-          width: 2px;
+        .filter-select__control--is-disabled {
+          cursor: not-allowed !important;
         }
-        .filter-select__menu-list::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .filter-select__menu-list::-webkit-scrollbar-thumb {
-          background-color: #94a3b8;
-          border-radius: 999px;
-        }
-        html.light .filter-select__menu-list::-webkit-scrollbar-thumb {
-          background-color: #cbd5e1;
+        .filter-select__dropdown-indicator {
+          cursor: pointer !important;
         }
         .filter-select__clear-indicator {
           padding: 0 !important;
+        }
+        .filter-select__option {
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+          max-width: 100% !important;
         }
         .filter-clear-btn {
           display: inline-flex;
@@ -315,20 +339,27 @@ export function SearchableFilterSelect({
           color: #dc2626;
         }
       `}</style>
-      {portalNode && (
+      {menuPortalTarget && (
         <Select
           className="filter-react-select"
           classNamePrefix="filter-select"
+          instanceId={_portalId}
           options={options}
           value={selected}
           isSearchable
           isClearable={showClear}
-          components={{ ClearIndicator: PremiumClearIndicator }}
-          menuPortalTarget={portalNode}
+          components={{
+            ClearIndicator: PremiumClearIndicator,
+            MenuList: ThinScrollMenuList,
+            Control: FilterControl,
+          }}
+          menuPortalTarget={menuPortalTarget}
           menuPosition="fixed"
+          menuPlacement="auto"
           menuShouldScrollIntoView={false}
+          openMenuOnClick
           styles={filterSelectStyles}
-          maxMenuHeight={280}
+          maxMenuHeight={FILTER_DROPDOWN_MAX_HEIGHT}
           placeholder={placeholder}
           onChange={(val) => {
             const option = !val || Array.isArray(val) ? null : (val as FilterOption);
@@ -341,7 +372,7 @@ export function SearchableFilterSelect({
 }
 
 export function SearchableCountrySelect({ name, value, onChange, required }: { name?: string, value?: string, onChange?: (val: string) => void, required?: boolean }) {
-  const portalNode = useSelectPortal("country-select-portal");
+  const menuPortalTarget = getMenuPortalTarget();
 
   return (
     <>
@@ -372,21 +403,27 @@ export function SearchableCountrySelect({ name, value, onChange, required }: { n
           box-shadow: none !important;
           outline: none !important;
         }
-        /* Portal menu styles - ensure it renders above everything */
-        #country-select-portal .css-26l3qy-menu,
-        #country-select-portal [class*="-menu"] {
-          z-index: 99999 !important;
+        .country-select__option {
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+          max-width: 100% !important;
         }
       `}</style>
-      {portalNode && (
+      {menuPortalTarget && (
         <Select
           className="custom-react-select"
+          classNamePrefix="country-select"
+          instanceId="country-select"
+          components={{ MenuList: ThinScrollMenuList }}
           options={countryOptions}
           name={name}
           required={required}
-          menuPortalTarget={portalNode}
+          menuPortalTarget={menuPortalTarget}
           menuPosition="fixed"
+          menuPlacement="auto"
           menuShouldScrollIntoView={false}
+          openMenuOnClick
           styles={{
             menuPortal: base => ({ ...base, zIndex: 99999 }),
             valueContainer: base => ({ ...base, padding: '0 8px' }),
@@ -413,21 +450,38 @@ export function SearchableCountrySelect({ name, value, onChange, required }: { n
               overflow: 'hidden',
               padding: '4px',
               zIndex: 99999,
+              minWidth: '100%',
+              width: 'max-content',
+              maxWidth: '280px',
+              boxSizing: 'border-box',
             }),
-            menuList: base => ({ ...base, maxHeight: '400px' }),
+            menuList: base => ({
+              ...base,
+              maxHeight: `${COUNTRY_DROPDOWN_MAX_HEIGHT}px`,
+              overflowX: 'hidden',
+              overflowY: 'auto',
+              boxSizing: 'border-box',
+            }),
             option: (base, state) => ({ 
               ...base, 
               backgroundColor: state.isFocused ? 'var(--form-selected-bg)' : 'var(--form-bg)', 
               color: state.isSelected ? 'var(--form-selected-text)' : 'var(--form-text)',
               cursor: 'pointer',
               borderRadius: '0.5rem',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: '100%',
               ':active': {
                 backgroundColor: 'var(--form-selected-bg)'
               }
             })
           }}
-          maxMenuHeight={400}
-          onChange={val => onChange?.(val?.value || '')}
+          maxMenuHeight={COUNTRY_DROPDOWN_MAX_HEIGHT}
+          onChange={(val) => {
+            const option = !val || Array.isArray(val) ? null : (val as FilterOption);
+            onChange?.(option?.value ?? "");
+          }}
           defaultValue={value ? { value, label: value } : null}
           placeholder="Select Country"
         />
@@ -487,28 +541,10 @@ export function PhoneInput({ name, required, placeholder }: { name: string, requ
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
-  const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
+  const portalNode = useDropdownPortal('phone-dropdown-portal');
 
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const visibleInputRef = React.useRef<HTMLInputElement>(null);
-
-  React.useEffect(() => {
-    const el = document.createElement('div');
-    el.setAttribute('id', 'phone-dropdown-portal');
-    el.style.position = 'absolute';
-    el.style.top = '0';
-    el.style.left = '0';
-    el.style.width = '0';
-    el.style.height = '0';
-    el.style.zIndex = '99999';
-    document.body.appendChild(el);
-    setPortalNode(el);
-    return () => {
-      if (document.body.contains(el)) {
-        document.body.removeChild(el);
-      }
-    };
-  }, []);
 
   const updateCoords = () => {
     if (buttonRef.current) {
@@ -663,7 +699,7 @@ export function PhoneInput({ name, required, placeholder }: { name: string, requ
           box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
           z-index: 99999;
           width: 300px;
-          max-height: 300px;
+          max-height: ${PHONE_DROPDOWN_MENU_MAX_HEIGHT}px;
           overflow: hidden;
           display: flex;
           flex-direction: column;
@@ -689,9 +725,10 @@ export function PhoneInput({ name, required, placeholder }: { name: string, requ
           border-color: var(--form-focus);
         }
         .phone-dropdown-list {
+          overflow-x: hidden;
           overflow-y: auto;
           flex: 1;
-          max-height: 240px;
+          max-height: ${PHONE_DROPDOWN_LIST_MAX_HEIGHT}px;
           padding: 4px;
           background-color: var(--form-bg);
         }
@@ -773,7 +810,7 @@ export function PhoneInput({ name, required, placeholder }: { name: string, requ
               autoFocus
             />
           </div>
-          <div className="phone-dropdown-list">
+          <div className={`phone-dropdown-list ${CRM_DROPDOWN_SCROLL_CLASS}`}>
             {filteredCountries.length > 0 ? (
               filteredCountries.map((c) => (
                 <button

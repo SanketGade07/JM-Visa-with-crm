@@ -2,6 +2,9 @@
 
 import React from "react";
 import type { VisaStatus } from "@/context/CrmContext";
+import { getPillClasses } from "@/components/ui/DataTable";
+import { TablePillSelect } from "@/components/ui/TablePillSelect";
+import { STATUS_PILL_DROPDOWN_MAX_HEIGHT } from "@/utils/dropdownConstants";
 
 const STATUS_OPTIONS: VisaStatus[] = [
   "New Lead",
@@ -18,41 +21,35 @@ const STATUS_OPTIONS: VisaStatus[] = [
   "Dropped",
 ];
 
+const STATUS_OPTIONS_LIST = STATUS_OPTIONS.map((status) => ({
+  value: status,
+  label: status,
+}));
+
 type StatusSelectPillProps = {
   value: VisaStatus;
   disabled?: boolean;
   onChange: (value: VisaStatus) => void;
-  onClick?: (e: React.MouseEvent<HTMLSelectElement>) => void;
+  portalId?: string;
 };
 
-export function StatusSelectPill({ value, disabled, onChange, onClick }: StatusSelectPillProps) {
+export function StatusSelectPill({
+  value,
+  disabled,
+  onChange,
+  portalId = "status-pill-select",
+}: StatusSelectPillProps) {
   return (
-    <span className={`relative inline-block${disabled ? " opacity-60" : ""}`}>
-      <span
-        data-status={value}
-        className="status-select-pill inline-block whitespace-nowrap py-0.5 px-2.5 text-[11px] font-semibold rounded-full border leading-tight"
-        aria-hidden
-      >
-        {value}
-      </span>
-      <select
-        value={value}
-        onClick={onClick}
-        onChange={(e) => onChange(e.target.value as VisaStatus)}
-        disabled={disabled}
-        className="status-select-pill-input"
-        aria-label={`Status: ${value}`}
-      >
-        {STATUS_OPTIONS.map((status) => (
-          <option
-            key={status}
-            value={status}
-            className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50"
-          >
-            {status}
-          </option>
-        ))}
-      </select>
-    </span>
+    <TablePillSelect
+      value={value}
+      options={STATUS_OPTIONS_LIST}
+      onChange={(v) => onChange(v as VisaStatus)}
+      disabled={disabled}
+      portalId={portalId}
+      getPillClassName={getPillClasses}
+      ariaLabel={`Status: ${value}`}
+      searchPlaceholder="Search status..."
+      maxMenuHeight={STATUS_PILL_DROPDOWN_MAX_HEIGHT}
+    />
   );
 }

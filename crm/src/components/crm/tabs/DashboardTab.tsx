@@ -7,9 +7,9 @@ import { ROLE_TABS, AVAILABLE_TABS } from "@/utils/crmConstants";
 import { docProgress, timeAgo, getStatusColor } from "@/utils/leadHelpers";
 import { AustraliaFlag, MalaysiaFlag, IndonesiaFlag, SingaporeFlag } from "@/components/CountryFlags";
 import {
-  FaUserFriends, FaGlobe, FaCheckSquare, FaCalendarAlt, FaHistory,
-  FaPassport, FaFileInvoiceDollar, FaChartBar, FaUserLock, FaPlus,
-  FaTrash, FaUndo, FaSearch, FaTimes, FaCoins, FaCheckCircle,
+  FaUserFriends, FaUserCheck, FaPlaneDeparture, FaGlobe, FaCheckSquare, FaCalendarAlt, FaHistory,
+  FaFileInvoiceDollar, FaChartBar, FaUserLock, FaPlus,
+  FaTrash, FaUndo, FaSearch, FaTimes, FaCheckCircle,
   FaInfoCircle, FaFileDownload, FaFileUpload, FaPaperPlane,
   FaSun, FaMoon, FaEllipsisV, FaChevronLeft, FaChevronRight,
   FaMinus, FaExpand, FaEye, FaPhone, FaCommentDots, FaCog, FaEnvelope,
@@ -22,7 +22,6 @@ import { SearchableCountrySelect, PhoneInput } from "@/components/ui/FormInputs"
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
 import { getLeadAvatar, getLeadDescription, getLeadCompany } from "../helpers/leadDisplayHelpers";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
-
 
 export function DashboardTab() {
   const {
@@ -96,7 +95,7 @@ export function DashboardTab() {
                     badge: "Active",
                     badgeColor: "bg-cyan-500/10 border-cyan-500/20 text-[#00C1D4]",
                     subtext: "in progress",
-                    icon: FaUserFriends
+                    icon: FaUserCheck
                   },
                   {
                     label: "Conversion Rate",
@@ -107,15 +106,12 @@ export function DashboardTab() {
                     icon: FaCheckSquare
                   },
                   {
-                    label: "Revenue",
-                    value: (() => {
-                      const rev = leads.reduce((acc, lead) => acc + lead.payments.reduce((a, p) => a + p.amountPaid, 0), 0);
-                      return rev >= 100000 ? `₹${(rev / 100000).toFixed(1)}L` : `₹${(rev / 1000).toFixed(1)}K`;
-                    })(),
-                    badge: "↑ 12%",
-                    badgeColor: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
-                    subtext: "vs last month",
-                    icon: FaCoins
+                    label: "Visa Submitted",
+                    value: leads.filter((l) => l.status === "Visa Submitted").length,
+                    badge: leads.filter((l) => l.status === "Visa Submitted").length > 0 ? "Active" : "—",
+                    badgeColor: "bg-cyan-500/10 border-cyan-500/20 text-[#00C1D4]",
+                    subtext: "with embassies",
+                    icon: FaPlaneDeparture
                   }
                 ].map((card, index) => {
                   const Icon = card.icon;
@@ -648,8 +644,24 @@ export function DashboardTab() {
                           </div>
 
                           {dateRangeStart && !dateRangeEnd && (
-                            <div className="text-[11px] text-orange-500 dark:text-orange-400 font-medium pt-1">
-                              💡 Click a second date to set end of range.
+                            <div className="flex items-center gap-2 pt-1 text-[11px] text-orange-600 dark:text-orange-400 font-medium">
+                              <span className="inline-flex items-center justify-center w-6 h-6 shrink-0 rounded-full bg-orange-500/10 text-orange-500 ring-1 ring-inset ring-orange-500/20 dark:bg-orange-500/15 dark:text-orange-400 dark:ring-orange-400/25">
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.75"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className="w-3.5 h-3.5"
+                                  aria-hidden="true"
+                                >
+                                  <path d="M9 18h6" />
+                                  <path d="M10 22h4" />
+                                  <path d="M12 2a7 7 0 0 0-4 12.74V17h8v-2.26A7 7 0 0 0 12 2z" />
+                                </svg>
+                              </span>
+                              <span>Click a second date to set end of range.</span>
                             </div>
                           )}
                         </div>

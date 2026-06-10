@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { InlineColumnFilterSelect } from "@/components/ui/InlineColumnFilterSelect";
 import { InlineColumnSearch } from "@/components/ui/InlineColumnSearch";
 import type { ColumnSearchState } from "@/hooks/useColumnSearch";
 import type { IconType } from "react-icons";
@@ -37,6 +38,11 @@ export type Column<T> = {
   searchLabel?: string;
   searchPlaceholder?: string;
   getSearchValue?: (row: T) => string;
+  /** Premium searchable dropdown in column header (exact match filter) */
+  filterSelectOptions?: { value: string; label: string }[];
+  filterSelectPlaceholder?: string;
+  filterSelectPortalId?: string;
+  filterSelectClearValue?: string;
 };
 
 export type RowAction<T> = {
@@ -202,13 +208,13 @@ export default function DataTable<T>({
     `bg-white dark:bg-slate-900/50 rounded-2xl border border-gray-200/70 dark:border-slate-800 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-16px_rgba(16,24,40,0.12)] dark:shadow-none ${className}`;
 
   return (
-    <div className={cardCls}>
+    <div className={`${cardCls} overflow-visible`}>
       {/* ── Toolbar: filters (left) + circular buttons (right) ────────── */}
       {showToolbar && (
         <>
-          <div className="flex items-center justify-between gap-3 px-5 py-3.5">
-            <div className="flex items-center gap-3 min-w-0 flex-wrap">{filters}</div>
-            <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-end justify-between gap-3 px-5 py-3 overflow-visible">
+            <div className="flex items-end flex-1 min-w-0 overflow-visible">{filters}</div>
+            <div className="data-table-toolbar__actions shrink-0">
               {rightSlot && <div className="mr-1">{rightSlot}</div>}
               {onSearchChange && (searchOpen || (search && search.length > 0)) ? (
                 <div className="relative">
@@ -249,9 +255,9 @@ export default function DataTable<T>({
       <div className="flex-1 overflow-visible">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-gray-50/70 dark:bg-slate-800/30 border-y border-gray-100 dark:border-slate-800 text-gray-500 dark:text-slate-400">
+            <tr className="bg-gray-50/70 dark:bg-slate-800/30 border-y border-gray-100 dark:border-slate-800 text-[13px] font-semibold text-slate-500 dark:text-slate-400">
               {showCheckbox && (
-                <th className="w-9 pl-5 pr-1 py-2.5">
+                <th className="w-9 pl-5 pr-1 py-5">
                   <input
                     type="checkbox"
                     checked={allChecked}
@@ -261,11 +267,14 @@ export default function DataTable<T>({
                 </th>
               )}
               {showIndex && (
-                <th className="w-8 px-1 py-2.5 text-[11px] font-semibold tracking-normal">#</th>
+                <th className="w-8 px-1 py-5 text-[13px] font-semibold tracking-normal text-slate-500 dark:text-slate-400">#</th>
               )}
               {columns.map((col, i) => {
                 const searchKey = col.searchKey;
                 const canSearch = Boolean(searchKey && columnSearch);
+                const hasSelectFilter = Boolean(col.filterSelectOptions?.length && canSearch && searchKey);
+                const clearValue = col.filterSelectClearValue ?? "All";
+                const currentFilterValue = searchKey ? (columnSearch?.filters[searchKey] ?? clearValue) : clearValue;
                 const label =
                   col.searchLabel ||
                   (typeof col.header === "string" ? col.header : `Column ${i + 1}`);
@@ -273,13 +282,30 @@ export default function DataTable<T>({
                 return (
                   <th
                     key={searchKey || i}
-                    className={`px-3 py-2.5 text-[11px] font-semibold tracking-normal whitespace-nowrap ${alignClass(
+                    className={`px-3 py-5 text-[13px] font-semibold tracking-normal text-slate-500 dark:text-slate-400 whitespace-nowrap ${alignClass(
                       col.align
                     )} ${col.headerClassName || ""} ${
                       canSearch && columnSearch?.activeColumn === searchKey ? "min-w-[155px]" : ""
                     }`}
                   >
-                    {canSearch && searchKey && columnSearch ? (
+                    {hasSelectFilter && searchKey && columnSearch ? (
+                      <InlineColumnFilterSelect
+                        label={label}
+                        value={currentFilterValue}
+                        options={col.filterSelectOptions!}
+                        clearValue={clearValue}
+                        placeholder={col.filterSelectPlaceholder ?? `Search ${label.toLowerCase()}...`}
+                        portalId={col.filterSelectPortalId ?? `column-filter-${searchKey}`}
+                        isActive={columnSearch.activeColumn === searchKey}
+                        hasFilter={currentFilterValue !== clearValue}
+                        onActivate={() => columnSearch.setActiveColumn(searchKey)}
+                        onDeactivate={() => columnSearch.setActiveColumn(null)}
+                        onChange={(val) => {
+                          if (val === clearValue) columnSearch.clearFilter(searchKey);
+                          else columnSearch.setFilter(searchKey, val);
+                        }}
+                      />
+                    ) : canSearch && searchKey && columnSearch ? (
                       <InlineColumnSearch
                         columnKey={searchKey}
                         label={label}
@@ -299,7 +325,7 @@ export default function DataTable<T>({
                 );
               })}
               {actions && (
-                <th className="px-5 py-2.5 text-[11px] font-semibold tracking-normal text-right whitespace-nowrap">
+                <th className="px-5 py-5 text-[13px] font-semibold tracking-normal text-slate-500 dark:text-slate-400 text-right whitespace-nowrap">
                   {actionsHeader}
                 </th>
               )}

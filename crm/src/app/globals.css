@@ -82,20 +82,25 @@ body {
 /* Enable class-based dark mode helper selector in Tailwind v4 if needed */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Smooth theme transition */
-html,
-body,
-aside,
-header,
-div,
-p,
-span,
-button,
-input,
-select,
-textarea,
-tr,
-td {
+/* Smooth theme transition (disabled briefly during theme toggle to prevent flash) */
+html.theme-switching,
+html.theme-switching * {
+  transition: none !important;
+}
+
+html:not(.theme-switching),
+html:not(.theme-switching) body,
+html:not(.theme-switching) aside,
+html:not(.theme-switching) header,
+html:not(.theme-switching) div,
+html:not(.theme-switching) p,
+html:not(.theme-switching) span,
+html:not(.theme-switching) button,
+html:not(.theme-switching) input,
+html:not(.theme-switching) select,
+html:not(.theme-switching) textarea,
+html:not(.theme-switching) tr,
+html:not(.theme-switching) td {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
@@ -763,6 +768,92 @@ html.light * {
   scrollbar-color: rgba(148, 163, 184, 0.4) rgba(248, 250, 252, 0.5);
 }
 
+/* Dropdown menu scrollbars (3px) — beats global 6px ::-webkit-scrollbar and html.dark/light thumb rules */
+.crm-dropdown-scroll,
+.filter-select__menu-list,
+.country-select__menu-list,
+.table-pill__menu-list,
+.inline-column-filter__menu-list,
+.phone-dropdown-list {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #94a3b8 transparent !important;
+}
+
+html.dark .crm-dropdown-scroll::-webkit-scrollbar,
+html.light .crm-dropdown-scroll::-webkit-scrollbar,
+html.dark .filter-select__menu-list::-webkit-scrollbar,
+html.light .filter-select__menu-list::-webkit-scrollbar,
+html.dark .country-select__menu-list::-webkit-scrollbar,
+html.light .country-select__menu-list::-webkit-scrollbar,
+html.dark .table-pill__menu-list::-webkit-scrollbar,
+html.light .table-pill__menu-list::-webkit-scrollbar,
+html.dark .inline-column-filter__menu-list::-webkit-scrollbar,
+html.light .inline-column-filter__menu-list::-webkit-scrollbar,
+html.dark .phone-dropdown-list::-webkit-scrollbar,
+html.light .phone-dropdown-list::-webkit-scrollbar {
+  width: 3px !important;
+  height: 0 !important;
+}
+
+html.dark .crm-dropdown-scroll::-webkit-scrollbar-track,
+html.light .crm-dropdown-scroll::-webkit-scrollbar-track,
+html.dark .filter-select__menu-list::-webkit-scrollbar-track,
+html.light .filter-select__menu-list::-webkit-scrollbar-track,
+html.dark .country-select__menu-list::-webkit-scrollbar-track,
+html.light .country-select__menu-list::-webkit-scrollbar-track,
+html.dark .table-pill__menu-list::-webkit-scrollbar-track,
+html.light .table-pill__menu-list::-webkit-scrollbar-track,
+html.dark .inline-column-filter__menu-list::-webkit-scrollbar-track,
+html.light .inline-column-filter__menu-list::-webkit-scrollbar-track,
+html.dark .phone-dropdown-list::-webkit-scrollbar-track,
+html.light .phone-dropdown-list::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+html.dark .crm-dropdown-scroll::-webkit-scrollbar-thumb,
+html.light .crm-dropdown-scroll::-webkit-scrollbar-thumb,
+html.dark .filter-select__menu-list::-webkit-scrollbar-thumb,
+html.light .filter-select__menu-list::-webkit-scrollbar-thumb,
+html.dark .country-select__menu-list::-webkit-scrollbar-thumb,
+html.light .country-select__menu-list::-webkit-scrollbar-thumb,
+html.dark .table-pill__menu-list::-webkit-scrollbar-thumb,
+html.light .table-pill__menu-list::-webkit-scrollbar-thumb,
+html.dark .inline-column-filter__menu-list::-webkit-scrollbar-thumb,
+html.light .inline-column-filter__menu-list::-webkit-scrollbar-thumb,
+html.dark .phone-dropdown-list::-webkit-scrollbar-thumb,
+html.light .phone-dropdown-list::-webkit-scrollbar-thumb {
+  background-color: #94a3b8 !important;
+  border-radius: 999px !important;
+}
+
+html.light .crm-dropdown-scroll::-webkit-scrollbar-thumb,
+html.light .filter-select__menu-list::-webkit-scrollbar-thumb,
+html.light .country-select__menu-list::-webkit-scrollbar-thumb,
+html.light .table-pill__menu-list::-webkit-scrollbar-thumb,
+html.light .inline-column-filter__menu-list::-webkit-scrollbar-thumb,
+html.light .phone-dropdown-list::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1 !important;
+}
+
+.crm-dropdown-scroll::-webkit-scrollbar-button,
+.crm-dropdown-scroll::-webkit-scrollbar-corner,
+.filter-select__menu-list::-webkit-scrollbar-button,
+.filter-select__menu-list::-webkit-scrollbar-corner,
+.country-select__menu-list::-webkit-scrollbar-button,
+.country-select__menu-list::-webkit-scrollbar-corner,
+.table-pill__menu-list::-webkit-scrollbar-button,
+.table-pill__menu-list::-webkit-scrollbar-corner,
+.inline-column-filter__menu-list::-webkit-scrollbar-button,
+.inline-column-filter__menu-list::-webkit-scrollbar-corner,
+.phone-dropdown-list::-webkit-scrollbar-button,
+.phone-dropdown-list::-webkit-scrollbar-corner {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 /* Meeting Card Left Accent Fix */
 html.light .meeting-card,
 html.light div.meeting-card,
@@ -904,21 +995,28 @@ button.audit-list-item:hover div.bg-emerald-500 {
   bottom: 125%;
   left: 50%;
   transform: translate(-50%, 4px);
-  background-color: rgba(37, 99, 235, 0.98) !important; /* Vibrant primary blue #2563eb */
-  border: 1px solid rgba(255, 255, 255, 0.15) !important; /* Soft white border overlay */
-  color: #ffffff !important;
-  padding: 5px 9px !important;
-  border-radius: 6px !important;
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  line-height: 1.2 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+  padding: 6px 10px !important;
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
   white-space: nowrap !important;
   opacity: 0 !important;
   pointer-events: none !important;
   transition: opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1) !important;
-  box-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.12), 0 2px 6px -2px rgba(15, 23, 42, 0.08) !important;
   z-index: 9999 !important;
   text-transform: none !important;
+}
+
+html.dark [data-tooltip]::before {
+  background-color: #1e293b !important;
+  border: 1px solid #334155 !important;
+  color: #f1f5f9 !important;
+  box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.45), 0 2px 6px -2px rgba(0, 0, 0, 0.3) !important;
 }
 
 [data-tooltip]::after {
@@ -929,11 +1027,15 @@ button.audit-list-item:hover div.bg-emerald-500 {
   transform: translate(-50%, 8px);
   border-width: 5px 5px 0;
   border-style: solid;
-  border-color: rgba(37, 99, 235, 0.98) transparent transparent; /* Vibrant blue arrow */
+  border-color: #ffffff transparent transparent;
   opacity: 0 !important;
   pointer-events: none !important;
   transition: opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1) !important;
   z-index: 9999 !important;
+}
+
+html.dark [data-tooltip]::after {
+  border-color: #1e293b transparent transparent;
 }
 
 [data-tooltip]:hover::before {
@@ -958,7 +1060,11 @@ button.audit-list-item:hover div.bg-emerald-500 {
   top: 125% !important;
   transform: translate(-50%, -8px) !important;
   border-width: 0 5px 5px 5px !important;
-  border-color: transparent transparent rgba(37, 99, 235, 0.98) transparent !important;
+  border-color: transparent transparent #ffffff transparent !important;
+}
+
+html.dark [data-tooltip][data-tooltip-position="bottom"]::after {
+  border-color: transparent transparent #1e293b transparent !important;
 }
 
 [data-tooltip][data-tooltip-position="bottom"]:hover::before {
@@ -967,6 +1073,45 @@ button.audit-list-item:hover div.bg-emerald-500 {
 
 [data-tooltip][data-tooltip-position="bottom"]:hover::after {
   transform: translate(-50%, -4px) !important;
+}
+
+/* Compact tooltips (table cells, icon buttons) */
+[data-tooltip-short]::before {
+  padding: 4px 8px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  border-radius: 6px !important;
+  max-width: min(160px, calc(100vw - 24px)) !important;
+  white-space: nowrap !important;
+  text-align: center !important;
+}
+
+[data-tooltip-short]::after {
+  border-width: 4px 4px 0 !important;
+}
+
+@media (max-width: 768px) {
+  [data-tooltip-short]::before {
+    bottom: 110% !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translate(-50%, 4px) !important;
+  }
+
+  [data-tooltip-short]:hover::before {
+    transform: translate(-50%, 0) !important;
+  }
+
+  [data-tooltip-short]::after {
+    bottom: 110% !important;
+    left: 50% !important;
+    transform: translate(-50%, 6px) !important;
+  }
+
+  [data-tooltip-short]:hover::after {
+    transform: translate(-50%, 2px) !important;
+  }
 }
 
 /* ==========================================================================
@@ -1494,4 +1639,388 @@ html.dark .revenue-tooltip-month {
 
 html.dark .revenue-tooltip-value {
   color: #ffffff !important;
+}
+
+/* ── Lead Management toolbar header ──────────────────────────────────────── */
+.lead-mgmt-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.lead-mgmt-toolbar__destination {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lead-mgmt-toolbar__destination-label {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  color: #0f172a;
+}
+
+html.dark .lead-mgmt-toolbar__destination-label {
+  color: #e2e8f0;
+}
+
+.lead-mgmt-toolbar__destination-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 196px;
+  height: 36px;
+  padding: 0 10px 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+html.dark .lead-mgmt-toolbar__destination-control {
+  border-color: #1e293b;
+  background: #0a0e17;
+}
+
+.lead-mgmt-toolbar__destination-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: #64748b;
+}
+
+html.dark .lead-mgmt-toolbar__destination-icon {
+  color: #94a3b8;
+}
+
+.lead-mgmt-toolbar__destination-control .filter-react-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.lead-mgmt-toolbar__destination-control .filter-select__control {
+  min-height: 34px !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  cursor: pointer !important;
+}
+
+.lead-mgmt-toolbar__destination-control .filter-select__value-container {
+  padding: 0 !important;
+}
+
+.lead-mgmt-toolbar__destination-control .filter-select__single-value {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #334155 !important;
+}
+
+html.dark .lead-mgmt-toolbar__destination-control .filter-select__single-value {
+  color: #cbd5e1 !important;
+}
+
+.lead-mgmt-toolbar__destination-control .filter-select__indicator-separator {
+  display: none;
+}
+
+.lead-mgmt-toolbar__destination-control .filter-select__dropdown-indicator {
+  color: #64748b !important;
+  padding: 0 !important;
+}
+
+.lead-mgmt-toolbar__tabs-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 2px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: visible;
+}
+
+html.dark .lead-mgmt-toolbar__tabs-panel {
+  border-color: #1e293b;
+  background: #0a0e17;
+}
+
+.lead-mgmt-toolbar__tabs-panel .quick-status-tabs-outer,
+.lead-mgmt-toolbar__tabs-panel .quick-status-tabs--header {
+  width: 100%;
+}
+
+.lead-mgmt-toolbar__tabs-panel .quick-status-tabs-outer {
+  overflow: visible;
+}
+
+.data-table-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  padding: 0 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+html.dark .data-table-toolbar__actions {
+  border-color: #1e293b;
+  background: #0a0e17;
+}
+
+.lead-mgmt-toolbar__divider {
+  display: none;
+}
+
+/* ── Quick Status Tabs ───────────────────────────────────────────────────── */
+.quick-status-tabs {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  box-sizing: border-box;
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+.quick-status-tabs--header {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  gap: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.quick-status-tabs-outer {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  align-self: flex-end;
+}
+
+.quick-status-tabs-outer::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-status-tab {
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.quick-status-tab--header {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 6px;
+  height: 36px;
+  color: #334155;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  box-sizing: border-box;
+}
+
+.quick-status-tab--header:hover:not(.quick-status-tab--active) {
+  color: #1e293b;
+}
+
+html.dark .quick-status-tab--header {
+  color: #94a3b8;
+}
+
+html.dark .quick-status-tab--header:hover:not(.quick-status-tab--active) {
+  color: #cbd5e1;
+}
+
+.quick-status-tab--header.quick-status-tab--active {
+  color: #2563eb;
+  background: transparent;
+  border-bottom: 2px solid #2563eb;
+  box-shadow: none;
+}
+
+html.dark .quick-status-tab--header.quick-status-tab--active {
+  color: #60a5fa;
+  background: transparent;
+  border-bottom-color: rgba(96, 165, 250, 0.38);
+}
+
+.quick-status-tab__row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.quick-status-tab__icon {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.75;
+}
+
+.quick-status-tab--header .quick-status-tab__icon {
+  color: #64748b;
+}
+
+html.dark .quick-status-tab--header .quick-status-tab__icon {
+  color: #64748b;
+}
+
+.quick-status-tab--header.quick-status-tab--active .quick-status-tab__icon {
+  color: #2563eb;
+}
+
+html.dark .quick-status-tab--header.quick-status-tab--active .quick-status-tab__icon {
+  color: #60a5fa;
+}
+
+.quick-status-tab__label {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.quick-status-tab--header.quick-status-tab--active .quick-status-tab__label {
+  font-weight: 600;
+}
+
+.quick-status-tab--header .quick-status-tab__label {
+  font-size: 12px;
+}
+
+.quick-status-tab--header .quick-status-tab__badge {
+  position: static;
+  top: auto;
+  right: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: #eff6ff;
+  border: none;
+  color: #3b82f6;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+html.dark .quick-status-tab--header .quick-status-tab__badge {
+  background: rgba(59, 130, 246, 0.14);
+  color: #93c5fd;
+}
+
+.quick-status-tab--header.quick-status-tab--active .quick-status-tab__badge {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+html.dark .quick-status-tab--header.quick-status-tab--active .quick-status-tab__badge {
+  background: rgba(96, 165, 250, 0.2);
+  color: #bfdbfe;
+}
+
+.quick-status-tab__divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 22px;
+  background: #e2e8f0;
+}
+
+html.dark .quick-status-tab__divider {
+  background: #1e293b;
+}
+
+/* Default variant (legacy pill bar) */
+.quick-status-tabs:not(.quick-status-tabs--header) {
+  gap: 3px;
+  padding: 4px 5px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+html.dark .quick-status-tabs:not(.quick-status-tabs--header) {
+  border-color: #1a2332;
+  background: #070b12;
+}
+
+.quick-status-tabs:not(.quick-status-tabs--header) .quick-status-tab {
+  padding: 5px 11px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #64748b;
+}
+
+.quick-status-tabs:not(.quick-status-tabs--header) .quick-status-tab__inner {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.quick-status-tabs:not(.quick-status-tabs--header) .quick-status-tab__label {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.quick-status-tabs:not(.quick-status-tabs--header) .quick-status-tab__badge {
+  position: absolute;
+  top: -14px;
+  right: -6px;
+  min-width: 18px;
+  height: 13px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 8px;
+}
+
+html.dark .quick-status-tabs:not(.quick-status-tabs--header) .quick-status-tab__badge {
+  background: #1a2436;
+  border-color: #2d3f5c;
+  color: #8da2bd;
+}
+
+.quick-status-tabs:not(.quick-status-tabs--header) .quick-status-tab--active {
+  color: #2563eb;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+html.dark .quick-status-tabs:not(.quick-status-tabs--header) .quick-status-tab--active {
+  color: #60a5fa;
+  background: #151c28;
+  border-color: #1e293b;
 }

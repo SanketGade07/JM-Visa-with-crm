@@ -20,7 +20,7 @@ const pillActive =
   "inline-flex items-center gap-1.5 min-h-[30px] min-w-[155px] max-w-full px-2.5 py-1 rounded-lg border border-blue-500 dark:border-blue-500 bg-white dark:bg-slate-900 text-[11px] font-semibold text-gray-700 dark:text-slate-200 shadow-[0_0_0_1px_#3b82f6] transition-all duration-150";
 
 const headerIdle =
-  "group inline-flex items-center gap-1.5 max-w-full border-0 bg-transparent p-0 text-[11px] font-semibold text-gray-500 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-300 transition-all duration-150";
+  "group inline-flex items-center gap-1.5 max-w-full border-0 bg-transparent p-0 text-[13px] font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-all duration-150";
 
 export function InlineColumnSearch({
   label,

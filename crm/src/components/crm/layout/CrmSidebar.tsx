@@ -26,7 +26,7 @@ export function CrmSidebar() {
     pastedInvoiceUrl, setPastedInvoiceUrl, uploadInvoiceError, setUploadInvoiceError,
     uploadingInvoiceKey, setUploadingInvoiceKey, statusFilter, setStatusFilter,
     kpiFilter, setKpiFilter, countryFilter, setCountryFilter,
-    selectedLeadId, setSelectedLeadId, isAddLeadOpen, setIsAddLeadOpen,
+    selectedLeadId, setSelectedLeadId, navigateToTab, isLeadChecklistRoute, isAddLeadOpen, setIsAddLeadOpen,
     addLeadStep, setAddLeadStep, addLeadSelectedCategory, setAddLeadSelectedCategory,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
     selectedMeeting, setSelectedMeeting, isEditMeetingOpen, setIsEditMeetingOpen,
@@ -84,10 +84,10 @@ export function CrmSidebar() {
             {[
               { id: "Dashboard", label: "Dashboard", icon: FaChartBar },
               { id: "Leads", label: "Lead Management", icon: FaUserFriends },
-              { id: "FollowUps", label: "Follow-Ups", icon: FaHistory },
-              { id: "Countries", label: "Country Wise Leads", icon: FaGlobe },
+              // { id: "FollowUps", label: "Follow-Ups", icon: FaHistory },
+              // { id: "Countries", label: "Country Wise Leads", icon: FaGlobe },
               { id: "USASlots", label: "USA Slot Tracking", icon: FaPassport },
-              { id: "Checklist", label: "Document Checklist", icon: FaCheckSquare },
+              // { id: "Checklist", label: "Document Checklist", icon: FaCheckSquare },
               { id: "Submissions", label: "Visa Submission", icon: FaPaperPlane },
               { id: "Payments", label: "Payments & Finance", icon: FaFileInvoiceDollar },
               // { id: "Meetings", label: "Meetings & Reminders", icon: FaCalendarAlt },
@@ -95,12 +95,14 @@ export function CrmSidebar() {
               { id: "Staff", label: "Staff Directory", icon: FaUserLock },
             ].filter((tab) => userAllowedTabs.includes(tab.id)).map((tab) => {
               const Icon = tab.icon;
-              const isActive = currentTab === tab.id;
+              const isActive =
+                currentTab === tab.id ||
+                (tab.id === "Leads" && currentTab === "Checklist");
               return (
                 <button
                   key={tab.id}
                   onClick={() => {
-                    setCurrentTab(tab.id);
+                    navigateToTab(tab.id);
                     setIsMobileSidebarOpen(false);
                   }}
                   className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${

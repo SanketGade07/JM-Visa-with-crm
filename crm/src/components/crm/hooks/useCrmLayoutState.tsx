@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useCrm, VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Meeting } from "@/context/CrmContext";
 import { ROLE_TABS } from "@/utils/crmConstants";
 // @ts-ignore
@@ -33,6 +34,9 @@ export function useCrmLayoutState() {
     getLeadDocuments
   } = useCrm();
 
+  const pathname = usePathname();
+  const router = useRouter();
+
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -56,7 +60,10 @@ export function useCrmLayoutState() {
   const [isMobileChecklistOpen, setIsMobileChecklistOpen] = useState(false);
 
   // Theme State
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    if (typeof document === "undefined") return "dark";
+    return document.documentElement.classList.contains("light") ? "light" : "dark";
+  });
   const [shouldAnimate, setShouldAnimate] = useState(true);
 
   useEffect(() => {
@@ -77,10 +84,17 @@ export function useCrmLayoutState() {
 
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
-    setTheme(nextTheme);
+    const root = document.documentElement;
+    root.classList.add("theme-switching");
+    root.classList.remove("light", "dark");
+    root.classList.add(nextTheme);
     localStorage.setItem("crm-theme", nextTheme);
-    document.documentElement.classList.remove("light", "dark");
-    document.documentElement.classList.add(nextTheme);
+    setTheme(nextTheme);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        root.classList.remove("theme-switching");
+      });
+    });
   };
 
   // Toast Notification State
@@ -114,6 +128,44 @@ export function useCrmLayoutState() {
   const [kpiFilter, setKpiFilter] = useState<string>("Total");
   const [countryFilter, setCountryFilter] = useState<string>("All");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+
+  const isLeadChecklistRoute = Boolean(pathname?.match(/^\/checklist\/([^/]+)$/));
+
+  const openLeadChecklist = useCallback(
+    (leadId: string) => {
+      setSelectedLeadId(leadId);
+      setCurrentTab("Checklist");
+      router.push(`/checklist/${encodeURIComponent(leadId)}`);
+    },
+    [router, setCurrentTab]
+  );
+
+  const navigateToTab = useCallback(
+    (tab: string) => {
+      setCurrentTab(tab);
+      setIsMobileChecklistOpen(false);
+      if (pathname?.startsWith("/checklist/")) {
+        router.push("/");
+      }
+    },
+    [router, setCurrentTab, pathname]
+  );
+
+  const closeLeadChecklist = useCallback(() => {
+    navigateToTab("Leads");
+  }, [navigateToTab]);
+
+  useEffect(() => {
+    const match = pathname?.match(/^\/checklist\/([^/]+)$/);
+    if (!match) return;
+
+    const leadId = decodeURIComponent(match[1]);
+    const leadExists = leads.some((l) => l.id === leadId);
+    if (!leadExists) return;
+
+    setSelectedLeadId(leadId);
+    setCurrentTab("Checklist");
+  }, [pathname, leads, setCurrentTab]);
 
   // Modals
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
@@ -747,7 +799,7 @@ export function useCrmLayoutState() {
     pastedInvoiceUrl, setPastedInvoiceUrl, uploadInvoiceError, setUploadInvoiceError,
     uploadingInvoiceKey, setUploadingInvoiceKey, statusFilter, setStatusFilter,
     kpiFilter, setKpiFilter, countryFilter, setCountryFilter,
-    selectedLeadId, setSelectedLeadId, isAddLeadOpen, setIsAddLeadOpen,
+    selectedLeadId, setSelectedLeadId, openLeadChecklist, closeLeadChecklist, navigateToTab, isLeadChecklistRoute, isAddLeadOpen, setIsAddLeadOpen,
     addLeadStep, setAddLeadStep, addLeadSelectedCategory, setAddLeadSelectedCategory,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
     selectedMeeting, setSelectedMeeting, isEditMeetingOpen, setIsEditMeetingOpen,

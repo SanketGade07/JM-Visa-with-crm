@@ -9,20 +9,19 @@ import { AustraliaFlag, MalaysiaFlag, IndonesiaFlag, SingaporeFlag } from "@/com
 import {
   FaUserFriends, FaGlobe, FaCheckSquare, FaCalendarAlt, FaHistory,
   FaPassport, FaFileInvoiceDollar, FaChartBar, FaUserLock, FaPlus,
-  FaTrash, FaUndo, FaSearch, FaTimes, FaCoins, FaCheckCircle,
+  FaTrash, FaUndo, FaSearch, FaTimes, FaCoins,
   FaInfoCircle, FaFileDownload, FaFileUpload, FaPaperPlane,
   FaSun, FaMoon, FaEllipsisV, FaChevronLeft, FaChevronRight,
   FaMinus, FaExpand, FaEye, FaPhone, FaCommentDots, FaCog, FaEnvelope,
   FaWhatsapp, FaExternalLinkAlt, FaSignOutAlt, FaKey, FaClipboard, FaEdit, FaSave
 } from "react-icons/fa";
-import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiEye, FiSettings, FiGlobe, FiMenu, FiUser, FiLock } from "react-icons/fi";
+import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiCheckCircle, FiEye, FiSettings, FiGlobe, FiMenu, FiUser, FiLock } from "react-icons/fi";
 import DataTable, { exportRowsToCsv, StatusPill, getPillClasses, ProgressBar } from "@/components/ui/DataTable";
 import { StatusSelectPill } from "@/components/ui/StatusSelectPill";
+import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
 import {
   SearchableCountrySelect,
   PhoneInput,
-  SearchableFilterSelect,
-  destinationFilterOptions,
   leadStatusFilterOptions,
 } from "@/components/ui/FormInputs";
 // @ts-ignore
@@ -31,7 +30,42 @@ import { getLeadAvatar, getLeadDescription, getLeadCompany } from "../helpers/le
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { useColumnSearch } from "@/hooks/useColumnSearch";
 import { applyColumnSearch } from "@/utils/columnSearch";
+import { HoverHint } from "@/components/ui/HoverHint";
+import { LeadManagementToolbar } from "@/components/ui/LeadManagementToolbar";
 
+const IN_PROGRESS_STATUSES = [
+  "Contacted",
+  "Follow-Up",
+  "Interested",
+  "Documents Pending",
+  "Documents Received",
+  "Under Verification",
+  "Ready For Submission",
+  "Visa Submitted",
+];
+
+const COMPLETED_STATUSES = ["Approved / Rejected", "Closed"];
+
+const QUICK_TAB_FILTERS: {
+  id: string;
+  label: string;
+  statuses: VisaStatus[] | "all-non-dropped";
+}[] = [
+  { id: "All", label: "All", statuses: "all-non-dropped" },
+  { id: "New", label: "New", statuses: ["New Lead"] },
+  { id: "Follow-Up", label: "Follow-Up", statuses: ["Follow-Up"] },
+  { id: "Interested", label: "Interested", statuses: ["Interested"] },
+  { id: "Docs", label: "Docs", statuses: ["Documents Pending", "Documents Received"] },
+  { id: "Submitted", label: "Submitted", statuses: ["Ready For Submission", "Visa Submitted"] },
+  { id: "Completed", label: "Completed", statuses: COMPLETED_STATUSES },
+];
+
+function matchesQuickTab(lead: Lead, tabId: string): boolean {
+  const tab = QUICK_TAB_FILTERS.find((item) => item.id === tabId);
+  if (!tab) return true;
+  if (tab.statuses === "all-non-dropped") return lead.status !== "Dropped";
+  return tab.statuses.includes(lead.status);
+}
 
 export function LeadsTab() {
   const {
@@ -47,9 +81,10 @@ export function LeadsTab() {
     urlModalData, setUrlModalData, pastedUrl, setPastedUrl, uploadError, setUploadError,
     invoiceLeadId, setInvoiceLeadId, urlInvoiceData, setUrlInvoiceData,
     pastedInvoiceUrl, setPastedInvoiceUrl, uploadInvoiceError, setUploadInvoiceError,
-    uploadingInvoiceKey, setUploadingInvoiceKey, statusFilter, setStatusFilter,
+    uploadingInvoiceKey, setUploadingInvoiceKey,
+    statusFilter, setStatusFilter,
     kpiFilter, setKpiFilter, countryFilter, setCountryFilter,
-    selectedLeadId, setSelectedLeadId, isAddLeadOpen, setIsAddLeadOpen,
+    selectedLeadId, setSelectedLeadId, openLeadChecklist, isAddLeadOpen, setIsAddLeadOpen,
     addLeadStep, setAddLeadStep, addLeadSelectedCategory, setAddLeadSelectedCategory,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
     selectedMeeting, setSelectedMeeting, isEditMeetingOpen, setIsEditMeetingOpen,
@@ -78,36 +113,48 @@ export function LeadsTab() {
 
   const columnSearch = useColumnSearch();
 
-  const baseFilteredLeads = useMemo(() => {
+  const scopedLeads = useMemo(() => {
     return leads.filter((l) => {
       if (kpiFilter === "New Today") {
         const todayStr = new Date().toISOString().split("T")[0];
         if (l.dateCreated !== todayStr) return false;
       } else if (kpiFilter === "In Progress") {
-        const inProgressStatuses = [
-          "Contacted",
-          "Follow-Up",
-          "Interested",
-          "Documents Pending",
-          "Documents Received",
-          "Under Verification",
-          "Ready For Submission",
-          "Visa Submitted",
-        ];
-        if (!inProgressStatuses.includes(l.status)) return false;
+        if (!IN_PROGRESS_STATUSES.includes(l.status)) return false;
       } else if (kpiFilter === "Total") {
         if (l.status === "Dropped") return false;
       } else if (kpiFilter === "Visa Success") {
         if (l.status !== "Approved / Rejected") return false;
       }
       return (
-        (statusFilter === "Dropped" ? l.status === "Dropped" : l.status !== "Dropped") &&
-        (statusFilter === "All" || l.status === statusFilter) &&
         (countryFilter === "All" || l.country === countryFilter) &&
         (l.name.toLowerCase().includes(searchTerm.toLowerCase()) || l.phone.includes(searchTerm))
       );
     });
-  }, [leads, kpiFilter, statusFilter, countryFilter, searchTerm]);
+  }, [leads, kpiFilter, countryFilter, searchTerm]);
+
+  const quickStatusTabs = useMemo(
+    () =>
+      QUICK_TAB_FILTERS.map((tab) => ({
+        id: tab.id,
+        label: tab.label,
+        count: scopedLeads.filter((l) => matchesQuickTab(l, tab.id)).length,
+      })),
+    [scopedLeads]
+  );
+
+  const baseFilteredLeads = useMemo(() => {
+    const statusColFilter = columnSearch.debouncedFilters.status?.trim();
+    const tab = QUICK_TAB_FILTERS.find((item) => item.id === statusFilter);
+
+    if (!tab) {
+      return scopedLeads.filter((l) => {
+        if (!statusColFilter && l.status === "Dropped") return false;
+        return true;
+      });
+    }
+
+    return scopedLeads.filter((l) => matchesQuickTab(l, tab.id));
+  }, [scopedLeads, statusFilter, columnSearch.debouncedFilters.status]);
 
   const leadSearchGetters = useMemo(
     () => ({
@@ -128,6 +175,9 @@ export function LeadsTab() {
       Object.entries(leadSearchGetters).map(([searchKey, getSearchValue]) => ({
         searchKey,
         getSearchValue,
+        ...(searchKey === "status"
+          ? { filterMode: "exact" as const, filterClearValue: "All" }
+          : {}),
       })),
     [leadSearchGetters]
   );
@@ -141,15 +191,6 @@ export function LeadsTab() {
     <>
             <div className="-m-4 md:-m-8 p-4 md:p-6 bg-gray-50 dark:bg-transparent min-h-[calc(100vh-4rem)] space-y-5">
 
-              {/* Page header */}
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Lead Management</h2>
-                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Manage and track all your leads in one place.</p>
-                </div>
-
-              </div>
-
               {/* KPI cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 {[
@@ -157,6 +198,7 @@ export function LeadsTab() {
                     label: "New Today",
                     value: leads.filter(l => l.dateCreated === new Date().toISOString().split("T")[0]).length,
                     icon: FiCalendar,
+                    iconClass: "bg-rose-100 border border-rose-200/90 text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/25 dark:text-rose-400",
                     trend: "↓ 16%",
                     up: false,
                     bgColor: "bg-[#fef2f2] dark:bg-rose-950/45",
@@ -168,8 +210,9 @@ export function LeadsTab() {
                   },
                   {
                     label: "In Progress",
-                    value: leads.filter(l => ["Contacted", "Follow-Up", "Interested", "Documents Pending", "Documents Received", "Under Verification", "Ready For Submission", "Visa Submitted"].includes(l.status)).length,
+                    value: leads.filter(l => IN_PROGRESS_STATUSES.includes(l.status)).length,
                     icon: FiClock,
+                    iconClass: "bg-sky-100 border border-sky-200/90 text-sky-600 dark:bg-sky-500/10 dark:border-sky-500/25 dark:text-sky-400",
                     trend: "↑ 8%",
                     up: true,
                     bgColor: "bg-[#eff6ff] dark:bg-sky-950/45",
@@ -180,22 +223,10 @@ export function LeadsTab() {
                     areaPath: "M 5 32 C 12 32, 18 35, 24 25 C 30 15, 36 32, 42 32 C 48 32, 54 18, 60 16 C 66 14, 72 25, 78 14 C 84 4, 92 14, 100 12 L 100 40 L 5 40 Z"
                   },
                   {
-                    label: "Total Leads",
-                    value: leads.filter(l => l.status !== "Dropped").length,
-                    icon: FiUsers,
-                    trend: "↑ 12%",
-                    up: true,
-                    bgColor: "bg-[#eff6ff] dark:bg-blue-950/45",
-                    textColor: "text-[#2563eb] dark:text-blue-400",
-                    trendColor: "text-emerald-600 dark:text-emerald-500",
-                    color: "#3b82f6",
-                    linePath: "M 5 30 C 12 28, 18 20, 25 25 C 32 30, 38 12, 45 15 C 52 18, 58 22, 65 18 C 72 14, 78 10, 85 14 C 92 18, 96 10, 100 8",
-                    areaPath: "M 5 30 C 12 28, 18 20, 25 25 C 32 30, 38 12, 45 15 C 52 18, 58 22, 65 18 C 72 14, 78 10, 85 14 C 92 18, 96 10, 100 8 L 100 40 L 5 40 Z"
-                  },
-                  {
                     label: "Visa Success",
                     value: leads.filter(l => l.status === "Approved / Rejected").length,
-                    icon: FaCheckCircle,
+                    icon: FiCheckCircle,
+                    iconClass: "bg-emerald-100 border border-emerald-200/90 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/25 dark:text-emerald-400",
                     trend: "↑ 10%",
                     up: true,
                     bgColor: "bg-[#ecfdf5] dark:bg-emerald-950/45",
@@ -204,6 +235,20 @@ export function LeadsTab() {
                     color: "#10b981",
                     linePath: "M 5 35 C 15 35, 25 32, 35 25 C 45 20, 55 15, 65 10 C 75 5, 85 8, 95 4",
                     areaPath: "M 5 35 C 15 35, 25 32, 35 25 C 45 20, 55 15, 65 10 C 75 5, 85 8, 95 4 L 100 40 L 5 40 Z"
+                  },
+                  {
+                    label: "Total Leads",
+                    value: leads.filter(l => l.status !== "Dropped").length,
+                    icon: FiUsers,
+                    iconClass: "bg-blue-100 border border-blue-200/90 text-blue-600 dark:bg-blue-500/10 dark:border-blue-500/25 dark:text-blue-400",
+                    trend: "↑ 12%",
+                    up: true,
+                    bgColor: "bg-[#eff6ff] dark:bg-blue-950/45",
+                    textColor: "text-[#2563eb] dark:text-blue-400",
+                    trendColor: "text-emerald-600 dark:text-emerald-500",
+                    color: "#3b82f6",
+                    linePath: "M 5 30 C 12 28, 18 20, 25 25 C 32 30, 38 12, 45 15 C 52 18, 58 22, 65 18 C 72 14, 78 10, 85 14 C 92 18, 96 10, 100 8",
+                    areaPath: "M 5 30 C 12 28, 18 20, 25 25 C 32 30, 38 12, 45 15 C 52 18, 58 22, 65 18 C 72 14, 78 10, 85 14 C 92 18, 96 10, 100 8 L 100 40 L 5 40 Z"
                   },
                   // {
                   //   label: "Meetings Booked",
@@ -239,16 +284,17 @@ export function LeadsTab() {
                         } else if (kpi.label === "Visa Success") {
                           setKpiFilter("Visa Success");
                         }
-                        setStatusFilter("All");
                       }}
-                      className={`bg-white dark:bg-slate-900/50 rounded-2xl border p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none hover:shadow-[0_4px_25px_-2px_rgba(0,0,0,0.08)] transition-all duration-300 flex gap-4 items-start cursor-pointer hover:border-violet-500/50 dark:hover:border-violet-500/50 ${
+                      className={`rounded-2xl border p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none hover:shadow-[0_4px_25px_-2px_rgba(0,0,0,0.08)] transition-all duration-300 flex gap-4 items-start cursor-pointer hover:border-violet-500/50 dark:hover:border-violet-500/50 ${
                         isFilterActive
-                          ? "border-violet-500 ring-2 ring-violet-500/10 dark:border-violet-500 bg-violet-500/5 dark:bg-violet-500/5"
-                          : "border-slate-100 dark:border-slate-800"
+                          ? "border-violet-500 ring-2 ring-violet-500/10 dark:border-violet-500 bg-violet-50 dark:bg-slate-800/80"
+                          : "border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/50"
                       }`}
                     >
-                      <div className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 ${kpi.bgColor} ${kpi.textColor}`}>
-                        <Icon className="text-lg" />
+                      <div
+                        className={`w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0 ${kpi.iconClass}`}
+                      >
+                        <Icon className="text-[16px]" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
@@ -308,33 +354,17 @@ export function LeadsTab() {
                       setIsMobileDetailOpen(true);
                     }}
                     selectedRowId={selectedLeadId}
-                    title="Lead List"
                     search={searchTerm}
                     onSearchChange={setSearchTerm}
                     searchPlaceholder="Search name or phone…"
                     filters={
-                      <>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Status:</span>
-                          <SearchableFilterSelect
-                            value={statusFilter}
-                            onChange={setStatusFilter}
-                            options={leadStatusFilterOptions}
-                            placeholder="All Statuses"
-                            portalId="lead-status-filter-portal"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Destination:</span>
-                          <SearchableFilterSelect
-                            value={countryFilter}
-                            onChange={setCountryFilter}
-                            options={destinationFilterOptions}
-                            placeholder="All Countries"
-                            portalId="lead-destination-filter-portal"
-                          />
-                        </div>
-                      </>
+                      <LeadManagementToolbar
+                        countryFilter={countryFilter}
+                        onCountryFilterChange={setCountryFilter}
+                        tabs={quickStatusTabs}
+                        activeTab={statusFilter}
+                        onTabChange={setStatusFilter}
+                      />
                     }
                     onExport={() =>
                       exportRowsToCsv(
@@ -389,25 +419,33 @@ export function LeadsTab() {
                         render: (lead) => {
                           const pct = docProgress(lead.checklist);
                           const filledCount = pct === 0 ? 0 : Math.ceil(pct / 25);
+                          const canOpenChecklist = userAllowedTabs.includes("Checklist");
+
                           return (
                             <div className="min-w-[120px] flex items-center justify-start h-full">
-                              <div className="flex items-center gap-2">
-                                <div className="flex gap-1 w-[76px]">
-                                  {[1, 2, 3, 4].map((seg) => (
-                                    <div
-                                      key={seg}
-                                      className={`h-2 flex-1 rounded-[1.5px] ${
-                                        seg <= filledCount
-                                          ? "bg-emerald-500"
-                                          : "bg-gray-200 dark:bg-slate-800"
-                                      }`}
-                                    />
-                                  ))}
+                              <HoverHint
+                                label="Open checklist"
+                                disabled={!canOpenChecklist}
+                                onClick={() => openLeadChecklist(lead.id)}
+                              >
+                                <div className="inline-flex items-center gap-2">
+                                  <div className="flex gap-1 w-[76px]">
+                                    {[1, 2, 3, 4].map((seg) => (
+                                      <div
+                                        key={seg}
+                                        className={`h-2 flex-1 rounded-[1.5px] ${
+                                          seg <= filledCount
+                                            ? "bg-emerald-500"
+                                            : "bg-gray-200 dark:bg-slate-800"
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                  <span className="text-[12px] font-bold text-gray-500 dark:text-slate-400 tabular-nums">
+                                    {Math.round(pct)}%
+                                  </span>
                                 </div>
-                                <span className="text-[12px] font-bold text-gray-500 dark:text-slate-400 tabular-nums">
-                                  {Math.round(pct)}%
-                                </span>
-                              </div>
+                              </HoverHint>
                             </div>
                           );
                         },
@@ -416,13 +454,16 @@ export function LeadsTab() {
                         header: "Status",
                         searchKey: "status",
                         searchLabel: "Status",
-                        searchPlaceholder: "Search status...",
+                        filterSelectOptions: leadStatusFilterOptions,
+                        filterSelectPlaceholder: "All Statuses",
+                        filterSelectPortalId: "lead-status-column-filter-portal",
+                        filterSelectClearValue: "All",
                         getSearchValue: leadSearchGetters.status,
                         render: (lead) => (
                           <StatusSelectPill
                             value={lead.status}
                             disabled={!canModifyLeads}
-                            onClick={(e) => e.stopPropagation()}
+                            portalId={`status-select-${lead.id}`}
                             onChange={(status) => updateLeadStatus(lead.id, status)}
                           />
                         ),
@@ -434,18 +475,12 @@ export function LeadsTab() {
                         searchPlaceholder: "Search counselor...",
                         getSearchValue: leadSearchGetters.counselor,
                         render: (lead) => (
-                          <select
+                          <CounselorSelectPill
                             value={lead.counselor}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => assignCounselor(lead.id, e.target.value)}
                             disabled={!canModifyLeads}
-                            className="appearance-none py-0.5 px-2.5 text-[11px] font-medium rounded-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 focus:outline-none text-gray-600 dark:text-slate-300 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-all duration-150"
-                          >
-                            <option value="Unassigned" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Unassigned</option>
-                            <option value="Priya Mehta" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Priya Mehta</option>
-                            <option value="Rohit Verma" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Rohit Verma</option>
-                            <option value="Simran Kaur" className="bg-white dark:bg-slate-900 text-gray-950 dark:text-slate-50">Simran Kaur</option>
-                          </select>
+                            portalId={`counselor-select-${lead.id}`}
+                            onChange={(counselor) => assignCounselor(lead.id, counselor)}
+                          />
                         ),
                       },
                       {
