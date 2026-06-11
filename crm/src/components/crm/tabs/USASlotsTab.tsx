@@ -82,10 +82,7 @@ export function USASlotsTab() {
               </div>
 
               {/* USA Files list */}
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                
-                <div className="xl:col-span-2">
-                  <DataTable
+              <DataTable
                     title="USA Client Profiles"
                     pagination={true}
                     defaultPageSize={8}
@@ -135,7 +132,7 @@ export function USASlotsTab() {
                     actions={(lead) => [
                       { 
                         icon: FiSettings, 
-                        title: "Edit slot panel", 
+                        title: "Edit slot", 
                         onClick: (l) => {
                           setSelectedLeadId(l.id);
                           setIsMobileSlotSettingsOpen(true);
@@ -146,99 +143,87 @@ export function USASlotsTab() {
                     ]}
                     emptyText="No USA leads yet."
                   />
-                </div>
 
-                {/* Mobile USA slot drawer backdrop */}
-                {isMobileSlotSettingsOpen && selectedLead && selectedLead.country === "USA" && (
-                  <div 
-                    className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm xl:hidden"
+                {isMobileSlotSettingsOpen && selectedLead?.country === "USA" && (
+                  <div
+                    className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
                     onClick={() => setIsMobileSlotSettingsOpen(false)}
-                  />
-                )}
-
-                {/* Edit USA Slot side panel */}
-                {selectedLead && selectedLead.country === "USA" && (
-                  <div className={`
-                    fixed inset-y-0 right-0 z-50 w-full max-w-md bg-slate-900 border-l border-slate-800 p-6 flex flex-col h-full space-y-6 overflow-y-auto shadow-2xl transition-transform duration-300
-                    xl:static xl:z-auto xl:w-auto xl:max-w-none xl:shadow-none xl:border-l-0 xl:rounded-2xl xl:bg-slate-900/60 xl:translate-x-0 xl:flex
-                    ${isMobileSlotSettingsOpen ? "translate-x-0" : "translate-x-full xl:translate-x-0"}
-                    ${!isMobileSlotSettingsOpen ? "hidden xl:flex" : "flex"}
-                  `}>
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                      <h3 className="text-sm font-bold text-white">
-                        Slot Settings: {selectedLead.name}
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={() => setIsMobileSlotSettingsOpen(false)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 xl:hidden flex items-center justify-center cursor-pointer hover:bg-slate-800"
-                      >
-                        <FaTimes className="text-xs" />
-                      </button>
-                    </div>
-
-                    <div className="space-y-4 text-xs">
-                      
-                      {(
-                        [
-                          { key: "credentialsProvided", label: "Credentials Provided by Client" },
-                          { key: "ds160Submitted", label: "DS-160 Form Dispatched" },
-                          { key: "slotsPaid", label: "Embassy Visa Fee Paid" },
-                          { key: "slotsBooked", label: "Visa Slot Booked" },
-                        ] as const
-                      ).map((item) => (
-                        <div key={item.key} className="flex items-center justify-between p-3 bg-slate-950 border border-slate-900 rounded-xl">
-                          <span className="font-semibold text-slate-300">{item.label}</span>
-                          <input
-                            type="checkbox"
-                            checked={!!selectedLead.usaSlots?.[item.key]}
-                            onChange={() => {
-                              updateUsaSlots(selectedLead.id, {
-                                [item.key]: !selectedLead.usaSlots?.[item.key]
-                              });
-                            }}
-                            className="w-4 h-4 accent-violet-500 rounded cursor-pointer"
-                          />
-                        </div>
-                      ))}
-
-                      {/* Date selection for Interview */}
-                      <div className="space-y-1.5 pt-2">
-                        <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">Consulate Interview Details</label>
-                        <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="date"
-                            value={selectedLead.usaSlots?.interviewDate || ""}
-                            onChange={(e) => {
-                              updateUsaSlots(selectedLead.id, {
-                                interviewDate: e.target.value,
-                                interviewScheduled: !!e.target.value,
-                                slotsBooked: !!e.target.value
-                              });
-                            }}
-                            className="bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none"
-                          />
-                          <select
-                            value={selectedLead.usaSlots?.slotLocation || "Delhi"}
-                            onChange={(e) => {
-                              updateUsaSlots(selectedLead.id, { slotLocation: e.target.value });
-                            }}
-                            className="bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none"
-                          >
-                            <option value="Delhi">Delhi</option>
-                            <option value="Mumbai">Mumbai</option>
-                            <option value="Chennai">Chennai</option>
-                            <option value="Kolkata">Kolkata</option>
-                            <option value="Hyderabad">Hyderabad</option>
-                          </select>
-                        </div>
+                  >
+                    <div
+                      className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto space-y-6"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <h3 className="text-sm font-bold text-white">
+                          Slot Settings: {selectedLead.name}
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => setIsMobileSlotSettingsOpen(false)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-800"
+                        >
+                          <FaTimes className="text-xs" />
+                        </button>
                       </div>
 
+                      <div className="space-y-4 text-xs">
+                        {(
+                          [
+                            { key: "credentialsProvided", label: "Credentials Provided by Client" },
+                            { key: "ds160Submitted", label: "DS-160 Form Dispatched" },
+                            { key: "slotsPaid", label: "Embassy Visa Fee Paid" },
+                            { key: "slotsBooked", label: "Visa Slot Booked" },
+                          ] as const
+                        ).map((item) => (
+                          <div key={item.key} className="flex items-center justify-between p-3 bg-slate-950 border border-slate-900 rounded-xl">
+                            <span className="font-semibold text-slate-300">{item.label}</span>
+                            <input
+                              type="checkbox"
+                              checked={!!selectedLead.usaSlots?.[item.key]}
+                              onChange={() => {
+                                updateUsaSlots(selectedLead.id, {
+                                  [item.key]: !selectedLead.usaSlots?.[item.key]
+                                });
+                              }}
+                              className="w-4 h-4 accent-violet-500 rounded cursor-pointer"
+                            />
+                          </div>
+                        ))}
+
+                        <div className="space-y-1.5 pt-2">
+                          <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">Consulate Interview Details</label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <input
+                              type="date"
+                              value={selectedLead.usaSlots?.interviewDate || ""}
+                              onChange={(e) => {
+                                updateUsaSlots(selectedLead.id, {
+                                  interviewDate: e.target.value,
+                                  interviewScheduled: !!e.target.value,
+                                  slotsBooked: !!e.target.value
+                                });
+                              }}
+                              className="bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none"
+                            />
+                            <select
+                              value={selectedLead.usaSlots?.slotLocation || "Delhi"}
+                              onChange={(e) => {
+                                updateUsaSlots(selectedLead.id, { slotLocation: e.target.value });
+                              }}
+                              className="bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none"
+                            >
+                              <option value="Delhi">Delhi</option>
+                              <option value="Mumbai">Mumbai</option>
+                              <option value="Chennai">Chennai</option>
+                              <option value="Kolkata">Kolkata</option>
+                              <option value="Hyderabad">Hyderabad</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
-
-              </div>
 
             </div>
     </>
