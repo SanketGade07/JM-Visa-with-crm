@@ -1335,11 +1335,11 @@ html.dark [data-tooltip][data-tooltip-position="bottom"]::after {
     margin-top: 14px !important;
   }
 
-  /* ══════════════════════════════════════════════════════════
+  /* ╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝
      HEADER — Premium Mobile Alignment
      Consistent 12px side padding, uniform 32px touch targets,
      even 8px gaps between all action icons.
-     ══════════════════════════════════════════════════════════ */
+     ╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝╝ */
 
   /* Header bar itself */
   header.h-16 {
@@ -1762,17 +1762,7 @@ html.dark .lead-mgmt-toolbar__tabs-panel {
 .data-table-toolbar__actions {
   display: flex;
   align-items: center;
-  gap: 4px;
-  height: 36px;
-  padding: 0 6px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #ffffff;
-}
-
-html.dark .data-table-toolbar__actions {
-  border-color: #1e293b;
-  background: #0a0e17;
+  gap: 6px;
 }
 
 .lead-mgmt-toolbar__divider {

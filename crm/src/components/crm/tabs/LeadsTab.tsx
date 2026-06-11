@@ -44,7 +44,7 @@ const IN_PROGRESS_STATUSES = [
   "Visa Submitted",
 ];
 
-const COMPLETED_STATUSES = ["Approved / Rejected", "Closed"];
+const COMPLETED_STATUSES: VisaStatus[] = ["Approved / Rejected", "Closed"];
 
 const QUICK_TAB_FILTERS: {
   id: string;

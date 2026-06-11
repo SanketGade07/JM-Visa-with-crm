@@ -1,0 +1,72 @@
+# ============================================================================
+# ### CRM PROJECT ARCHITECTURE & TECH STACK
+# ============================================================================
+
+# Core Framework
+- Framework: Next.js 16 (App Router, src/app/)
+- UI Engine: React 19 (Server Components by default, 'use client' only when interactive)
+- Language: TypeScript 5 (Strict type checking, absolute path mappings)
+- Styling: Tailwind CSS v4 (@import "tailwindcss" setup, no legacy configurations)
+
+# Backend & Database (CRITICAL: Ignore CRM_DEVELOPER_GUIDE.md plans)
+- Client: Direct client interaction via `@supabase/supabase-js`
+- Storage: Supabase Storage (Target bucket: `crm-documents`)
+- Auth: Custom cookie-based auth via `crm_role` cookie and `middleware.ts`. DO NOT write NextAuth.
+- Local Mocking: Local JSON data sources located in `src/data/`
+- DB Engine: PostgreSQL via Supabase (No Prisma ORM allowed in codebase)
+- State Management: React Context Only (`CrmContext`, `CrmLayoutContext`). No Zustand, No Redux.
+
+# Primary UI Ecosystem
+- Icons: `react-icons` (`fa`, `fi` packages)
+- Inputs: `react-select`, `react-phone-input-2`, `react-international-phone`, `google-libphonenumber`
+- Maps: `react-simple-maps`, `topojson-client`, `country-list`
+- Overlays: Native React `createPortal` for dropdown architectures
+
+# ============================================================================
+# ### TOKEN PRESERVATION & PROMPT CONSTRAINTS
+# ============================================================================
+
+# 1. Zero Conversational Filler
+- No pleasantries, no markdown introductory summaries, and no concluding summaries.
+- Never write introductory lines like "Sure, I can help you with that" or "Here is the code".
+- Output code directly. Start instantly with the file block or text requested.
+
+# 2. Strict Output Boundaries
+- Do not regenerate unchanged parent blocks, full files, or long layout structures.
+- For component updates, use exact file path markdown anchors and output ONLY the targeted structural diff or modified function.
+- Never write code comments or documentation unless explicitly commanded in the prompt.
+
+# 3. Code Generation Rules
+- Components: Always use explicitly typed arrow functions: `const Component: React.FC = () => {}`
+- Imports: Use exact package imports. Never bundle or import unused library assets.
+- Styling: Follow standard Tailwind v4 conventions. Do not generate legacy tailwind.config setups.
+- Type Safety: Prohibit the usage of `any`. Explicitly type all API responses and component props.
+
+# Block Next.js build caches and IDE history
+.next/
+.vercel/
+node_modules/
+.cache/
+*.tsbuildinfo
+
+# Block heavy localized development script dependencies
+populate-credentials.sql
+scripts/
+
+# Block non-code assets from AI readings
+public/
+*.png
+*.jpg
+*.jpeg
+*.svg
+
+
+# ============================================================================
+# IMAGE UPLOAD DETECTOR & CHEAP MODEL ENFORCEMENT
+# ============================================================================
+- IF the user attaches or uploads an image/screenshot to this chat thread:
+  1. Immediately start your response text with this exact block formatting:
+     "⚠️ **TOKEN NOTICE**: Image detected. Ensure your chat dropdown is set to **Gemini 2.5 Flash** to prevent massive context token billing."
+  2. Proceed to solve the layout or code issue using hyper-concise snippets.
+  3. Append this mandatory system note at the final line of your response text:
+     "👉 Please hit 'Ctrl+N' (or 'Cmd+N') to drop this screenshot context and start a clean text thread immediately."

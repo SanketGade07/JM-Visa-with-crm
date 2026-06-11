@@ -7,14 +7,10 @@ import {
   FiSearch, 
   FiFilter, 
   FiDownload, 
-  FiMoreVertical, 
   FiInbox,
-  FiChevronLeft,
-  FiChevronRight,
-  FiChevronsLeft,
-  FiChevronsRight,
   FiRefreshCw
 } from "react-icons/fi";
+import { Pagination } from "@/components/crm/ui/Pagination";
 import { RiWhatsappLine } from "react-icons/ri";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -56,6 +52,7 @@ export type RowAction<T> = {
 
 type DataTableProps<T> = {
   title?: React.ReactNode;
+  subtitle?: React.ReactNode;
   rows: T[];
   getRowId: (row: T) => string;
   columns: Column<T>[];
@@ -72,9 +69,14 @@ type DataTableProps<T> = {
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
   onFilter?: () => void;
+  filterActive?: boolean;
   onExport?: () => void;
   onRefresh?: () => void;
   rightSlot?: React.ReactNode;
+  /** Rendered after built-in toolbar icons (search, refresh, export, filter) */
+  toolbarEndSlot?: React.ReactNode;
+  /** Rendered between the title block and table body (e.g. filter chip rows) */
+  belowTitle?: React.ReactNode;
   className?: string;
   pagination?: boolean;
   defaultPageSize?: number;
@@ -83,6 +85,23 @@ type DataTableProps<T> = {
 
 const alignClass = (a?: "left" | "right" | "center") =>
   a === "right" ? "text-right" : a === "center" ? "text-center" : "text-left";
+
+function getColumnEdgePadding(
+  columnIndex: number,
+  totalColumns: number,
+  showCheckbox: boolean,
+  hasActions: boolean
+): string {
+  const isFirst = columnIndex === 0;
+  const isLast = columnIndex === totalColumns - 1;
+  const padLeft = isFirst && !showCheckbox;
+  const padRight = isLast && !hasActions;
+
+  if (padLeft && padRight) return "pl-5 pr-5";
+  if (padLeft) return "pl-5 pr-3";
+  if (padRight) return "pl-3 pr-5";
+  return "px-3";
+}
 
 const COMM_ACTION_TITLES = new Set(["call", "phone", "whatsapp", "message", "email"]);
 
@@ -107,16 +126,23 @@ function ToolbarButton({
   icon: Icon,
   title,
   onClick,
+  active,
 }: {
   icon: IconType;
   title: string;
   onClick?: () => void;
+  active?: boolean;
 }) {
   return (
     <button
       type="button"
+      title={title}
       onClick={onClick}
-      className="w-9 h-9 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+      className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+        active
+          ? "text-blue-600 dark:text-sky-400 bg-blue-50 dark:bg-sky-400/10 hover:bg-blue-100 dark:hover:bg-sky-400/15"
+          : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
+      }`}
     >
       <Icon className="text-[14.5px]" />
     </button>
@@ -171,6 +197,7 @@ export function ProgressBar({ value }: { value: number }) {
 
 export default function DataTable<T>({
   title,
+  subtitle,
   rows,
   getRowId,
   columns,
@@ -187,9 +214,12 @@ export default function DataTable<T>({
   onSearchChange,
   searchPlaceholder = "Search…",
   onFilter,
+  filterActive,
   onExport,
   onRefresh,
   rightSlot,
+  toolbarEndSlot,
+  belowTitle,
   className = "",
   pagination = false,
   defaultPageSize = 5,
@@ -235,7 +265,7 @@ export default function DataTable<T>({
           <div className="flex items-end justify-between gap-3 px-5 py-3 overflow-visible">
             <div className="flex items-end flex-1 min-w-0 overflow-visible">{filters}</div>
             <div className="data-table-toolbar__actions shrink-0">
-              {rightSlot && <div className="mr-1">{rightSlot}</div>}
+              {rightSlot}
               {onSearchChange && (searchOpen || (search && search.length > 0)) ? (
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 dark:text-slate-500">
@@ -260,14 +290,26 @@ export default function DataTable<T>({
               )}
               {onRefresh && <ToolbarButton icon={FiRefreshCw} title="Refresh" onClick={onRefresh} />}
               <ToolbarButton icon={FiDownload} title="Export" onClick={onExport} />
-              <ToolbarButton icon={FiMoreVertical} title="More" />
+              {onFilter && (
+                <ToolbarButton
+                  icon={FiFilter}
+                  title="Filter"
+                  onClick={onFilter}
+                  active={filterActive}
+                />
+              )}
+              {toolbarEndSlot}
             </div>
           </div>
           {title && (
             <div className="px-5 pb-2.5">
               <h3 className="text-[13px] font-bold text-gray-900 dark:text-slate-100">{title}</h3>
+              {subtitle && (
+                <p className="text-[12px] text-gray-500 dark:text-slate-500 mt-1 leading-relaxed">{subtitle}</p>
+              )}
             </div>
           )}
+          {belowTitle}
         </>
       )}
 
@@ -302,7 +344,7 @@ export default function DataTable<T>({
                 return (
                   <th
                     key={searchKey || i}
-                    className={`px-3 py-5 text-[13px] font-semibold tracking-normal text-slate-500 dark:text-slate-400 whitespace-nowrap ${alignClass(
+                    className={`${getColumnEdgePadding(i, columns.length, showCheckbox, Boolean(actions))} py-5 text-[13px] font-semibold tracking-normal text-slate-500 dark:text-slate-400 whitespace-nowrap ${alignClass(
                       col.align
                     )} ${col.headerClassName || ""} ${
                       canSearch && columnSearch?.activeColumn === searchKey ? "min-w-[155px]" : ""
@@ -388,7 +430,7 @@ export default function DataTable<T>({
                   {columns.map((col, i) => (
                     <td
                       key={i}
-                      className={`px-3 py-2.5 align-middle text-[13px] text-gray-600 dark:text-slate-300 ${alignClass(
+                      className={`${getColumnEdgePadding(i, columns.length, showCheckbox, Boolean(actions))} py-2.5 align-middle text-[13px] text-gray-600 dark:text-slate-300 ${alignClass(
                         col.align
                       )} ${col.cellClassName || ""}`}
                     >
@@ -436,83 +478,14 @@ export default function DataTable<T>({
         </table>
       </div>
 
-      {/* ── Pagination Footer ─────────────────────────────────────────── */}
       {pagination && rows.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-end px-5 py-3 border-t border-gray-100 dark:border-slate-800 text-[12px] text-slate-500 dark:text-slate-400 gap-4 select-none">
-          {/* Rows per page */}
-          <div className="flex items-center gap-2.5">
-            <span className="text-gray-450 dark:text-slate-500">Rows per page</span>
-            <div className="relative flex items-center">
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="appearance-none bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-gray-750 dark:text-slate-200 text-xs font-semibold rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500 shadow-sm cursor-pointer transition-colors hover:border-gray-300 dark:hover:border-slate-700"
-              >
-                {[5, 8, 10, 20, 50].map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-slate-400">
-                <svg className="w-3.5 h-3.5 text-gray-455" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          {/* Range Info: "1-5 of 100" */}
-          <div className="font-medium tabular-nums text-slate-600 dark:text-slate-350">
-            {`${(activePage - 1) * pageSize + 1}-${Math.min(
-              activePage * pageSize,
-              rows.length
-            )} of ${rows.length}`}
-          </div>
-
-          {/* Navigation Controls */}
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setCurrentPage(1)}
-              disabled={activePage === 1}
-              className="w-8 h-8 rounded-lg flex items-center justify-center border border-gray-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-all"
-              title="First Page"
-            >
-              <FiChevronsLeft className="text-sm" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={activePage === 1}
-              className="w-8 h-8 rounded-lg flex items-center justify-center border border-gray-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-all"
-              title="Previous Page"
-            >
-              <FiChevronLeft className="text-sm" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={activePage === totalPages}
-              className="w-8 h-8 rounded-lg flex items-center justify-center border border-gray-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-all"
-              title="Next Page"
-            >
-              <FiChevronRight className="text-sm" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={activePage === totalPages}
-              className="w-8 h-8 rounded-lg flex items-center justify-center border border-gray-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-all"
-              title="Last Page"
-            >
-              <FiChevronsRight className="text-sm" />
-            </button>
-          </div>
-        </div>
+        <Pagination
+          totalItems={rows.length}
+          pageSize={pageSize}
+          currentPage={activePage}
+          onPageSizeChange={setPageSize}
+          onPageChange={setCurrentPage}
+        />
       )}
     </div>
   );

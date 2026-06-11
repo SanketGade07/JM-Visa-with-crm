@@ -87,6 +87,8 @@ export function USASlotsTab() {
                 <div className="xl:col-span-2">
                   <DataTable
                     title="USA Client Profiles"
+                    pagination={true}
+                    defaultPageSize={8}
                     rows={leads.filter((l) => l.country === "USA" && l.status !== "Dropped")}
                     getRowId={(l) => l.id}
                     onRowClick={(l) => {

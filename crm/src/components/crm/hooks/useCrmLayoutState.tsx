@@ -244,8 +244,8 @@ export function useCrmLayoutState() {
 
 
   // Revenue Date Filters
-  const [startDate, setStartDate] = useState("2026-05-01");
-  const [endDate, setEndDate] = useState("2026-05-31");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   // Deposit Upload State
   const [depositLeadId, setDepositLeadId] = useState("");
