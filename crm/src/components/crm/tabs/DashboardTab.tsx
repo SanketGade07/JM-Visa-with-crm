@@ -601,7 +601,7 @@ export function DashboardTab() {
                     <div className="space-y-3">
                       <div className={`p-4 rounded-xl flex flex-col transition-all duration-200 border ${
                         theme === "light" 
-                          ? "bg-slate-50 border-gray-150" 
+                          ? "bg-[#F8FAFC] border-[#E5E7EB] shadow-[0_1px_3px_rgba(0,0,0,0.04)]" 
                           : "bg-slate-800/20 border-slate-800"
                       }`}>
                         <span className={`text-[13px] font-bold tracking-tight mb-2 block ${
@@ -612,8 +612,8 @@ export function DashboardTab() {
                         
                         <div className="space-y-2 text-[12px]">
                           <div className="flex justify-between">
-                            <span className="text-slate-400">Date Range:</span>
-                            <span className={`font-semibold ${theme === "light" ? "text-slate-700" : "text-slate-200"}`}>
+                            <span className={theme === "light" ? "text-gray-500" : "text-slate-400"}>Date Range:</span>
+                            <span className={`font-semibold ${theme === "light" ? "text-gray-800" : "text-slate-200"}`}>
                               {dateRangeStart ? (
                                 <span>
                                   {(() => {
@@ -639,8 +639,8 @@ export function DashboardTab() {
                           </div>
 
                           <div className="flex justify-between">
-                            <span className="text-slate-400">Total Leads Found:</span>
-                            <span className="font-bold text-blue-500">{filteredLeads.length} Leads</span>
+                            <span className={theme === "light" ? "text-gray-500" : "text-slate-400"}>Total Leads Found:</span>
+                            <span className={`font-bold ${theme === "light" ? "text-[#2563EB]" : "text-blue-500"}`}>{filteredLeads.length} Leads</span>
                           </div>
 
                           {dateRangeStart && !dateRangeEnd && (
