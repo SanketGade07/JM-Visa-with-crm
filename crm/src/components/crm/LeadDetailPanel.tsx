@@ -3,6 +3,10 @@
 import React from "react";
 import type { Lead, VisaStatus } from "@/context/CrmContext";
 import { StatusPill } from "@/components/ui/DataTable";
+import {
+  DEFAULT_EMPLOYMENT_CATEGORY,
+  getChecklistKeysForLead,
+} from "@/utils/documentChecklistConfig";
 
 type LeadDetailPanelProps = {
   lead: Lead;
@@ -19,8 +23,10 @@ export function LeadDetailPanel({
   onCounselorChange,
   onNotesChange,
 }: LeadDetailPanelProps) {
-  const verifiedCount = Object.values(lead.checklist).filter(Boolean).length;
-  const totalCount = Object.values(lead.checklist).length;
+  const category = lead.employmentCategory ?? DEFAULT_EMPLOYMENT_CATEGORY;
+  const activeKeys = getChecklistKeysForLead(category);
+  const verifiedCount = activeKeys.filter((key) => lead.checklist[key]).length;
+  const totalCount = activeKeys.length;
 
   return (
     <div className="p-5 bg-white dark:bg-slate-900/50 border border-gray-200 dark:border-slate-800/80 rounded-2xl flex flex-col h-full space-y-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none">
@@ -49,6 +55,7 @@ export function LeadDetailPanel({
               className="w-full bg-white dark:bg-slate-800/40 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <option value="New Lead">New Lead</option>
+              <option value="Lead Assigned">Lead Assigned</option>
               <option value="Contacted">Contacted</option>
               <option value="Follow-Up">Follow-Up</option>
               <option value="Interested">Interested</option>

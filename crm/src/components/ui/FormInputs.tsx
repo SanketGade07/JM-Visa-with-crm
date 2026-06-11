@@ -54,6 +54,7 @@ export const destinationFilterOptions = [
 export const leadStatusFilterOptions = [
   { value: "All", label: "All Statuses" },
   { value: "New Lead", label: "New Lead" },
+  { value: "Lead Assigned", label: "Lead Assigned" },
   { value: "Contacted", label: "Contacted" },
   { value: "Follow-Up", label: "Follow-Up" },
   { value: "Interested", label: "Interested" },

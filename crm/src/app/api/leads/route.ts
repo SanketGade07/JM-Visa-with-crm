@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readLeads, writeLeads, appendActivity } from "@/utils/db";
 import { Lead, Activity } from "@/context/CrmContext";
+import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
+import {
+  buildEmptyChecklist,
+  DEFAULT_EMPLOYMENT_CATEGORY,
+  EMPLOYMENT_CATEGORIES,
+  type EmploymentCategory,
+} from "@/utils/documentChecklistConfig";
 
 export async function GET(req: NextRequest) {
   try {
@@ -63,6 +70,11 @@ export async function POST(req: NextRequest) {
     const today = new Date().toISOString().split("T")[0];
     const leadId = `lead-${Date.now()}`;
     const country = body.country || "UK";
+    const employmentCategory: EmploymentCategory =
+      typeof body.employmentCategory === "string" &&
+      body.employmentCategory in EMPLOYMENT_CATEGORIES
+        ? (body.employmentCategory as EmploymentCategory)
+        : DEFAULT_EMPLOYMENT_CATEGORY;
 
     const newLead: Lead = {
       id: leadId,
@@ -77,37 +89,14 @@ export async function POST(req: NextRequest) {
       dateCreated: today,
       lastUpdated: today,
       isDeleted: false,
-      checklist: {
-        passport: false,
-        visaForm: false,
-        businessDocs: false,
-        salarySlips: false,
-        bankStatement: false,
-        itr: false,
-        offerLetter: false,
-        casOrI20: false,
-        travelHistory: false,
-        sopOrCoverLetter: false,
-        photos: false,
-        insurance: false,
-        biometricsCompleted: false,
-        visaFeesPaid: false,
-      },
+      employmentCategory,
+      checklist: buildEmptyChecklist(employmentCategory),
       payments: [],
       notes: body.notes || body.message || "",
     };
 
     if (country === "USA") {
-      newLead.usaSlots = {
-        credentialsProvided: false,
-        slotsAvailable: false,
-        slotsPaid: false,
-        slotsBooked: false,
-        ds160Submitted: false,
-        interviewScheduled: false,
-        interviewDate: "",
-        slotLocation: "",
-      };
+      newLead.usaSlots = { ...DEFAULT_USA_SLOTS, slotLocation: "Delhi" };
     }
 
     const ok = await writeLeads([...existingLeads, newLead]);

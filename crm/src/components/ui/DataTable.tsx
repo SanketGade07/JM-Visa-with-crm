@@ -152,6 +152,7 @@ function ToolbarButton({
 // ── Status pill (theme-aware outline badges matching screenshot) ─────────────────────────────
 const PILL_MAP: Record<string, string> = {
   "New Lead": "border-blue-500/40 text-blue-600 bg-blue-500/5 dark:border-blue-400/30 dark:text-blue-400 dark:bg-blue-400/5",
+  "Lead Assigned": "border-cyan-500/40 text-cyan-600 bg-cyan-500/5 dark:border-cyan-400/30 dark:text-cyan-400 dark:bg-cyan-400/5",
   Contacted: "border-emerald-500/40 text-emerald-600 bg-emerald-500/5 dark:border-emerald-400/30 dark:text-emerald-400 dark:bg-emerald-400/5",
   "Follow-Up": "border-orange-500/40 text-orange-600 bg-orange-500/5 dark:border-orange-400/30 dark:text-orange-400 dark:bg-orange-400/5",
   Interested: "border-purple-500/40 text-purple-600 bg-purple-500/5 dark:border-purple-400/30 dark:text-purple-400 dark:bg-purple-400/5",

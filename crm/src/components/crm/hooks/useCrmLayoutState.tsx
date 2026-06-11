@@ -29,6 +29,8 @@ export function useCrmLayoutState() {
     restoreLead,
     updateLeadNotes,
     assignCounselor,
+    updateEmploymentCategory,
+    setLeadCredentials,
     uploadDocument,
     uploadInvoice,
     getLeadDocuments
@@ -788,7 +790,7 @@ export function useCrmLayoutState() {
     leads, meetings, users, currentUser, currentRole, currentTab, setCurrentTab,
     setCurrentRole, setCurrentUser, addUser, deleteUser, addLead, updateLeadStatus,
     updateUsaSlots, addPayment, addMeeting, updateMeeting, restoreLead, updateLeadNotes,
-    assignCounselor, uploadDocument, uploadInvoice, getLeadDocuments,
+    assignCounselor, updateEmploymentCategory, setLeadCredentials, uploadDocument, uploadInvoice, getLeadDocuments,
     handleLogout, searchTerm, setSearchTerm, checklistSearch, setChecklistSearch,
     isMobileSidebarOpen, setIsMobileSidebarOpen, isMobileDetailOpen, setIsMobileDetailOpen,
     isMobileSlotSettingsOpen, setIsMobileSlotSettingsOpen, isMobileChecklistOpen, setIsMobileChecklistOpen,

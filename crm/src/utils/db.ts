@@ -1,5 +1,6 @@
 import { getSupabase } from "@/utils/supabase";
 import { Lead, Meeting, Activity, Expense, Document, CrmUser } from "@/context/CrmContext";
+import { normalizeLead } from "@/utils/normalizeLead";
 
 // ── Leads ────────────────────────────────────────────────────────────────────
 export const readLeads = async (): Promise<Lead[]> => {
@@ -10,11 +11,7 @@ export const readLeads = async (): Promise<Lead[]> => {
     return [];
   }
   
-  // Map lowercase visacredentials column to camelCase visaCredentials property
-  const leadsData = (data || []).map((lead: any) => ({
-    ...lead,
-    visaCredentials: lead.visacredentials || lead.visaCredentials,
-  })) as Lead[];
+  const leadsData = (data || []).map((row: Record<string, unknown>) => normalizeLead(row));
   
   // Log sample credential data for debugging
   const leadsWithCreds = leadsData.filter(l => l.visaCredentials);

@@ -9,6 +9,13 @@ import {
 } from "react-icons/fa";
 import { SearchableCountrySelect, PhoneInput } from "@/components/ui/FormInputs";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
+import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
+import {
+  buildEmptyChecklist,
+  DEFAULT_EMPLOYMENT_CATEGORY,
+  EMPLOYMENT_CATEGORY_OPTIONS,
+  type EmploymentCategory,
+} from "@/utils/documentChecklistConfig";
 
 
 export function CrmModals() {
@@ -130,6 +137,9 @@ export function CrmModals() {
                 const totalPackage = parseFloat(fd.get("totalPackage") as string) || 0;
 
                 const source = (fd.get("source") as string) || "MANUAL";
+                const employmentCategory =
+                  (fd.get("employmentCategory") as EmploymentCategory) ||
+                  DEFAULT_EMPLOYMENT_CATEGORY;
                 addLead({
                   name,
                   email,
@@ -140,22 +150,8 @@ export function CrmModals() {
                   source: source as LeadSource,
                   counselor,
                   notes,
-                  checklist: {
-                    passport: false,
-                    visaForm: false,
-                    businessDocs: false,
-                    salarySlips: false,
-                    bankStatement: false,
-                    itr: false,
-                    offerLetter: false,
-                    casOrI20: false,
-                    travelHistory: false,
-                    sopOrCoverLetter: false,
-                    photos: false,
-                    insurance: false,
-                    biometricsCompleted: false,
-                    visaFeesPaid: false,
-                  },
+                  employmentCategory,
+                  checklist: buildEmptyChecklist(employmentCategory),
                   payments: totalPackage > 0 ? [
                     {
                       totalPackage,
@@ -166,16 +162,7 @@ export function CrmModals() {
                       date: new Date().toISOString().split("T")[0]
                     }
                   ] : [],
-                  usaSlots: country === "USA" ? {
-                    credentialsProvided: false,
-                    slotsAvailable: false,
-                    slotsPaid: false,
-                    slotsBooked: false,
-                    ds160Submitted: false,
-                    interviewScheduled: false,
-                    interviewDate: "",
-                    slotLocation: "Delhi",
-                  } : undefined
+                  usaSlots: country === "USA" ? { ...DEFAULT_USA_SLOTS, slotLocation: "Delhi" } : undefined
                 });
 
                 showToast("Lead initialized successfully!");
@@ -232,6 +219,20 @@ export function CrmModals() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Employment Category</label>
+                  <select
+                    name="employmentCategory"
+                    defaultValue={DEFAULT_EMPLOYMENT_CATEGORY}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl focus:outline-none"
+                  >
+                    {EMPLOYMENT_CATEGORY_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="space-y-1">
                   <label className="text-slate-500 dark:text-slate-400 font-bold block">Initial Invoiced Package (INR)</label>
                   <input min="0" name="totalPackage" placeholder="50000 (optional)" type="number" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl focus:outline-none" />

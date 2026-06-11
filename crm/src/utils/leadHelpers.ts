@@ -1,9 +1,20 @@
 import type { DocumentChecklist, VisaStatus } from "@/context/CrmContext";
+import {
+  DEFAULT_EMPLOYMENT_CATEGORY,
+  getChecklistKeysForLead,
+  type EmploymentCategory,
+} from "@/utils/documentChecklistConfig";
 
 // Document checklist completion % for the Document Progress column
-export const docProgress = (checklist: DocumentChecklist) => {
-  const vals = Object.values(checklist);
-  return vals.length ? (vals.filter(Boolean).length / vals.length) * 100 : 0;
+export const docProgress = (
+  checklist: DocumentChecklist,
+  employmentCategory?: EmploymentCategory
+) => {
+  const category = employmentCategory ?? DEFAULT_EMPLOYMENT_CATEGORY;
+  const activeKeys = getChecklistKeysForLead(category);
+  if (!activeKeys.length) return 0;
+  const checked = activeKeys.filter((key) => checklist[key]).length;
+  return (checked / activeKeys.length) * 100;
 };
 
 // Relative "time ago" for the Last Contact column (display only)
@@ -24,6 +35,7 @@ export const timeAgo = (dateStr: string) => {
 export const getStatusColor = (status: VisaStatus) => {
   switch (status) {
     case "New Lead": return "bg-sky-500/10 text-sky-400 border border-sky-500/20";
+    case "Lead Assigned": return "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20";
     case "Contacted": return "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20";
     case "Follow-Up": return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
     case "Interested": return "bg-purple-500/10 text-purple-400 border border-purple-500/20";

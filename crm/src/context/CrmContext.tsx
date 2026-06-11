@@ -1,11 +1,22 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import {
+  DEFAULT_EMPLOYMENT_CATEGORY,
+  getChecklistItemLabel,
+  getChecklistKeysForLead,
+  mergeChecklist,
+  type EmploymentCategory,
+} from "@/utils/documentChecklistConfig";
+import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
+
+export type { EmploymentCategory } from "@/utils/documentChecklistConfig";
 
 // ── Enums / union types ───────────────────────────────────────────────────────
 
 export type VisaStatus =
   | "New Lead"
+  | "Lead Assigned"
   | "Contacted"
   | "Follow-Up"
   | "Interested"
@@ -50,22 +61,7 @@ export interface CrmUser {
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
-export interface DocumentChecklist {
-  passport: boolean;
-  visaForm: boolean;
-  businessDocs: boolean;
-  salarySlips: boolean;
-  bankStatement: boolean;
-  itr: boolean;
-  offerLetter: boolean;
-  casOrI20: boolean;
-  travelHistory: boolean;
-  sopOrCoverLetter: boolean;
-  photos: boolean;
-  insurance: boolean;
-  biometricsCompleted: boolean;
-  visaFeesPaid: boolean;
-}
+export type DocumentChecklist = Record<string, boolean>;
 
 export interface PaymentDetails {
   totalPackage: number;
@@ -87,6 +83,10 @@ export interface UsaSlotTracking {
   interviewScheduled: boolean;
   interviewDate: string;
   slotLocation: string;
+  paidDate: string;
+  securityCar: string;
+  securityFood: string;
+  securityCity: string;
 }
 
 export interface Activity {
@@ -131,6 +131,7 @@ export interface Lead {
   source: LeadSource;
   counselor: string;
   dateCreated: string;
+  employmentCategory?: EmploymentCategory;
   checklist: DocumentChecklist;
   payments: PaymentDetails[];
   usaSlots?: UsaSlotTracking;
@@ -171,7 +172,8 @@ interface CrmContextType {
   deleteUser: (userId: string) => Promise<{ ok: boolean; error?: string }>;
   addLead: (lead: Omit<Lead, "id" | "dateCreated" | "lastUpdated" | "isDeleted">) => void;
   updateLeadStatus: (leadId: string, status: VisaStatus) => void;
-  toggleChecklistItem: (leadId: string, item: keyof DocumentChecklist) => void;
+  updateEmploymentCategory: (leadId: string, category: EmploymentCategory) => void;
+  toggleChecklistItem: (leadId: string, item: string) => void;
   updateUsaSlots: (leadId: string, slots: Partial<UsaSlotTracking>) => void;
   addPayment: (leadId: string, payment: Omit<PaymentDetails, "invoiceNumber" | "date">) => void;
   addMeeting: (meeting: Omit<Meeting, "id">) => void;
@@ -183,11 +185,52 @@ interface CrmContextType {
   setLeadCredentials: (leadId: string, creds: { username?: string; password?: string; portalUrl?: string } | null) => Promise<boolean>;
   refreshLeads: () => Promise<void>;
   getLeadActivities: (leadId: string) => Activity[];
-  uploadDocument: (leadId: string, docType: keyof DocumentChecklist, fileOrUrl: File | string) => Promise<{ ok: boolean; error?: string }>;
+  uploadDocument: (leadId: string, docType: string, fileOrUrl: File | string) => Promise<{ ok: boolean; error?: string }>;
   uploadInvoice: (leadId: string, invoiceNumber: string, fileOrUrl: File | string) => Promise<{ ok: boolean; error?: string }>;
   getLeadDocuments: (leadId: string) => Document[];
 }
 
+
+// ── Helpers ─────────────────────────────────────────────────────────────────────
+
+const isAssignedCounselor = (counselor: string) =>
+  counselor.trim() !== "" && counselor !== "Unassigned";
+
+const resolveStatusAfterCounselorChange = (
+  status: VisaStatus,
+  counselor: string
+): VisaStatus => {
+  if (isAssignedCounselor(counselor) && status === "New Lead") return "Lead Assigned";
+  if (!isAssignedCounselor(counselor) && status === "Lead Assigned") return "New Lead";
+  return status;
+};
+
+const TERMINAL_STATUSES: VisaStatus[] = [
+  "Ready For Submission",
+  "Visa Submitted",
+  "Approved / Rejected",
+  "Closed",
+];
+
+const resolveStatusAfterChecklistChange = (
+  lead: Lead,
+  updatedChecklist: DocumentChecklist
+): VisaStatus => {
+  const category = lead.employmentCategory ?? DEFAULT_EMPLOYMENT_CATEGORY;
+  const requiredDocs = getChecklistKeysForLead(category);
+  const allRequired = requiredDocs.every((key) => updatedChecklist[key]);
+
+  if (allRequired && !TERMINAL_STATUSES.includes(lead.status)) {
+    return "Ready For Submission";
+  }
+  if (!allRequired && lead.status === "Ready For Submission") {
+    return "Documents Pending";
+  }
+  return lead.status;
+};
+
+const formatChecklistItemName = (key: string) =>
+  getChecklistItemLabel(key) ?? key.replace(/([A-Z])/g, " $1").replace(/_/g, " ");
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
@@ -310,8 +353,13 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addLead = (newLeadData: Omit<Lead, "id" | "dateCreated" | "lastUpdated" | "isDeleted">) => {
     const today = new Date().toISOString().split("T")[0];
+    const category = newLeadData.employmentCategory ?? DEFAULT_EMPLOYMENT_CATEGORY;
+    const status = resolveStatusAfterCounselorChange(newLeadData.status, newLeadData.counselor);
     const newLead: Lead = {
       ...newLeadData,
+      employmentCategory: category,
+      checklist: mergeChecklist(newLeadData.checklist, category),
+      status,
       id: `lead-${Date.now()}`,
       dateCreated: today,
       lastUpdated: today,
@@ -324,6 +372,14 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       content: `Lead created manually by ${currentRole}`,
       createdBy: currentRole,
     });
+    if (status !== newLeadData.status) {
+      logActivity({
+        leadId: newLead.id,
+        type: "status_change",
+        content: `Status auto-set to "${status}" after counselor assignment`,
+        createdBy: "SYSTEM",
+      });
+    }
   };
 
   const updateLeadStatus = (leadId: string, status: VisaStatus) => {
@@ -354,9 +410,11 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const assignCounselor = (leadId: string, counselor: string) => {
     const today = new Date().toISOString().split("T")[0];
     const prev = leads.find((l) => l.id === leadId);
-    const updated = leads.map((lead) =>
-      lead.id === leadId ? { ...lead, counselor, lastUpdated: today } : lead
-    );
+    const updated = leads.map((lead) => {
+      if (lead.id !== leadId) return lead;
+      const status = resolveStatusAfterCounselorChange(lead.status, counselor);
+      return { ...lead, counselor, status, lastUpdated: today };
+    });
     syncLeads(updated);
     if (prev && prev.counselor !== counselor) {
       logActivity({
@@ -365,41 +423,63 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         content: `Counselor changed from "${prev.counselor}" to "${counselor}"`,
         createdBy: currentRole,
       });
+      const newStatus = resolveStatusAfterCounselorChange(prev.status, counselor);
+      if (newStatus !== prev.status) {
+        logActivity({
+          leadId,
+          type: "status_change",
+          content: `Status auto-updated from "${prev.status}" to "${newStatus}" after counselor assignment`,
+          createdBy: "SYSTEM",
+        });
+      }
     }
   };
 
-  const toggleChecklistItem = (leadId: string, item: keyof DocumentChecklist) => {
+  const updateEmploymentCategory = (leadId: string, category: EmploymentCategory) => {
+    const today = new Date().toISOString().split("T")[0];
+    const prev = leads.find((l) => l.id === leadId);
+    const updated = leads.map((lead) => {
+      if (lead.id !== leadId) return lead;
+      const checklist = mergeChecklist(lead.checklist, category);
+      const status = resolveStatusAfterChecklistChange(
+        { ...lead, employmentCategory: category, checklist },
+        checklist
+      );
+      return {
+        ...lead,
+        employmentCategory: category,
+        checklist,
+        status,
+        lastUpdated: today,
+      };
+    });
+    syncLeads(updated);
+    if (prev && prev.employmentCategory !== category) {
+      logActivity({
+        leadId,
+        type: "document",
+        content: `Employment category changed to "${category.replace(/_/g, " ")}"`,
+        createdBy: currentRole,
+      });
+      const updatedLead = updated.find((l) => l.id === leadId);
+      if (updatedLead && updatedLead.status !== prev.status) {
+        logActivity({
+          leadId,
+          type: "status_change",
+          content: `Status auto-updated to "${updatedLead.status}" after employment category change`,
+          createdBy: "SYSTEM",
+        });
+      }
+    }
+  };
+
+  const toggleChecklistItem = (leadId: string, item: string) => {
     const today = new Date().toISOString().split("T")[0];
     const updated = leads.map((lead) => {
       if (lead.id !== leadId) return lead;
 
       const updatedChecklist = { ...lead.checklist, [item]: !lead.checklist[item] };
-
-      const requiredDocs: (keyof DocumentChecklist)[] = [
-        "passport",
-        "visaForm",
-        "bankStatement",
-        "photos",
-        "visaFeesPaid",
-      ];
-      if (lead.country === "USA" || lead.country === "UK") {
-        requiredDocs.push("casOrI20");
-      } else if (lead.country === "Canada") {
-        requiredDocs.push("offerLetter");
-      }
-
-      const allRequired = requiredDocs.every((doc) => updatedChecklist[doc]);
-      let newStatus = lead.status;
-      if (
-        allRequired &&
-        !["Ready For Submission", "Visa Submitted", "Approved / Rejected", "Closed"].includes(
-          lead.status
-        )
-      ) {
-        newStatus = "Ready For Submission";
-      } else if (!allRequired && lead.status === "Ready For Submission") {
-        newStatus = "Documents Pending";
-      }
+      const newStatus = resolveStatusAfterChecklistChange(lead, updatedChecklist);
 
       if (newStatus !== lead.status) {
         logActivity({
@@ -412,11 +492,11 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       logActivity({
         leadId,
         type: "document",
-        content: `Document "${item.replace(/([A-Z])/g, " $1")}" marked ${updatedChecklist[item] ? "verified" : "unverified"}`,
+        content: `Document "${formatChecklistItemName(item)}" marked ${updatedChecklist[item] ? "verified" : "unverified"}`,
         createdBy: currentRole,
       });
 
-      return { ...lead, checklist: updatedChecklist, status: newStatus as VisaStatus, lastUpdated: today };
+      return { ...lead, checklist: updatedChecklist, status: newStatus, lastUpdated: today };
     });
     syncLeads(updated);
   };
@@ -427,7 +507,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (lead.id !== leadId || lead.country !== "USA") return lead;
       return {
         ...lead,
-        usaSlots: { ...lead.usaSlots, ...slotsData } as UsaSlotTracking,
+        usaSlots: { ...DEFAULT_USA_SLOTS, ...lead.usaSlots, ...slotsData },
         lastUpdated: today,
       };
     });
@@ -504,48 +584,30 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     documents.filter((d) => d.leadId === leadId);
 
   // Recompute auto status after a checklist value is forced to a given value
-  const applyChecklistValue = (
-    leadId: string,
-    item: keyof DocumentChecklist,
-    value: boolean
-  ) => {
+  const applyChecklistValue = (leadId: string, item: string, value: boolean) => {
     const today = new Date().toISOString().split("T")[0];
     const updated = leads.map((lead) => {
       if (lead.id !== leadId) return lead;
       const updatedChecklist = { ...lead.checklist, [item]: value };
+      const newStatus = resolveStatusAfterChecklistChange(lead, updatedChecklist);
 
-      const requiredDocs: (keyof DocumentChecklist)[] = [
-        "passport",
-        "visaForm",
-        "bankStatement",
-        "photos",
-        "visaFeesPaid",
-      ];
-      if (lead.country === "USA" || lead.country === "UK") {
-        requiredDocs.push("casOrI20");
-      } else if (lead.country === "Canada") {
-        requiredDocs.push("offerLetter");
+      if (newStatus !== lead.status) {
+        logActivity({
+          leadId,
+          type: "status_change",
+          content: `Status auto-updated to "${newStatus}" after document checklist change`,
+          createdBy: "SYSTEM",
+        });
       }
 
-      const allRequired = requiredDocs.every((doc) => updatedChecklist[doc]);
-      let newStatus = lead.status;
-      if (
-        allRequired &&
-        !["Ready For Submission", "Visa Submitted", "Approved / Rejected", "Closed"].includes(lead.status)
-      ) {
-        newStatus = "Ready For Submission";
-      } else if (!allRequired && lead.status === "Ready For Submission") {
-        newStatus = "Documents Pending";
-      }
-
-      return { ...lead, checklist: updatedChecklist, status: newStatus as VisaStatus, lastUpdated: today };
+      return { ...lead, checklist: updatedChecklist, status: newStatus, lastUpdated: today };
     });
     syncLeads(updated);
   };
 
   const uploadDocument = async (
     leadId: string,
-    docType: keyof DocumentChecklist,
+    docType: string,
     fileOrUrl: File | string
   ): Promise<{ ok: boolean; error?: string }> => {
     try {
@@ -580,7 +642,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       logActivity({
         leadId,
         type: "document",
-        content: `Document "${String(docType).replace(/([A-Z])/g, " $1")}" verified via ${typeof fileOrUrl === "string" ? "URL link" : `upload (${fileOrUrl.name})`}`,
+        content: `Document "${formatChecklistItemName(docType)}" verified via ${typeof fileOrUrl === "string" ? "URL link" : `upload (${fileOrUrl.name})`}`,
         createdBy: currentRole,
       });
 
@@ -745,23 +807,39 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     leadId: string,
     creds: { username?: string; password?: string; portalUrl?: string } | null
   ): Promise<boolean> => {
+    const today = new Date().toISOString().split("T")[0];
+    const previousLeads = leads;
+    const optimistic = leads.map((lead) =>
+      lead.id === leadId
+        ? { ...lead, visaCredentials: creds ?? undefined, lastUpdated: today }
+        : lead
+    );
+    setLeads(optimistic);
+
     try {
       const res = await fetch("/api/leads/credentials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: leadId, visaCredentials: creds }),
       });
-      if (!res.ok) return false;
-
-      // Refresh local leads from API so UI reflects change
-      const leadsRes = await fetch("/api/leads?limit=1000");
-      if (leadsRes.ok) {
-        const data = await leadsRes.json();
-        setLeads(Array.isArray(data.leads) ? data.leads : (data.leads ?? []));
+      if (!res.ok) {
+        setLeads(previousLeads);
+        return false;
       }
+
+      await syncLeads(optimistic);
+      logActivity({
+        leadId,
+        type: "note",
+        content: creds
+          ? `Visa portal credentials ${creds.username ? "updated" : "cleared"}`
+          : "Visa portal credentials removed",
+        createdBy: currentRole,
+      });
       return true;
     } catch (err) {
       console.error("Failed to set lead credentials:", err);
+      setLeads(previousLeads);
       return false;
     }
   };
@@ -798,6 +876,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteUser,
         addLead,
         updateLeadStatus,
+        updateEmploymentCategory,
         toggleChecklistItem,
         updateUsaSlots,
         addPayment,

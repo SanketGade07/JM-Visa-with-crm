@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readLeads, writeLeads, appendActivity } from "@/utils/db";
 import { Lead, Activity } from "@/context/CrmContext";
+import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
 
 export async function POST(req: NextRequest) {
   try {
@@ -61,16 +62,7 @@ export async function POST(req: NextRequest) {
     };
 
     if (country === "USA") {
-      newLead.usaSlots = {
-        credentialsProvided: false,
-        slotsAvailable: false,
-        slotsPaid: false,
-        slotsBooked: false,
-        ds160Submitted: false,
-        interviewScheduled: false,
-        interviewDate: "",
-        slotLocation: "",
-      };
+      newLead.usaSlots = { ...DEFAULT_USA_SLOTS };
     }
 
     // Atomic: save lead + activity log together (guide §13 rule 3)

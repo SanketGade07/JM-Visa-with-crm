@@ -34,6 +34,7 @@ import { HoverHint } from "@/components/ui/HoverHint";
 import { LeadManagementToolbar } from "@/components/ui/LeadManagementToolbar";
 
 const IN_PROGRESS_STATUSES = [
+  "Lead Assigned",
   "Contacted",
   "Follow-Up",
   "Interested",
@@ -52,7 +53,7 @@ const QUICK_TAB_FILTERS: {
   statuses: VisaStatus[] | "all-non-dropped";
 }[] = [
   { id: "All", label: "All", statuses: "all-non-dropped" },
-  { id: "New", label: "New", statuses: ["New Lead"] },
+  { id: "New", label: "New", statuses: ["New Lead", "Lead Assigned"] },
   { id: "Follow-Up", label: "Follow-Up", statuses: ["Follow-Up"] },
   { id: "Interested", label: "Interested", statuses: ["Interested"] },
   { id: "Docs", label: "Docs", statuses: ["Documents Pending", "Documents Received"] },
@@ -163,7 +164,8 @@ export function LeadsTab() {
           .filter(Boolean)
           .join(" "),
       service: (lead: Lead) => `${lead.visaType} ${lead.country}`,
-      docVerification: (lead: Lead) => `${Math.round(docProgress(lead.checklist))}%`,
+      docVerification: (lead: Lead) =>
+        `${Math.round(docProgress(lead.checklist, lead.employmentCategory))}%`,
       status: (lead: Lead) => lead.status,
       counselor: (lead: Lead) => lead.counselor,
     }),
@@ -376,7 +378,7 @@ export function LeadsTab() {
                           l.phone,
                           l.country,
                           l.visaType,
-                          `${Math.round(docProgress(l.checklist))}%`,
+                          `${Math.round(docProgress(l.checklist, l.employmentCategory))}%`,
                           l.status,
                           l.counselor,
                         ])
@@ -417,7 +419,7 @@ export function LeadsTab() {
                         searchPlaceholder: "Search doc %...",
                         getSearchValue: leadSearchGetters.docVerification,
                         render: (lead) => {
-                          const pct = docProgress(lead.checklist);
+                          const pct = docProgress(lead.checklist, lead.employmentCategory);
                           const filledCount = pct === 0 ? 0 : Math.ceil(pct / 25);
                           const canOpenChecklist = userAllowedTabs.includes("Checklist");
 
@@ -608,6 +610,7 @@ export function LeadsTab() {
                             className="w-full bg-white dark:bg-slate-800/40 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
                           >
                             <option value="New Lead">New Lead</option>
+                            <option value="Lead Assigned">Lead Assigned</option>
                             <option value="Contacted">Contacted</option>
                             <option value="Follow-Up">Follow-Up</option>
                             <option value="Interested">Interested</option>

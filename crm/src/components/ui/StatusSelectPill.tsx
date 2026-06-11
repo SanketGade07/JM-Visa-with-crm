@@ -8,6 +8,7 @@ import { STATUS_PILL_DROPDOWN_MAX_HEIGHT } from "@/utils/dropdownConstants";
 
 const STATUS_OPTIONS: VisaStatus[] = [
   "New Lead",
+  "Lead Assigned",
   "Contacted",
   "Follow-Up",
   "Interested",
