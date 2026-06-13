@@ -14,13 +14,13 @@ import {
   FaUnlink,
 } from "react-icons/fa";
 import { DriveLinkSettingsContent } from "./DriveAdminSettings";
+import { DriveItemIcon } from "./DriveItemIcon";
 import type { DriveItem } from "./driveUtils";
 import {
   DRIVE_BORDER,
   DRIVE_BTN_PRIMARY,
   DRIVE_BTN_SECONDARY,
   DRIVE_CONTEXT_MENU,
-  DRIVE_ICON_CONTAINER_SM,
   DRIVE_MODAL_BACKDROP,
   DRIVE_MODAL_SURFACE,
   DRIVE_ROW_HOVER,
@@ -29,8 +29,6 @@ import {
   DRIVE_TEXT_PRIMARY,
   DRIVE_TEXT_SECONDARY,
   canInlinePreview,
-  getFileIcon,
-  getFileIconColor,
 } from "./driveUtils";
 
 type DrivePreviewModalProps = {
@@ -41,9 +39,6 @@ type DrivePreviewModalProps = {
 
 export function DrivePreviewModal({ item, isMounted, onClose }: DrivePreviewModalProps) {
   if (!isMounted) return null;
-
-  const Icon = getFileIcon(item);
-  const iconColor = getFileIconColor(item);
 
   return createPortal(
     <div
@@ -61,8 +56,8 @@ export function DrivePreviewModal({ item, isMounted, onClose }: DrivePreviewModa
           className={`flex items-center justify-between px-5 py-3.5 border-b ${DRIVE_BORDER} ${DRIVE_SURFACE_SECONDARY}`}
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className={DRIVE_ICON_CONTAINER_SM}>
-              <Icon className={`text-sm ${iconColor}`} />
+            <div className="w-8 h-8 shrink-0 flex items-center justify-center">
+              <DriveItemIcon item={item} size={32} />
             </div>
             <span className={`text-sm font-bold truncate ${DRIVE_TEXT_PRIMARY}`}>
               {item.name}
@@ -109,7 +104,7 @@ export function DrivePreviewModal({ item, isMounted, onClose }: DrivePreviewModa
           ) : (
             <div className="text-center p-8">
               <div className={`w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-2xl ${DRIVE_SURFACE_SECONDARY}`}>
-                <Icon className={`text-3xl ${iconColor}`} />
+                <DriveItemIcon item={item} size={48} />
               </div>
               <p className={`text-sm mb-4 ${DRIVE_TEXT_SECONDARY}`}>
                 Inline preview is not available for this file type.
@@ -370,6 +365,28 @@ export function DriveModal({
   children,
   footer,
 }: DriveModalProps) {
+  useEffect(() => {
+    if (!open) return;
+
+    const scrollContainer = document.querySelector<HTMLElement>(
+      "[data-crm-scroll-container]",
+    );
+    const previousContainerOverflow = scrollContainer?.style.overflow ?? "";
+    if (scrollContainer) {
+      scrollContainer.style.overflow = "hidden";
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      if (scrollContainer) {
+        scrollContainer.style.overflow = previousContainerOverflow;
+      }
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [open]);
+
   if (!open || !isMounted) return null;
 
   return createPortal(

@@ -1,0 +1,15 @@
+export type { FluentIconProps } from "./types";
+export { FluentWordIcon } from "./FluentWordIcon";
+export { FluentExcelIcon } from "./FluentExcelIcon";
+export { FluentPowerPointIcon } from "./FluentPowerPointIcon";
+export { FluentPdfIcon } from "./FluentPdfIcon";
+export { FluentTextIcon } from "./FluentTextIcon";
+export { FluentImageIcon } from "./FluentImageIcon";
+export { FluentFolderIcon, FOLDER_COLOR_COUNT } from "./FluentFolderIcon";
+export type { FluentFolderIconProps } from "./FluentFolderIcon";
+export { FluentGenericFileIcon } from "./FluentGenericFileIcon";
+export { FluentArchiveIcon } from "./FluentArchiveIcon";
+export { FluentVideoIcon } from "./FluentVideoIcon";
+export { FluentAudioIcon } from "./FluentAudioIcon";
+export { FluentUploadIcon } from "./FluentUploadIcon";
+export { FluentNewFileIcon } from "./FluentNewFileIcon";

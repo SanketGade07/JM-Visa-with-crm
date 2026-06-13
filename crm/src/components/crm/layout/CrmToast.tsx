@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { FaCheckCircle, FaInfoCircle, FaTimes } from "react-icons/fa";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 
@@ -8,16 +9,22 @@ const TOAST_DURATION_MS = { success: 5000, error: 6000 } as const;
 
 export function CrmToast() {
   const { toast, setToast } = useCrmLayoutContext();
-  if (!toast) return null;
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setPortalTarget(document.body);
+  }, []);
+
+  if (!toast || !portalTarget) return null;
 
   const isSuccess = toast.type === "success";
   const durationMs = TOAST_DURATION_MS[toast.type];
 
-  return (
+  return createPortal(
     <div
       role="status"
       aria-live="polite"
-      className={`relative overflow-hidden fixed top-20 left-1/2 -translate-x-1/2 z-[350] flex items-start gap-3 px-4 py-3 rounded-xl border border-l-4 min-w-[280px] max-w-[480px] shadow-[0_8px_30px_rgba(0,0,0,0.12)] animate-toast-slide-down max-sm:top-4 max-sm:inset-x-4 max-sm:left-auto max-sm:translate-x-0 ${
+      className={`fixed overflow-hidden top-20 left-1/2 -translate-x-1/2 z-[350] flex items-start gap-3 px-4 py-3 rounded-xl border border-l-4 min-w-[280px] max-w-[480px] shadow-[0_8px_30px_rgba(0,0,0,0.12)] animate-toast-slide-down max-sm:top-4 max-sm:inset-x-4 max-sm:left-auto max-sm:translate-x-0 ${
         isSuccess
           ? "bg-white dark:bg-[#1D1F23] border-[#D7DEE8] dark:border-[#2A2D33] border-l-emerald-500 text-emerald-700 dark:text-emerald-400"
           : "bg-white dark:bg-[#1D1F23] border-[#D7DEE8] dark:border-[#2A2D33] border-l-rose-500 text-rose-700 dark:text-rose-400"
@@ -44,6 +51,7 @@ export function CrmToast() {
           backgroundColor: isSuccess ? "#10b981" : "#f43f5e",
         }}
       />
-    </div>
+    </div>,
+    portalTarget,
   );
 }

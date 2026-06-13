@@ -1,55 +1,47 @@
 "use client";
 
 import React from "react";
-import { FiClipboard, FiEdit2 } from "react-icons/fi";
+import { FaEllipsisV } from "react-icons/fa";
+import { FiClock } from "react-icons/fi";
 import type { DriveItem } from "./driveUtils";
+import { DriveItemIcon } from "./DriveItemIcon";
 import {
   DRIVE_ACCENT_TEXT,
   DRIVE_ACTION_BTN,
-  DRIVE_BORDER,
-  DRIVE_FILE_ICON_BG,
-  DRIVE_SURFACE_SECONDARY,
+  DRIVE_FILE_CARD_HEIGHT,
   DRIVE_TEXT_MUTED,
   DRIVE_TEXT_PRIMARY,
   DRIVE_TILE,
   DRIVE_TILE_ACTIVE,
   DRIVE_TILE_FOCUS_RING,
-  formatFileSize,
-  getFileIcon,
-  getFileIconColor,
-  getFileTypeLabel,
+  formatFileSizeCompact,
+  formatModifiedRelativeTime,
+  getFileExtensionBadge,
 } from "./driveUtils";
 
 type DriveFileCardProps = {
   item: DriveItem;
   isActive?: boolean;
-  isAdmin?: boolean;
   onClick: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
-  onRename?: (item: DriveItem) => void;
-  onLink?: (item: DriveItem) => void;
+  onItemMenu: (item: DriveItem, e?: React.MouseEvent<HTMLButtonElement>) => void;
 };
 
 export function DriveFileCard({
   item,
   isActive = false,
-  isAdmin = false,
   onClick,
   onContextMenu,
-  onRename,
-  onLink,
+  onItemMenu,
 }: DriveFileCardProps) {
-  const Icon = getFileIcon(item);
-  const iconColor = getFileIconColor(item);
-  const typeLabel = getFileTypeLabel(item);
-  const hasActions =
-    (isAdmin && onRename) || (onLink != null && item.webViewLink);
+  const modifiedIso = item.modifiedTime || item.createdTime;
+  const badge = getFileExtensionBadge(item);
 
   return (
     <div
       role="button"
       tabIndex={0}
-      className={`group relative aspect-square w-full max-w-[148px] flex flex-col overflow-hidden ${
+      className={`group relative flex flex-col ${DRIVE_FILE_CARD_HEIGHT} w-full min-w-0 overflow-hidden ${
         isActive ? DRIVE_TILE_ACTIVE : DRIVE_TILE
       } ${DRIVE_TILE_FOCUS_RING}`}
       onClick={onClick}
@@ -61,66 +53,46 @@ export function DriveFileCard({
         }
       }}
     >
-      {hasActions ? (
-        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
-          {isAdmin && onRename && (
-            <button
-              type="button"
-              aria-label={`Rename ${item.name}`}
-              className={DRIVE_ACTION_BTN}
-              onClick={(e) => {
-                e.stopPropagation();
-                onRename(item);
-              }}
-            >
-              <FiEdit2 className="text-[13px]" />
-            </button>
-          )}
-          {onLink && item.webViewLink && (
-            <button
-              type="button"
-              aria-label={`Copy link for ${item.name}`}
-              className={DRIVE_ACTION_BTN}
-              onClick={(e) => {
-                e.stopPropagation();
-                onLink(item);
-              }}
-            >
-              <FiClipboard className="text-[13px]" />
-            </button>
-          )}
+      <div className="flex items-start justify-between px-3 pt-3 pb-0 shrink-0">
+        <div className="w-12 h-12 shrink-0 flex items-center justify-center">
+          <DriveItemIcon item={item} size={48} />
         </div>
-      ) : null}
-
-      <div className="flex-[0.65] flex items-center justify-center px-3 pt-3 pb-1 min-h-0">
-        <div className="relative w-[58%] aspect-square">
-          <div
-            className={`w-full h-full rounded-2xl flex items-center justify-center ${DRIVE_FILE_ICON_BG}`}
-          >
-            <Icon className={`text-2xl ${iconColor}`} />
-          </div>
-          <span
-            className={`absolute -bottom-1.5 left-1 px-1.5 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-wide border ${DRIVE_BORDER} ${DRIVE_SURFACE_SECONDARY} ${DRIVE_TEXT_PRIMARY}`}
-          >
-            {typeLabel}
-          </span>
-        </div>
+        <button
+          type="button"
+          aria-label={`Actions for ${item.name}`}
+          className={`${DRIVE_ACTION_BTN} shrink-0`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onItemMenu(item, e);
+          }}
+        >
+          <FaEllipsisV className="text-[10px]" />
+        </button>
       </div>
 
-      <div className={`shrink-0 border-t ${DRIVE_BORDER}`} />
-
-      <div className="flex-[0.35] flex flex-col justify-center px-2.5 py-2 min-h-0">
-        <span
-          className={`text-[10px] font-semibold uppercase truncate ${
+      <div className="flex flex-col gap-1.5 px-3 pb-3 pt-1.5 min-h-0">
+        <p
+          className={`text-[13px] font-semibold leading-tight truncate ${
             isActive ? DRIVE_ACCENT_TEXT : DRIVE_TEXT_PRIMARY
           }`}
           title={item.name}
         >
           {item.name}
-        </span>
-        <span className={`text-[9px] tabular-nums truncate mt-0.5 ${DRIVE_TEXT_MUTED}`}>
-          {formatFileSize(item.size)}
-        </span>
+        </p>
+
+        <div
+          className={`flex items-center gap-1.5 min-w-0 text-[11px] leading-tight ${DRIVE_TEXT_MUTED}`}
+        >
+          <span className={`shrink-0 ${badge.className}`}>{badge.label}</span>
+          <span className="truncate">{formatFileSizeCompact(item.size)}</span>
+        </div>
+
+        <p
+          className={`flex items-center gap-1 text-[11px] truncate leading-tight ${DRIVE_TEXT_MUTED}`}
+        >
+          <FiClock className="shrink-0 text-[10px]" aria-hidden="true" />
+          <span className="truncate">{formatModifiedRelativeTime(modifiedIso)}</span>
+        </p>
       </div>
     </div>
   );

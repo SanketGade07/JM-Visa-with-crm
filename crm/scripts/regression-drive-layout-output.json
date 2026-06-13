@@ -1,0 +1,2007 @@
+{
+  "results": {
+    "flows": [
+      {
+        "flow": "create_folder",
+        "pass": true,
+        "baselineMainWidth": 1184,
+        "maxMainWidthLossPx": 0,
+        "maxDeadZonePx": 0,
+        "sampleCount": 9,
+        "refreshSpinningObserved": false,
+        "toastVisibleObserved": true
+      },
+      {
+        "flow": "create_file",
+        "pass": true,
+        "baselineMainWidth": 1184,
+        "maxMainWidthLossPx": 0,
+        "maxDeadZonePx": 0,
+        "sampleCount": 8,
+        "refreshSpinningObserved": false,
+        "toastVisibleObserved": true
+      },
+      {
+        "flow": "upload",
+        "pass": true,
+        "baselineMainWidth": 1184,
+        "maxMainWidthLossPx": 0,
+        "maxDeadZonePx": 0,
+        "sampleCount": 8,
+        "refreshSpinningObserved": true,
+        "toastVisibleObserved": true
+      },
+      {
+        "flow": "rename",
+        "pass": true,
+        "baselineMainWidth": 1184,
+        "maxMainWidthLossPx": 0,
+        "maxDeadZonePx": 0,
+        "sampleCount": 8,
+        "refreshSpinningObserved": true,
+        "toastVisibleObserved": true
+      },
+      {
+        "flow": "delete",
+        "pass": true,
+        "baselineMainWidth": 1184,
+        "maxMainWidthLossPx": 0,
+        "maxDeadZonePx": 0,
+        "sampleCount": 8,
+        "refreshSpinningObserved": true,
+        "toastVisibleObserved": true
+      },
+      {
+        "flow": "manual_refresh",
+        "pass": true,
+        "baselineMainWidth": 1184,
+        "maxMainWidthLossPx": 0,
+        "maxDeadZonePx": 0,
+        "sampleCount": 3,
+        "refreshSpinningObserved": false,
+        "toastVisibleObserved": true
+      }
+    ],
+    "errors": [],
+    "allPass": true,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "thresholdPx": 2
+  },
+  "samples": [
+    {
+      "label": "drive_baseline",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": false,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_folder_start",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": false,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_folder_modal_open",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "hidden"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": true,
+      "toastVisible": false,
+      "body": {
+        "overflowInline": "hidden",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_folder_modal_closed",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_folder_t+400ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_folder_t+800ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_folder_t+1200ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_folder_t+1600ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_folder_t+2000ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_folder_t+2400ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_folder_end",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_file_start",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_file_modal_closed",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_file_t+400ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_file_t+800ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_file_t+1200ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_file_t+1600ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_file_t+2000ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_file_t+2400ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "create_file_end",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "upload_start",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "upload_posted",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "upload_t+400ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "upload_t+800ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "upload_t+1200ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "upload_t+1600ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "upload_t+2000ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "upload_t+2400ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "upload_end",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "rename_start",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "rename_modal_closed",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "rename_t+400ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "rename_t+800ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "rename_t+1200ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "rename_t+1600ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "rename_t+2000ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "rename_t+2400ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "rename_end",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_start",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_modal_closed",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+400ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+800ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+1200ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+1600ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+2000ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+2400ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_end",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_start",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_modal_closed",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+400ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+800ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+1200ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+1600ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+2000ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+2400ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_end",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_start",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_modal_closed",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+400ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+800ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": true,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+1200ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+1600ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+2000ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_t+2400ms",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "delete_end",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "manual_refresh_start",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "manual_refresh_spinning",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "manual_refresh_complete",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    },
+    {
+      "label": "manual_refresh_end",
+      "windowInnerWidth": 1440,
+      "main": {
+        "width": 1184,
+        "right": 1440
+      },
+      "header": {
+        "width": 1184,
+        "right": 1440
+      },
+      "tabScroller": {
+        "rect": {
+          "width": 1184,
+          "right": 1440
+        },
+        "overflowInline": "(empty)"
+      },
+      "deadZonePx": 0,
+      "shellChildCount": 2,
+      "refreshSpinning": false,
+      "modalOpen": false,
+      "toastVisible": true,
+      "body": {
+        "overflowInline": "(empty)",
+        "paddingRightInline": "(empty)"
+      }
+    }
+  ]
+}

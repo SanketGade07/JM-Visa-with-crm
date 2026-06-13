@@ -16,7 +16,7 @@ function CrmLayoutContent() {
   }
 
   return (
-    <div className="relative flex min-h-screen bg-[#070712] text-slate-100 font-sans overflow-x-hidden">
+    <div className="relative flex min-h-screen w-full bg-[#070712] text-slate-100 font-sans overflow-x-hidden">
       {isMobileSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden transition-opacity duration-300"
@@ -26,7 +26,7 @@ function CrmLayoutContent() {
 
       <CrmSidebar />
 
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 w-full">
         <CrmHeader />
         <CrmTabViews />
       </main>

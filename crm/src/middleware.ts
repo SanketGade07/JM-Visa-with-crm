@@ -36,7 +36,8 @@ export function middleware(req: NextRequest) {
 
   if (
     pathname.startsWith("/api/drive/browse") ||
-    pathname.startsWith("/api/drive/discover")
+    pathname.startsWith("/api/drive/discover") ||
+    pathname.startsWith("/api/drive/quota")
   ) {
     if (!role || role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

@@ -42,6 +42,10 @@ html.dark {
   --foreground: #f1f5f9;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

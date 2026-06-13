@@ -15,7 +15,8 @@ import {
   DRIVE_ACCENT_TEXT,
   DRIVE_BTN_PRIMARY,
   DRIVE_BTN_SECONDARY,
-  DRIVE_CARD_CLS,
+  DRIVE_BORDER,
+  DRIVE_CONTENT_BG,
   DRIVE_INPUT,
   DRIVE_TEXT_SECONDARY,
   DRIVE_WARNING_BANNER,
@@ -23,8 +24,13 @@ import {
   type DriveItem,
   type DriveTypeFilter,
   extractFolderId,
+  filterDriveItems,
   filterDriveItemsByType,
+  inferBlankFileMimeType,
   parseApiError,
+  sortDriveItems,
+  getDriveItemMenuPosition,
+  validateNewFileName,
 } from "../drive/driveUtils";
 
 export function DriveTab() {
@@ -42,9 +48,11 @@ export function DriveTab() {
   const [breadcrumbs, setBreadcrumbs] = useState<Breadcrumb[]>([]);
   const [items, setItems] = useState<DriveItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [typeFilter, setTypeFilter] = useState<DriveTypeFilter>("all");
+  const [search, setSearch] = useState("");
   const [showLinkSettingsModal, setShowLinkSettingsModal] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -59,6 +67,10 @@ export function DriveTab() {
   const [newFolderName, setNewFolderName] = useState("");
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
+  const [showNewFileModal, setShowNewFileModal] = useState(false);
+  const [newFileName, setNewFileName] = useState("");
+  const [isCreatingFile, setIsCreatingFile] = useState(false);
+
   const [renameItem, setRenameItem] = useState<DriveItem | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
@@ -68,12 +80,18 @@ export function DriveTab() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const browseRequestIdRef = useRef(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   const filteredItems = useMemo(
     () => filterDriveItemsByType(items, typeFilter),
     [items, typeFilter]
+  );
+
+  const filteredBySearch = useMemo(
+    () => filterDriveItems(filteredItems, search),
+    [filteredItems, search]
   );
 
   const isAccessDenied =
@@ -87,36 +105,58 @@ export function DriveTab() {
   }, []);
 
   const browseFolder = useCallback(
-    async (folderId: string, crumbs?: Breadcrumb[]) => {
-      setLoading(true);
+    async (
+      folderId: string,
+      crumbs?: Breadcrumb[],
+      options?: { silent?: boolean }
+    ) => {
+      const requestId = ++browseRequestIdRef.current;
+      const silent = options?.silent ?? false;
+      if (silent) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       try {
         const res = await fetch(
           `/api/drive/browse?folderId=${encodeURIComponent(folderId)}`
         );
+        if (requestId !== browseRequestIdRef.current) return;
+
         if (!res.ok) {
           const msg = await parseApiError(res);
           setError(msg);
-          setItems([]);
+          if (!silent) setItems([]);
           return;
         }
         const data: DriveItem[] = await res.json();
-        const sorted = [...data].sort((a, b) => {
-          if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
-          return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-        });
-        setItems(sorted);
+        if (requestId !== browseRequestIdRef.current) return;
+
+        setItems(sortDriveItems(data));
         setCurrentFolderId(folderId);
         if (crumbs) setBreadcrumbs(crumbs);
       } catch (err) {
+        if (requestId !== browseRequestIdRef.current) return;
         setError(err instanceof Error ? err.message : "Failed to load folder");
-        setItems([]);
+        if (!silent) setItems([]);
       } finally {
-        setLoading(false);
+        if (requestId !== browseRequestIdRef.current) return;
+        if (silent) {
+          setIsRefreshing(false);
+        } else {
+          setLoading(false);
+        }
       }
     },
     []
   );
+
+  const upsertDriveItem = useCallback((item: DriveItem) => {
+    setItems((prev) =>
+      sortDriveItems([...prev.filter((existing) => existing.id !== item.id), item])
+    );
+  }, []);
 
   const loadSettings = useCallback(async () => {
     setSettingsLoading(true);
@@ -173,7 +213,7 @@ export function DriveTab() {
 
   const refreshCurrent = useCallback(() => {
     if (currentFolderId) {
-      browseFolder(currentFolderId, breadcrumbs);
+      browseFolder(currentFolderId, breadcrumbs, { silent: true });
     }
   }, [browseFolder, currentFolderId, breadcrumbs]);
 
@@ -186,12 +226,6 @@ export function DriveTab() {
     const crumb = breadcrumbs[index];
     const newCrumbs = breadcrumbs.slice(0, index + 1);
     browseFolder(crumb.id, newCrumbs);
-  };
-
-  const navigateBack = () => {
-    if (breadcrumbs.length > 1) {
-      navigateToBreadcrumb(breadcrumbs.length - 2);
-    }
   };
 
   const handleValidateAndSave = async () => {
@@ -314,14 +348,88 @@ export function DriveTab() {
         showToast(await parseApiError(res), "error");
         return;
       }
+      const data = (await res.json()) as {
+        folder?: { id: string; name: string; isFolder?: boolean };
+      };
+      const now = new Date().toISOString();
+      if (data.folder?.id) {
+        upsertDriveItem({
+          id: data.folder.id,
+          name: data.folder.name,
+          mimeType: "application/vnd.google-apps.folder",
+          isFolder: true,
+          size: null,
+          createdTime: now,
+          modifiedTime: now,
+          webViewLink: `https://drive.google.com/drive/folders/${data.folder.id}`,
+          webContentLink: null,
+          itemCount: 0,
+        });
+      }
       showToast("Folder created");
       setShowNewFolderModal(false);
       setNewFolderName("");
-      refreshCurrent();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to create folder", "error");
     } finally {
       setIsCreatingFolder(false);
+    }
+  };
+
+  const handleCreateBlankFile = async () => {
+    if (!currentFolderId) return;
+    const validationError = validateNewFileName(newFileName);
+    if (validationError) {
+      showToast(validationError, "error");
+      return;
+    }
+    const trimmed = newFileName.trim();
+    setIsCreatingFile(true);
+    try {
+      const res = await fetch("/api/drive/browse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          parentId: currentFolderId,
+          blankFile: true,
+          fileName: trimmed,
+        }),
+      });
+      if (!res.ok) {
+        showToast(await parseApiError(res), "error");
+        return;
+      }
+      const data = (await res.json()) as {
+        file?: {
+          id: string;
+          name: string;
+          webViewLink?: string;
+          webContentLink?: string | null;
+          previewUrl?: string | null;
+        };
+      };
+      const now = new Date().toISOString();
+      if (data.file?.id) {
+        upsertDriveItem({
+          id: data.file.id,
+          name: data.file.name || trimmed,
+          mimeType: inferBlankFileMimeType(trimmed),
+          isFolder: false,
+          size: 0,
+          createdTime: now,
+          modifiedTime: now,
+          webViewLink: data.file.webViewLink || "",
+          webContentLink: data.file.webContentLink ?? null,
+          previewUrl: data.file.previewUrl ?? null,
+        });
+      }
+      showToast("File created");
+      setShowNewFileModal(false);
+      setNewFileName("");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to create file", "error");
+    } finally {
+      setIsCreatingFile(false);
     }
   };
 
@@ -408,9 +516,17 @@ export function DriveTab() {
     setContextMenu({ x: e.clientX, y: e.clientY, item });
   };
 
-  const openItemMenu = (item: DriveItem) => {
+  const openItemMenu = (
+    item: DriveItem,
+    e?: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    if (e?.currentTarget) {
+      const { x, y } = getDriveItemMenuPosition(e.currentTarget);
+      setContextMenu({ x, y, item });
+      return;
+    }
     setContextMenu({
-      x: Math.min(window.innerWidth - 180, 240),
+      x: Math.max(8, window.innerWidth - 168 - 8),
       y: 160,
       item,
     });
@@ -439,6 +555,17 @@ export function DriveTab() {
     }
   };
 
+  const handleCopyFolderLink = async () => {
+    if (!currentFolderId) return;
+    const url = `https://drive.google.com/drive/folders/${currentFolderId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast("Folder link copied to clipboard");
+    } catch {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     if (isAdmin) setIsDragOver(true);
@@ -462,7 +589,7 @@ export function DriveTab() {
   const showDriveCard = !!rootFolderId || isAdmin;
 
   return (
-    <div className="min-w-0 space-y-6">
+    <div className="w-full max-w-full min-w-0 space-y-6">
       {isAccessDenied && (
         <div className="p-4 rounded-xl border border-rose-500/30 bg-rose-50 dark:bg-rose-950/20 flex gap-3">
           <FaExclamationTriangle className="text-rose-500 dark:text-rose-400 shrink-0 mt-0.5" />
@@ -471,14 +598,18 @@ export function DriveTab() {
       )}
 
       {showDriveCard && (
-        <div className={`${DRIVE_CARD_CLS} overflow-hidden`}>
+        <div className={`w-full max-w-full shrink-0 rounded-[14px] border ${DRIVE_BORDER} overflow-hidden`}>
           <DriveToolbar
             breadcrumbs={breadcrumbs}
             onNavigate={navigateToBreadcrumb}
-            onNavigateBack={navigateBack}
+            search={search}
+            onSearchChange={setSearch}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             onRefresh={refreshCurrent}
+            onCopyFolderLink={
+              currentFolderId ? handleCopyFolderLink : undefined
+            }
             typeFilter={typeFilter}
             onTypeFilterChange={setTypeFilter}
             isAdmin={isAdmin}
@@ -486,57 +617,62 @@ export function DriveTab() {
             onUploadClick={() => fileInputRef.current?.click()}
             onFolderUploadClick={() => folderInputRef.current?.click()}
             onNewFolder={() => setShowNewFolderModal(true)}
+            onNewFile={() => setShowNewFileModal(true)}
             onCreateGoogleFile={handleCreateGoogleFile}
             onOpenLinkSettings={
               isAdmin ? () => setShowLinkSettingsModal(true) : undefined
             }
-            refreshing={loading}
+            refreshing={isRefreshing}
           />
 
-          {rootFolderId ? (
-            <DriveBrowser
-              embedded
-              items={items}
-              filteredItems={filteredItems}
-              typeFilter={typeFilter}
-              viewMode={viewMode}
-              loading={settingsLoading || loading}
-              error={isAccessDenied ? null : error}
-              isAdmin={isAdmin}
-              isUploading={isUploading}
-              isDragOver={isDragOver}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onItemClick={handleItemClick}
-              onContextMenu={openContextMenu}
-              onItemMenu={openItemMenu}
-              onRefresh={refreshCurrent}
-              onRename={isAdmin ? handleRenameItem : undefined}
-              onLink={handleCopyLink}
-              rootFolderId={rootFolderId}
-            />
-          ) : settingsLoading ? (
-            <div className={`flex items-center justify-center py-16 ${DRIVE_TEXT_SECONDARY}`}>
-              <FaSpinner className={`animate-spin text-xl mr-3 ${DRIVE_ACCENT_TEXT}`} />
-              <span className="text-sm font-medium">Loading drive settings…</span>
-            </div>
-          ) : isAdmin ? (
-            <div className={`mx-5 my-5 p-4 flex gap-3 ${DRIVE_WARNING_BANNER}`}>
-              <FaExclamationTriangle className="text-[#C99200] shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-800 dark:text-amber-200/90">
-                <p className="font-semibold text-amber-900 dark:text-amber-300 mb-1">
-                  Google Drive not linked
-                </p>
-                <p className="text-xs text-amber-700/90 dark:text-amber-200/70 leading-relaxed">
-                  Set OAuth env vars (
-                  <code className="text-amber-800 dark:text-amber-300">GOOGLE_OAUTH_*</code>
-                  ), then open link settings and paste your root folder URL. Share the folder
-                  with the Storage Owner Gmail as Editor.
-                </p>
+          <div className={DRIVE_CONTENT_BG}>
+            {rootFolderId ? (
+              <DriveBrowser
+                embedded
+                items={items}
+                filteredItems={filteredBySearch}
+                search={search}
+                typeFilter={typeFilter}
+                viewMode={viewMode}
+                loading={settingsLoading || (loading && !isRefreshing)}
+                refreshing={isRefreshing}
+                error={isAccessDenied ? null : error}
+                isAdmin={isAdmin}
+                isUploading={isUploading}
+                isDragOver={isDragOver}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onItemClick={handleItemClick}
+                onContextMenu={openContextMenu}
+                onItemMenu={openItemMenu}
+                onRefresh={refreshCurrent}
+                onRename={isAdmin ? handleRenameItem : undefined}
+                onLink={handleCopyLink}
+                rootFolderId={rootFolderId}
+              />
+            ) : settingsLoading ? (
+              <div className={`flex items-center justify-center py-16 ${DRIVE_TEXT_SECONDARY}`}>
+                <FaSpinner className={`animate-spin text-xl mr-3 ${DRIVE_ACCENT_TEXT}`} />
+                <span className="text-sm font-medium">Loading drive settings…</span>
               </div>
-            </div>
-          ) : null}
+            ) : isAdmin ? (
+              <div className={`mx-5 my-5 p-4 flex gap-3 ${DRIVE_WARNING_BANNER}`}>
+                <FaExclamationTriangle className="text-[#C99200] shrink-0 mt-0.5" />
+                <div className="text-sm text-amber-800 dark:text-amber-200/90">
+                  <p className="font-semibold text-amber-900 dark:text-amber-300 mb-1">
+                    Google Drive not linked
+                  </p>
+                  <p className="text-xs text-amber-700/90 dark:text-amber-200/70 leading-relaxed">
+                    Set OAuth env vars (
+                    <code className="text-amber-800 dark:text-amber-300">GOOGLE_OAUTH_*</code>
+                    ), then open link settings and paste your root folder URL. Share the folder
+                    with the Storage Owner Gmail as Editor.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       )}
 
@@ -626,6 +762,43 @@ export function DriveTab() {
           autoFocus
           className={inputCls}
           onKeyDown={(e) => e.key === "Enter" && void handleCreateFolder()}
+        />
+      </DriveModal>
+
+      <DriveModal
+        open={showNewFileModal}
+        isMounted={isMounted}
+        title="New File"
+        onClose={() => setShowNewFileModal(false)}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowNewFileModal(false)}
+              className={DRIVE_BTN_SECONDARY}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleCreateBlankFile()}
+              disabled={isCreatingFile || !newFileName.trim()}
+              className={DRIVE_BTN_PRIMARY}
+            >
+              {isCreatingFile && <FaSpinner className="animate-spin" />}
+              Create
+            </button>
+          </>
+        }
+      >
+        <input
+          type="text"
+          value={newFileName}
+          onChange={(e) => setNewFileName(e.target.value)}
+          placeholder="document.pdf or notes.txt"
+          autoFocus
+          className={inputCls}
+          onKeyDown={(e) => e.key === "Enter" && void handleCreateBlankFile()}
         />
       </DriveModal>
 

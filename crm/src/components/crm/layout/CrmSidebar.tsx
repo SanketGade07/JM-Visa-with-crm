@@ -7,6 +7,7 @@ import {
   FaSun, FaMoon, FaSignOutAlt
 } from "react-icons/fa";
 import { FiMenu } from "react-icons/fi";
+import { DriveStorageCard } from "../drive/DriveStorageCard";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 
 
@@ -119,6 +120,10 @@ export function CrmSidebar() {
             })}
           </nav>
         </div>
+
+        {currentTab === "Drive" && userAllowedTabs.includes("Drive") && (
+          <DriveStorageCard />
+        )}
 
         {/* Sidebar Footer - Role Switcher */}
         <div className="p-4 border-t border-slate-800/60 bg-[#070714] space-y-3">

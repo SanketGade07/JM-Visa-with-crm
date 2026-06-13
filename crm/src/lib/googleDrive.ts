@@ -6,7 +6,8 @@ const FOLDER_MIME = "application/vnd.google-apps.folder";
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
 const CACHE_TTL_MS = 60_000;
 const LIST_FIELDS =
-  "files(id,name,mimeType,size,createdTime,webViewLink,webContentLink),nextPageToken";
+  "files(id,name,mimeType,size,createdTime,modifiedTime,webViewLink,webContentLink),nextPageToken";
+const COUNT_FIELDS = "files(id),nextPageToken";
 
 const GOOGLE_APP_MIME: Record<GoogleFileType, string> = {
   document: "application/vnd.google-apps.document",
@@ -32,8 +33,10 @@ export interface DriveFileItem {
   isFolder: boolean;
   size: number | null;
   createdTime: string;
+  modifiedTime: string;
   webViewLink: string;
   webContentLink: string | null;
+  itemCount?: number | null;
 }
 
 export interface ValidateFolderResult {
@@ -77,16 +80,49 @@ function normalizeFolderName(name: string): string {
 
 function mapDriveFile(file: drive_v3.Schema$File): DriveFileItem {
   const mimeType = file.mimeType || "application/octet-stream";
+  const createdTime = file.createdTime || new Date().toISOString();
   return {
     id: file.id || "",
     name: file.name || "Untitled",
     mimeType,
     isFolder: mimeType === FOLDER_MIME,
     size: file.size ? Number(file.size) : null,
-    createdTime: file.createdTime || new Date().toISOString(),
+    createdTime,
+    modifiedTime: file.modifiedTime || createdTime,
     webViewLink: file.webViewLink || "",
     webContentLink: file.webContentLink || null,
   };
+}
+
+async function countFolderItems(folderId: string): Promise<number> {
+  const drive = getDriveClient();
+  let count = 0;
+  let pageToken: string | undefined;
+
+  do {
+    const response = await drive.files.list({
+      q: `'${folderId}' in parents and trashed=false`,
+      fields: COUNT_FIELDS,
+      pageSize: 100,
+      pageToken,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
+
+    count += (response.data.files || []).length;
+    pageToken = response.data.nextPageToken || undefined;
+  } while (pageToken);
+
+  return count;
+}
+
+async function enrichFolderItemCounts(items: DriveFileItem[]): Promise<void> {
+  const folders = items.filter((item) => item.isFolder);
+  await Promise.all(
+    folders.map(async (folder) => {
+      folder.itemCount = await countFolderItems(folder.id);
+    })
+  );
 }
 
 function getGoogleAuth() {
@@ -240,6 +276,8 @@ export async function listFolderContents(folderId: string): Promise<DriveFileIte
     pageToken = response.data.nextPageToken || undefined;
   } while (pageToken);
 
+  await enrichFolderItemCounts(items);
+
   folderCache.set(folderId, {
     data: items,
     expiresAt: Date.now() + CACHE_TTL_MS,
@@ -331,6 +369,31 @@ export async function ensureFolderPath(
 
   const requestFolderId = await getOrCreateFolder(baseId, requestTitle);
   return getOrCreateFolder(requestFolderId, folder);
+}
+
+export function inferBlankFileMimeType(fileName: string): string {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  switch (ext) {
+    case "pdf":
+      return "application/pdf";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "txt":
+      return "text/plain";
+    default:
+      return "application/octet-stream";
+  }
+}
+
+export async function createBlankFile(
+  parentId: string,
+  fileName: string
+): Promise<{ id: string; webViewLink: string; webContentLink: string | null }> {
+  const mimeType = inferBlankFileMimeType(fileName);
+  return uploadFileToDrive(parentId, fileName, Buffer.alloc(0), mimeType);
 }
 
 export async function uploadFileToDrive(
@@ -434,6 +497,20 @@ export async function createGoogleFile(
     id: response.data.id,
     webViewLink: response.data.webViewLink || "",
   };
+}
+
+export async function getDriveStorageQuota(): Promise<{
+  usageBytes: number;
+  limitBytes: number;
+}> {
+  const drive = getDriveClient();
+  const response = await drive.about.get({ fields: "storageQuota" });
+  const quota = response.data.storageQuota;
+
+  const usageBytes = Number(quota?.usageInDrive ?? quota?.usage ?? 0);
+  const limitBytes = Number(quota?.limit ?? 0);
+
+  return { usageBytes, limitBytes };
 }
 
 export async function getFile(fileId: string): Promise<{

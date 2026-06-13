@@ -18,7 +18,10 @@ export function CrmTabViews() {
   const { currentTab } = useCrmLayoutContext();
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 md:p-8">
+    <div
+      data-crm-scroll-container
+      className="flex-1 overflow-y-auto p-4 md:p-8 [scrollbar-gutter:stable]"
+    >
       {currentTab === "Dashboard" && <DashboardTab />}
       {currentTab === "Leads" && <LeadsTab />}
       {currentTab === "FollowUps" && <FollowUpsTab />}

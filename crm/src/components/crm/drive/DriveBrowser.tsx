@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React from "react";
 import DataTable, { type Column } from "@/components/ui/DataTable";
 import { TableViewToggle } from "@/components/crm/ui/TableViewToggle";
 import {
@@ -14,6 +14,7 @@ import {
   FaEllipsisV,
 } from "react-icons/fa";
 import { FiGrid, FiList } from "react-icons/fi";
+import { DriveItemIcon } from "./DriveItemIcon";
 import type { Breadcrumb, DriveItem, DriveTypeFilter } from "./driveUtils";
 import {
   DRIVE_ACCENT_TEXT,
@@ -24,10 +25,12 @@ import {
   DRIVE_DRAG_OVERLAY,
   DRIVE_DRAG_ZONE,
   DRIVE_DROPDOWN,
-  DRIVE_FILE_ICON_BG,
-  DRIVE_FOLDER_ICON_BG,
   DRIVE_ROW_HOVER,
-  DRIVE_ROW_TILE_ICON,
+  DRIVE_CONTENT_BG,
+  DRIVE_CONTENT_PADDING,
+  DRIVE_FILE_PREVIEW_LIMIT,
+  DRIVE_FOLDER_PREVIEW_LIMIT,
+  DRIVE_SECTION_GAP,
   DRIVE_SECTION_LABEL,
   DRIVE_SURFACE_SECONDARY,
   DRIVE_TEXT_MUTED,
@@ -37,11 +40,11 @@ import {
   DRIVE_SUBTITLE,
   formatDate,
   formatFileSize,
-  getFileIcon,
-  getFileIconColor,
 } from "./driveUtils";
 import { DriveBreadcrumbs } from "./DriveBreadcrumbs";
 import { DriveItemGrid } from "./DriveItemGrid";
+import { DriveListView } from "./DriveListView";
+import { DriveStatusFooter } from "./DriveStatusFooter";
 
 type DriveBrowserBodyProps = {
   items: DriveItem[];
@@ -49,6 +52,7 @@ type DriveBrowserBodyProps = {
   typeFilter?: DriveTypeFilter;
   viewMode: "grid" | "list";
   loading: boolean;
+  refreshing?: boolean;
   error: string | null;
   isAdmin: boolean;
   isUploading: boolean;
@@ -58,7 +62,7 @@ type DriveBrowserBodyProps = {
   onDrop: (e: React.DragEvent) => void;
   onItemClick: (item: DriveItem) => void;
   onContextMenu: (e: React.MouseEvent, item: DriveItem) => void;
-  onItemMenu: (item: DriveItem) => void;
+  onItemMenu: (item: DriveItem, e?: React.MouseEvent<HTMLButtonElement>) => void;
   onRefresh: () => void;
   onRename?: (item: DriveItem) => void;
   onLink?: (item: DriveItem) => void;
@@ -69,6 +73,7 @@ type DriveBrowserBodyProps = {
 type DriveBrowserEmbeddedProps = DriveBrowserBodyProps & {
   /** Grid/list body only — toolbar and breadcrumbs live in DriveTab. */
   embedded: true;
+  search?: string;
 };
 
 type DriveBrowserStandaloneProps = DriveBrowserBodyProps & {
@@ -90,60 +95,95 @@ function DriveGridSections({
   typeFilter = "all",
   onItemClick,
   onContextMenu,
-  isAdmin,
-  onRename,
-  onLink,
+  onItemMenu,
   activeItemId,
-  rootFolderId,
 }: {
   items: DriveItem[];
   typeFilter?: DriveTypeFilter;
   onItemClick: (item: DriveItem) => void;
   onContextMenu: (e: React.MouseEvent, item: DriveItem) => void;
-  isAdmin: boolean;
-  onRename?: (item: DriveItem) => void;
-  onLink?: (item: DriveItem) => void;
+  onItemMenu: (item: DriveItem, e?: React.MouseEvent<HTMLButtonElement>) => void;
   activeItemId?: string | null;
-  rootFolderId?: string | null;
 }) {
   const gridProps = {
     onItemClick,
     onContextMenu,
+    onItemMenu,
     nested: true,
-    isAdmin,
-    onRename,
-    onLink,
     activeItemId,
-    rootFolderId,
   };
 
   const showSplitSections = typeFilter === "all" || typeFilter === "folders";
 
   if (!showSplitSections) {
     return (
-      <div className="px-5 pt-3 pb-5">
+      <div className={`${DRIVE_CONTENT_PADDING} pb-2 ${DRIVE_CONTENT_BG}`}>
         <DriveItemGrid items={items} {...gridProps} />
+        <DriveStatusFooter items={items} />
       </div>
     );
   }
 
   const folders = items.filter((i) => i.isFolder);
   const files = items.filter((i) => !i.isFolder);
+  const [showAllFolders, setShowAllFolders] = React.useState(false);
+  const [showAllFiles, setShowAllFiles] = React.useState(false);
+  const hasMoreFolders = folders.length > DRIVE_FOLDER_PREVIEW_LIMIT;
+  const hasMoreFiles = files.length > DRIVE_FILE_PREVIEW_LIMIT;
+  const visibleFolders = showAllFolders
+    ? folders
+    : folders.slice(0, DRIVE_FOLDER_PREVIEW_LIMIT);
+  const visibleFiles = showAllFiles
+    ? files
+    : files.slice(0, DRIVE_FILE_PREVIEW_LIMIT);
+
+  React.useEffect(() => {
+    setShowAllFolders(false);
+  }, [folders.map((f) => f.id).join(",")]);
+
+  React.useEffect(() => {
+    setShowAllFiles(false);
+  }, [files.map((f) => f.id).join(",")]);
 
   return (
-    <div className="px-5 pt-3 pb-5 space-y-5">
-      {folders.length > 0 && (
-        <section>
-          <p className={`${DRIVE_SECTION_LABEL} mb-2 px-0.5`}>Folders</p>
-          <DriveItemGrid items={folders} {...gridProps} />
-        </section>
-      )}
-      {files.length > 0 && (
-        <section>
-          <p className={`${DRIVE_SECTION_LABEL} mb-2 px-0.5`}>Files</p>
-          <DriveItemGrid items={files} {...gridProps} />
-        </section>
-      )}
+    <div className={`${DRIVE_CONTENT_PADDING} pb-2 ${DRIVE_CONTENT_BG}`}>
+      <div className={DRIVE_SECTION_GAP}>
+        {folders.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <p className={DRIVE_SECTION_LABEL}>Folders</p>
+              {hasMoreFolders && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllFolders((expanded) => !expanded)}
+                  className={`shrink-0 text-[12px] font-medium ${DRIVE_ACCENT_TEXT} hover:underline`}
+                >
+                  {showAllFolders ? "Show less" : "View all"}
+                </button>
+              )}
+            </div>
+            <DriveItemGrid items={visibleFolders} {...gridProps} />
+          </section>
+        )}
+        {files.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <p className={DRIVE_SECTION_LABEL}>Files</p>
+              {hasMoreFiles && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllFiles((expanded) => !expanded)}
+                  className={`shrink-0 text-[12px] font-medium ${DRIVE_ACCENT_TEXT} hover:underline`}
+                >
+                  {showAllFiles ? "Show less" : "View all"}
+                </button>
+              )}
+            </div>
+            <DriveItemGrid items={visibleFiles} {...gridProps} />
+          </section>
+        )}
+      </div>
+      <DriveStatusFooter items={items} />
     </div>
   );
 }
@@ -156,6 +196,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
     typeFilter = "all",
     viewMode,
     loading,
+    refreshing = false,
     error,
     isAdmin,
     isUploading,
@@ -174,7 +215,9 @@ export function DriveBrowser(props: DriveBrowserProps) {
   } = props;
 
   const breadcrumbs = !embedded ? props.breadcrumbs : [];
-  const search = !embedded ? props.search : "";
+  const search = embedded
+    ? (props.search ?? "")
+    : props.search;
   const onSearchChange = !embedded ? props.onSearchChange : () => {};
   const onNavigateBreadcrumb = !embedded ? props.onNavigateBreadcrumb : () => {};
   const onViewModeChange = !embedded ? props.onViewModeChange : () => {};
@@ -184,28 +227,33 @@ export function DriveBrowser(props: DriveBrowserProps) {
 
   const [googleMenuOpen, setGoogleMenuOpen] = React.useState(false);
 
-  const listColumns = useMemo<Column<DriveItem>[]>(
+  const folderColorById = React.useMemo(() => {
+    const map = new Map<string, number>();
+    let idx = 0;
+    for (const item of filteredItems) {
+      if (item.isFolder) map.set(item.id, idx++);
+    }
+    return map;
+  }, [filteredItems]);
+
+  const listColumns: Column<DriveItem>[] = React.useMemo(
     () => [
       {
         header: "Name",
-        render: (item) => {
-          const Icon = getFileIcon(item);
-          const iconColor = getFileIconColor(item);
-          return (
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                className={`${DRIVE_ROW_TILE_ICON} ${
-                  item.isFolder ? DRIVE_FOLDER_ICON_BG : DRIVE_FILE_ICON_BG
-                }`}
-              >
-                <Icon className={`text-sm ${iconColor}`} />
-              </div>
-              <span className={`font-semibold text-[13px] truncate ${DRIVE_TEXT_PRIMARY}`}>
-                {item.name}
-              </span>
+        render: (item) => (
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-6 h-6 shrink-0 flex items-center justify-center">
+              <DriveItemIcon
+                item={item}
+                size={24}
+                folderColorIndex={folderColorById.get(item.id) ?? 0}
+              />
             </div>
-          );
-        },
+            <span className={`font-semibold text-[13px] truncate ${DRIVE_TEXT_PRIMARY}`}>
+              {item.name}
+            </span>
+          </div>
+        ),
       },
       {
         header: "Modified",
@@ -224,7 +272,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
         ),
       },
     ],
-    []
+    [folderColorById]
   );
 
   const viewToggle = (
@@ -356,55 +404,19 @@ export function DriveBrowser(props: DriveBrowserProps) {
       typeFilter={typeFilter}
       onItemClick={onItemClick}
       onContextMenu={onContextMenu}
-      isAdmin={isAdmin}
-      onRename={onRename}
-      onLink={onLink}
+      onItemMenu={onItemMenu}
       activeItemId={activeItemId}
-      rootFolderId={rootFolderId}
     />
   );
 
   const renderEmbeddedList = () => (
-    <div className={`overflow-hidden mx-5 mb-5 rounded-xl border ${DRIVE_BORDER}`}>
-      <table className="w-full text-sm">
-        <thead>
-          <tr
-            className={`${DRIVE_SURFACE_SECONDARY} text-[10px] uppercase font-bold tracking-wider ${DRIVE_TEXT_MUTED}`}
-          >
-            <th className="text-left px-4 py-3">Name</th>
-            <th className="text-left px-4 py-3 hidden sm:table-cell">Modified</th>
-            <th className="text-left px-4 py-3 hidden md:table-cell">Size</th>
-            <th className="w-10 px-2" />
-          </tr>
-        </thead>
-        <tbody>
-          {filteredItems.map((item, index) => (
-            <tr
-              key={item.id}
-              className={`border-t ${DRIVE_BORDER} ${DRIVE_ROW_HOVER} cursor-pointer transition-colors`}
-              onClick={() => onItemClick(item)}
-              onContextMenu={(e) => onContextMenu(e, item)}
-            >
-              <td className="px-4 py-3">{listColumns[0].render(item, index)}</td>
-              <td className="px-4 py-3 hidden sm:table-cell">{listColumns[1].render(item, index)}</td>
-              <td className="px-4 py-3 hidden md:table-cell">{listColumns[2].render(item, index)}</td>
-              <td className="px-2 py-3">
-                <button
-                  type="button"
-                  className={`p-1.5 rounded-lg ${DRIVE_ROW_HOVER} ${DRIVE_TEXT_MUTED}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onItemMenu(item);
-                  }}
-                >
-                  <FaEllipsisV className="text-xs" />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DriveListView
+      items={filteredItems}
+      activeItemId={activeItemId}
+      onItemClick={onItemClick}
+      onContextMenu={onContextMenu}
+      onItemMenu={onItemMenu}
+    />
   );
 
   const dragOverlay = isDragOver && isAdmin && (
@@ -418,36 +430,39 @@ export function DriveBrowser(props: DriveBrowserProps) {
     </div>
   );
 
-  const dragZoneCls = `relative min-h-[240px] transition-colors ${
+  const dragZoneCls = `relative min-h-[240px] w-full min-w-full transition-colors ${
     isDragOver && isAdmin
       ? DRIVE_DRAG_ZONE
       : ""
   }`;
 
+  // Keep the grid/list mounted whenever we already have folder data so the
+  // card and toolbar never collapse to spinner width during silent refresh.
+  const showInitialLoading = loading && !refreshing && items.length === 0;
+
+  const renderBody = () => {
+    if (showInitialLoading) return loadingContent;
+    if (error) return errorContent;
+    if (filteredItems.length === 0) return emptyContent;
+    return viewMode === "grid" ? renderGrid() : renderEmbeddedList();
+  };
+
   if (embedded) {
     return (
       <div
-        className={dragZoneCls}
+        className={`${DRIVE_CONTENT_BG} ${dragZoneCls}`}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
         {dragOverlay}
-        {loading
-          ? loadingContent
-          : error
-            ? errorContent
-            : filteredItems.length === 0
-              ? emptyContent
-              : viewMode === "grid"
-                ? renderGrid()
-                : renderEmbeddedList()}
+        {renderBody()}
       </div>
     );
   }
 
   if (viewMode === "list") {
-    if (loading) {
+    if (showInitialLoading) {
       return (
         <div className={`${DRIVE_CARD_CLS} overflow-hidden`}>
           {loadingContent}
@@ -511,19 +526,13 @@ export function DriveBrowser(props: DriveBrowserProps) {
       {belowTitle}
 
       <div
-        className={dragZoneCls}
+        className={`${DRIVE_CONTENT_BG} ${dragZoneCls}`}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
         {dragOverlay}
-        {loading
-          ? loadingContent
-          : error
-            ? errorContent
-            : filteredItems.length === 0
-              ? emptyContent
-              : renderGrid()}
+        {renderBody()}
       </div>
     </div>
   );

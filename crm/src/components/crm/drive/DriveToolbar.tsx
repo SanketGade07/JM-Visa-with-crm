@@ -1,16 +1,13 @@
 "use client";
 
 import React from "react";
-import { FaChevronLeft, FaFolder } from "react-icons/fa";
 import { FiGrid, FiLink, FiList, FiRefreshCw } from "react-icons/fi";
 import { DriveBreadcrumbs } from "./DriveBreadcrumbs";
 import { DriveFiltersMenu } from "./DriveFiltersMenu";
 import { DriveNewMenu } from "./DriveNewMenu";
+import { DriveSearchBar } from "./DriveSearchBar";
 import type { Breadcrumb, DriveTypeFilter } from "./driveUtils";
 import {
-  DRIVE_FOLDER_ICON_BG,
-  DRIVE_FOLDER_ICON_BORDER,
-  DRIVE_FOLDER_ICON_COLOR,
   DRIVE_ICON_SQUARE,
   DRIVE_SEGMENT_ACTIVE,
   DRIVE_SEGMENT_CONTAINER,
@@ -21,10 +18,12 @@ import {
 export type DriveToolbarProps = {
   breadcrumbs: Breadcrumb[];
   onNavigate: (index: number) => void;
-  onNavigateBack: () => void;
+  search: string;
+  onSearchChange: (value: string) => void;
   viewMode: "grid" | "list";
   onViewModeChange: (mode: "grid" | "list") => void;
   onRefresh: () => void;
+  onCopyFolderLink?: () => void;
   refreshing?: boolean;
   typeFilter: DriveTypeFilter;
   onTypeFilterChange: (filter: DriveTypeFilter) => void;
@@ -33,6 +32,7 @@ export type DriveToolbarProps = {
   onUploadClick: () => void;
   onFolderUploadClick?: () => void;
   onNewFolder: () => void;
+  onNewFile: () => void;
   onCreateGoogleFile: (type: "document" | "spreadsheet" | "presentation") => void;
   onOpenLinkSettings?: () => void;
 };
@@ -40,10 +40,12 @@ export type DriveToolbarProps = {
 export function DriveToolbar({
   breadcrumbs,
   onNavigate,
-  onNavigateBack,
+  search,
+  onSearchChange,
   viewMode,
   onViewModeChange,
   onRefresh,
+  onCopyFolderLink,
   refreshing = false,
   typeFilter,
   onTypeFilterChange,
@@ -52,45 +54,42 @@ export function DriveToolbar({
   onUploadClick,
   onFolderUploadClick,
   onNewFolder,
+  onNewFile,
   onCreateGoogleFile,
   onOpenLinkSettings,
 }: DriveToolbarProps) {
-  const showBack = breadcrumbs.length > 1;
-
   return (
-    <div className={`px-4 py-3 sm:px-5 ${DRIVE_TOOLBAR}`}>
-      <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-        {/* Left: back + folder icon + breadcrumbs */}
-        <div className="flex items-center gap-3 min-w-0 flex-1 basis-full sm:basis-auto">
-          {showBack ? (
-            <button
-              type="button"
-              onClick={onNavigateBack}
-              className={DRIVE_ICON_SQUARE}
-              aria-label="Back to parent folder"
-            >
-              <FaChevronLeft className="text-sm" />
-            </button>
-          ) : null}
+    <div className={DRIVE_TOOLBAR}>
+      <div className="grid w-full min-w-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 lg:gap-4">
+        {/* Left: breadcrumbs */}
+        <div className="min-w-0 order-1 lg:order-none">
+          <DriveBreadcrumbs
+            breadcrumbs={breadcrumbs}
+            onNavigate={onNavigate}
+            onBack={
+              breadcrumbs.length > 1
+                ? () => onNavigate(breadcrumbs.length - 2)
+                : undefined
+            }
+          />
+        </div>
 
-          <div
-            className={`w-8 h-8 flex items-center justify-center rounded-xl border shrink-0 ${DRIVE_FOLDER_ICON_BORDER} ${DRIVE_FOLDER_ICON_BG}`}
-          >
-            <FaFolder className={`text-sm ${DRIVE_FOLDER_ICON_COLOR}`} />
-          </div>
-
-          <DriveBreadcrumbs breadcrumbs={breadcrumbs} onNavigate={onNavigate} />
+        {/* Center: search */}
+        <div className="flex justify-center order-3 lg:order-none w-full lg:w-auto">
+          <DriveSearchBar value={search} onChange={onSearchChange} />
         </div>
 
         {/* Right: actions */}
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:ml-auto sm:flex-nowrap">
+        <div className="flex flex-wrap items-center gap-2 justify-end order-2 lg:order-none">
           {isAdmin ? (
             <DriveNewMenu
               isUploading={isUploading}
               onNewFolder={onNewFolder}
+              onNewFile={onNewFile}
               onUploadClick={onUploadClick}
               onFolderUploadClick={onFolderUploadClick}
               onCreateGoogleFile={onCreateGoogleFile}
+              onOpenLinkSettings={onOpenLinkSettings}
             />
           ) : null}
 
@@ -103,34 +102,30 @@ export function DriveToolbar({
             <button
               type="button"
               onClick={() => onViewModeChange("grid")}
-              className={`h-9 flex items-center justify-center gap-1.5 transition-colors ${
+              className={`flex items-center justify-center gap-1 transition-colors ${
                 viewMode === "grid"
                   ? `${DRIVE_SEGMENT_ACTIVE} px-2.5`
-                  : `${DRIVE_SEGMENT_INACTIVE} w-9`
+                  : DRIVE_SEGMENT_INACTIVE
               }`}
               title="Grid view"
               aria-pressed={viewMode === "grid"}
             >
               <FiGrid className="text-[14px]" />
-              {viewMode === "grid" ? (
-                <span className="text-[10px] uppercase tracking-wide">Grid</span>
-              ) : null}
+              {viewMode === "grid" ? <span>Grid</span> : null}
             </button>
             <button
               type="button"
               onClick={() => onViewModeChange("list")}
-              className={`h-9 flex items-center justify-center gap-1.5 transition-colors ${
+              className={`flex items-center justify-center gap-1 transition-colors ${
                 viewMode === "list"
                   ? `${DRIVE_SEGMENT_ACTIVE} px-2.5`
-                  : `${DRIVE_SEGMENT_INACTIVE} w-9`
+                  : DRIVE_SEGMENT_INACTIVE
               }`}
               title="List view"
               aria-pressed={viewMode === "list"}
             >
               <FiList className="text-[14px]" />
-              {viewMode === "list" ? (
-                <span className="text-[10px] uppercase tracking-wide">List</span>
-              ) : null}
+              {viewMode === "list" ? <span>List</span> : null}
             </button>
           </div>
 
@@ -145,13 +140,13 @@ export function DriveToolbar({
             <FiRefreshCw className={`text-[14px]${refreshing ? " animate-spin" : ""}`} />
           </button>
 
-          {isAdmin && onOpenLinkSettings ? (
+          {onCopyFolderLink ? (
             <button
               type="button"
-              onClick={onOpenLinkSettings}
+              onClick={onCopyFolderLink}
               className={DRIVE_ICON_SQUARE}
-              title="Link settings"
-              aria-label="Drive link settings"
+              title="Copy folder link"
+              aria-label="Copy folder link"
             >
               <FiLink className="text-[14px]" />
             </button>

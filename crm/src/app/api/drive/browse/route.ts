@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   clearDriveCache,
+  createBlankFile,
   createFolder,
   createGoogleFile,
   deleteFileFromDrive,
@@ -134,9 +135,36 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parentId = body.parentId as string | undefined;
     const folderName = body.folderName as string | undefined;
+    const fileName = body.fileName as string | undefined;
+    const blankFile = Boolean(body.blankFile);
     const type = body.type as GoogleFileType | undefined;
 
-    if (!parentId || !folderName?.trim()) {
+    if (!parentId) {
+      return NextResponse.json({ error: "parentId is required" }, { status: 400 });
+    }
+
+    if (blankFile) {
+      if (!fileName?.trim()) {
+        return NextResponse.json({ error: "fileName is required" }, { status: 400 });
+      }
+      const trimmed = fileName.trim();
+      const created = await createBlankFile(parentId, trimmed);
+      return NextResponse.json(
+        {
+          success: true,
+          file: {
+            id: created.id,
+            name: trimmed,
+            webViewLink: created.webViewLink,
+            webContentLink: created.webContentLink,
+            previewUrl: `/api/drive/view?fileId=${encodeURIComponent(created.id)}`,
+          },
+        },
+        { status: 201 }
+      );
+    }
+
+    if (!folderName?.trim()) {
       return NextResponse.json(
         { error: "parentId and folderName are required" },
         { status: 400 }
