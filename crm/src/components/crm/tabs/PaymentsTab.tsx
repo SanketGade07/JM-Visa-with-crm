@@ -8,8 +8,7 @@ import DataTable, { type Column } from "@/components/ui/DataTable";
 import { TableViewToggle } from "@/components/crm/ui/TableViewToggle";
 import { DateRangeCalendarPopover } from "@/components/crm/ui/DateRangeCalendarPopover";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
-
-const DESK_COUNTRIES = ["USA", "UK", "Canada", "Europe"] as const;
+import { getDeskCountriesFromLeads } from "@/utils/leadHelpers";
 
 function isDateRangeActive(startDate: string, endDate: string): boolean {
   return !!(startDate && endDate);
@@ -98,7 +97,7 @@ export function PaymentsTab() {
 
   const deskRevenueRows = useMemo<DeskRevenueRow[]>(
     () =>
-      DESK_COUNTRIES.map((country) => {
+      getDeskCountriesFromLeads(leads).map((country) => {
         const cLeads = leads.filter(
           (l) => l.country === country && l.status !== "Dropped"
         );

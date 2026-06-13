@@ -12,6 +12,7 @@ import { SubmissionsTab } from "./tabs/SubmissionsTab";
 import { PaymentsTab } from "./tabs/PaymentsTab";
 import { DropLeadsTab } from "./tabs/DropLeadsTab";
 import { StaffTab } from "./tabs/StaffTab";
+import { DriveTab } from "./tabs/DriveTab";
 
 export function CrmTabViews() {
   const { currentTab } = useCrmLayoutContext();
@@ -28,6 +29,7 @@ export function CrmTabViews() {
       {currentTab === "Payments" && <PaymentsTab />}
       {currentTab === "DropLeads" && <DropLeadsTab />}
       {currentTab === "Staff" && <StaffTab />}
+      {currentTab === "Drive" && <DriveTab />}
     </div>
   );
 }

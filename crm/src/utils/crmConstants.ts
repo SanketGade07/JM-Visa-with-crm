@@ -3,7 +3,7 @@ import type { StaffRole } from "@/context/CrmContext";
 // Which sidebar tabs each role is allowed to open (guide §8.9 access model).
 // Every role lands on the Dashboard; specialist teams only see their own desks.
 export const ROLE_TABS: Record<StaffRole, string[]> = {
-  ADMIN: ["Dashboard", "Leads", "FollowUps", "Countries", "USASlots", "Checklist", "Submissions", "Payments", "Meetings", "DropLeads", "Staff"],
+  ADMIN: ["Dashboard", "Leads", "FollowUps", "Countries", "USASlots", "Checklist", "Submissions", "Payments", "Meetings", "DropLeads", "Staff", "Drive"],
   MANAGER: ["Dashboard", "Leads", "FollowUps", "Countries", "USASlots", "Checklist", "Submissions", "Payments", "Meetings", "DropLeads", "Staff"],
   COUNSELOR: ["Dashboard", "Leads", "FollowUps", "Countries", "Meetings", "DropLeads"],
   "DOCUMENT TEAM": ["Dashboard", "Leads", "Countries", "Checklist"],
@@ -24,4 +24,5 @@ export const AVAILABLE_TABS = [
   { id: "Meetings", label: "Meetings & Reminders" },
   { id: "DropLeads", label: "Drop Leads Log" },
   { id: "Staff", label: "Staff Directory" },
+  { id: "Drive", label: "Drive" },
 ];

@@ -3,7 +3,7 @@
 import React from "react";
 import {
   FaChartBar, FaUserFriends, FaHistory, FaGlobe, FaPassport, FaCheckSquare,
-  FaPaperPlane, FaFileInvoiceDollar, FaTrash, FaUserLock, FaSearch, FaPlus,
+  FaPaperPlane, FaFileInvoiceDollar, FaTrash, FaUserLock, FaFolder, FaSearch, FaPlus,
   FaSun, FaMoon, FaSignOutAlt
 } from "react-icons/fa";
 import { FiMenu } from "react-icons/fi";
@@ -93,6 +93,7 @@ export function CrmSidebar() {
               // { id: "Meetings", label: "Meetings & Reminders", icon: FaCalendarAlt },
               { id: "DropLeads", label: "Drop Leads Log", icon: FaTrash },
               { id: "Staff", label: "Staff Directory", icon: FaUserLock },
+              { id: "Drive", label: "Drive", icon: FaFolder },
             ].filter((tab) => userAllowedTabs.includes(tab.id)).map((tab) => {
               const Icon = tab.icon;
               const isActive =

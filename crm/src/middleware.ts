@@ -34,6 +34,27 @@ export function middleware(req: NextRequest) {
     }
   }
 
+  if (
+    pathname.startsWith("/api/drive/browse") ||
+    pathname.startsWith("/api/drive/discover")
+  ) {
+    if (!role || role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
+  if (pathname.startsWith("/api/drive/view")) {
+    if (!role) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
+  if (pathname.startsWith("/api/settings") && req.method === "PATCH") {
+    if (!role || role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
   return NextResponse.next();
 }
 

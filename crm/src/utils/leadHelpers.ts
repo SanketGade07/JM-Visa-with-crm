@@ -1,9 +1,17 @@
-import type { DocumentChecklist, VisaStatus } from "@/context/CrmContext";
+import type { DocumentChecklist, Lead, VisaStatus } from "@/context/CrmContext";
 import {
   DEFAULT_EMPLOYMENT_CATEGORY,
   getChecklistKeysForLead,
   type EmploymentCategory,
 } from "@/utils/documentChecklistConfig";
+
+export function getDeskCountriesFromLeads(leads: Lead[]): string[] {
+  const set = new Set<string>();
+  for (const l of leads) {
+    if (l.status !== "Dropped" && l.country?.trim()) set.add(l.country.trim());
+  }
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
 
 // Document checklist completion % for the Document Progress column
 export const docProgress = (

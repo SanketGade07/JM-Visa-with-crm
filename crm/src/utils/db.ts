@@ -1,6 +1,24 @@
 import { getSupabase } from "@/utils/supabase";
-import { Lead, Meeting, Activity, Expense, Document, CrmUser } from "@/context/CrmContext";
+import { Lead, Meeting, Activity, Expense, Document, CrmUser, type StaffRole } from "@/context/CrmContext";
 import { normalizeLead } from "@/utils/normalizeLead";
+import { ROLE_TABS } from "@/utils/crmConstants";
+
+/** Backfill role-default tabs missing from stored user grants (e.g. Drive for ADMIN). */
+function migrateUserAllowedTabs(users: CrmUser[]): { users: CrmUser[]; changed: boolean } {
+  let changed = false;
+  const migrated = users.map((user) => {
+    const roleTabs = ROLE_TABS[user.role as StaffRole];
+    if (!roleTabs?.length) return user;
+
+    const allowed = user.allowedTabs ?? [];
+    const toAdd = roleTabs.filter((tab) => !allowed.includes(tab));
+    if (toAdd.length === 0) return user;
+
+    changed = true;
+    return { ...user, allowedTabs: [...allowed, ...toAdd] };
+  });
+  return { users: migrated, changed };
+}
 
 // ── Leads ────────────────────────────────────────────────────────────────────
 export const readLeads = async (): Promise<Lead[]> => {
@@ -170,7 +188,7 @@ export const getSeedUsers = (): CrmUser[] => [
     email: "admin@jmvisa.com",
     password: "admin123",
     role: "ADMIN",
-    allowedTabs: ["Dashboard", "Leads", "FollowUps", "Countries", "USASlots", "Checklist", "Submissions", "Payments", "Meetings", "DropLeads", "Staff"],
+    allowedTabs: ["Dashboard", "Leads", "FollowUps", "Countries", "USASlots", "Checklist", "Submissions", "Payments", "Meetings", "DropLeads", "Staff", "Drive"],
     createdAt: new Date().toISOString()
   },
   {
@@ -211,7 +229,12 @@ export const readUsers = async (): Promise<CrmUser[]> => {
     }
     
     const text = await data.text();
-    return JSON.parse(text) as CrmUser[];
+    const parsed = JSON.parse(text) as CrmUser[];
+    const { users: migrated, changed } = migrateUserAllowedTabs(parsed);
+    if (changed) {
+      await writeUsers(migrated);
+    }
+    return migrated;
   } catch (err) {
     console.error("Failed to read/parse users.json:", err);
     return getSeedUsers();

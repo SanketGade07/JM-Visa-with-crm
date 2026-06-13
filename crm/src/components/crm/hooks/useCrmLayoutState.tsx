@@ -108,7 +108,8 @@ export function useCrmLayoutState() {
 
   useEffect(() => {
     if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000);
+      const durationMs = toast.type === "error" ? 6000 : 5000;
+      const timer = setTimeout(() => setToast(null), durationMs);
       return () => clearTimeout(timer);
     }
   }, [toast]);

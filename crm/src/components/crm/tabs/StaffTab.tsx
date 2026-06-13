@@ -127,7 +127,7 @@ export function StaffTab() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-500 font-semibold">Tab Access:</span>
-                          <span className="text-violet-400 font-extrabold">{staff.allowedTabs ? staff.allowedTabs.length : 0} / 11 Tabs</span>
+                          <span className="text-violet-400 font-extrabold">{staff.allowedTabs ? staff.allowedTabs.length : 0} / {AVAILABLE_TABS.length} Tabs</span>
                         </div>
                       </div>
                     </div>
