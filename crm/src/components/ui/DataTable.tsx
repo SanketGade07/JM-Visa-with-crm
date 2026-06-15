@@ -138,7 +138,7 @@ function ToolbarButton({
       type="button"
       title={title}
       onClick={onClick}
-      className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+      className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
         active
           ? "text-blue-600 dark:text-sky-400 bg-blue-50 dark:bg-sky-400/10 hover:bg-blue-100 dark:hover:bg-sky-400/15"
           : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
@@ -213,7 +213,7 @@ export default function DataTable<T>({
   filters,
   search,
   onSearchChange,
-  searchPlaceholder = "Search…",
+  searchPlaceholder = "",
   onFilter,
   filterActive,
   onExport,
@@ -291,7 +291,7 @@ export default function DataTable<T>({
                   />
                 ))}
               {onRefresh && <ToolbarButton icon={FiRefreshCw} title="Refresh" onClick={onRefresh} />}
-              <ToolbarButton icon={FiDownload} title="Export" onClick={onExport} />
+              {onExport && <ToolbarButton icon={FiDownload} title="Export" onClick={onExport} />}
               {onFilter && (
                 <ToolbarButton
                   icon={FiFilter}
@@ -356,7 +356,7 @@ export default function DataTable<T>({
                         value={currentFilterValue}
                         options={col.filterSelectOptions!}
                         clearValue={clearValue}
-                        placeholder={col.filterSelectPlaceholder ?? `Search ${label.toLowerCase()}...`}
+                        placeholder={col.filterSelectPlaceholder ?? ""}
                         portalId={col.filterSelectPortalId ?? `column-filter-${searchKey}`}
                         isActive={columnSearch.activeColumn === searchKey}
                         hasFilter={currentFilterValue !== clearValue}
@@ -371,7 +371,7 @@ export default function DataTable<T>({
                       <InlineColumnSearch
                         columnKey={searchKey}
                         label={label}
-                        placeholder={col.searchPlaceholder || `Search ${label.toLowerCase()}...`}
+                        placeholder={col.searchPlaceholder ?? ""}
                         value={columnSearch.filters[searchKey] ?? ""}
                         isActive={columnSearch.activeColumn === searchKey}
                         hasFilter={Boolean(columnSearch.filters[searchKey]?.trim())}
@@ -451,7 +451,7 @@ export default function DataTable<T>({
                               data-tooltip={action.title}
                               disabled={disabled}
                               onClick={() => action.onClick(row)}
-                              className={`flex items-center justify-center p-0.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${getActionIconClasses(action.title)}`}
+                              className={`flex items-center justify-center p-0.5 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${getActionIconClasses(action.title)}`}
                             >
                               <Icon className={isCommAction ? "text-[17px]" : "text-[15px]"} />
                             </button>

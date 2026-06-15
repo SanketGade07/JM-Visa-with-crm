@@ -19,6 +19,8 @@ type TablePillSelectProps = {
   searchPlaceholder?: string;
   /** Override list max-height (e.g. status pill uses full height for all options). */
   maxMenuHeight?: number;
+  /** Compact pill for table rows; full-width field for settings forms. */
+  variant?: "pill" | "field";
 };
 
 type MenuPosition = {
@@ -70,6 +72,9 @@ function computeMenuPosition(trigger: HTMLElement, menuHeight: number): MenuPosi
   };
 }
 
+const FIELD_TRIGGER_CLS =
+  "w-full bg-white dark:bg-slate-800/40 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/20 disabled:opacity-60 disabled:cursor-not-allowed";
+
 export function TablePillSelect({
   value,
   options,
@@ -80,6 +85,7 @@ export function TablePillSelect({
   ariaLabel,
   searchPlaceholder = "Search...",
   maxMenuHeight = TABLE_PILL_DROPDOWN_MAX_HEIGHT,
+  variant = "pill",
 }: TablePillSelectProps) {
   const [open, setOpen] = useState(false);
   const [menuSearch, setMenuSearch] = useState("");
@@ -201,7 +207,7 @@ export function TablePillSelect({
                       onChange(opt.value);
                       closeMenu();
                     }}
-                    className={`w-full max-w-full text-left rounded-md px-2.5 py-2 text-[11px] leading-snug whitespace-nowrap overflow-hidden text-ellipsis transition-colors ${
+                    className={`w-full max-w-full text-left rounded-md px-2.5 py-2 text-[11px] leading-snug whitespace-nowrap overflow-hidden text-ellipsis transition-colors cursor-pointer ${
                       isSelected
                         ? "bg-[var(--form-selected-bg)] text-[var(--form-selected-text)]"
                         : "text-[var(--form-text)] hover:bg-[var(--form-selected-bg)]"
@@ -218,8 +224,12 @@ export function TablePillSelect({
     </div>
   ) : null;
 
+  const isField = variant === "field";
+
   return (
-    <div className="table-pill-select inline-flex max-w-full items-center">
+    <div
+      className={`table-pill-select max-w-full items-center ${isField ? "w-full" : "inline-flex"}`}
+    >
       <style>{FORM_SELECT_THEME_CSS}</style>
       <button
         ref={triggerRef}
@@ -234,16 +244,31 @@ export function TablePillSelect({
           if (open) closeMenu();
           else openMenu();
         }}
-        className={`inline-flex max-w-full items-center gap-0.5 rounded-full border-0 bg-transparent p-0 ${
-          disabled ? "cursor-not-allowed opacity-55" : "cursor-pointer"
-        }`}
+        className={
+          isField
+            ? `${FIELD_TRIGGER_CLS} flex items-center justify-between gap-2 text-left ${
+                open ? "border-blue-500 ring-2 ring-inset ring-blue-500/20" : ""
+              } ${disabled ? "" : "cursor-pointer"}`
+            : `inline-flex max-w-full items-center gap-0.5 rounded-full border-0 bg-transparent p-0 ${
+                disabled ? "cursor-not-allowed opacity-55" : "cursor-pointer"
+              }`
+        }
       >
-        <span
-          className={`inline-flex items-center max-w-full py-0.5 px-2.5 text-[11px] font-semibold rounded-full border leading-tight whitespace-nowrap ${pillClass}`}
-        >
-          <span className="truncate">{selected.label}</span>
-        </span>
-        <FiChevronDown className="shrink-0 text-[10px] text-gray-400 dark:text-slate-500 opacity-70" />
+        {isField ? (
+          <>
+            <span className="truncate min-w-0">{selected.label}</span>
+            <FiChevronDown className="shrink-0 text-[10px] text-gray-400 dark:text-slate-500 opacity-70" />
+          </>
+        ) : (
+          <>
+            <span
+              className={`inline-flex items-center max-w-full py-0.5 px-2.5 text-[11px] font-semibold rounded-full border leading-tight whitespace-nowrap ${pillClass}`}
+            >
+              <span className="truncate">{selected.label}</span>
+            </span>
+            <FiChevronDown className="shrink-0 text-[10px] text-gray-400 dark:text-slate-500 opacity-70" />
+          </>
+        )}
       </button>
       {typeof document !== "undefined" && menu ? createPortal(menu, document.body) : null}
     </div>

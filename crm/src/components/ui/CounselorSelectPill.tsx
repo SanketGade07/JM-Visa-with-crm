@@ -18,6 +18,7 @@ type CounselorSelectPillProps = {
   disabled?: boolean;
   onChange: (value: string) => void;
   portalId: string;
+  variant?: "pill" | "field";
 };
 
 export function CounselorSelectPill({
@@ -25,6 +26,7 @@ export function CounselorSelectPill({
   disabled,
   onChange,
   portalId,
+  variant = "pill",
 }: CounselorSelectPillProps) {
   return (
     <TablePillSelect
@@ -33,6 +35,7 @@ export function CounselorSelectPill({
       onChange={onChange}
       disabled={disabled}
       portalId={portalId}
+      variant={variant}
       getPillClassName={getCounselorPillClass}
       ariaLabel={`Counselor: ${value}`}
       searchPlaceholder="Search counselor..."

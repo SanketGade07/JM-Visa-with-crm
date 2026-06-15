@@ -5,6 +5,7 @@ import type { IconType } from "react-icons";
 import { FaChevronLeft, FaPlus, FaSun, FaMoon } from "react-icons/fa";
 import {
   FiCheckCircle,
+  FiDownload,
   FiFolder,
   FiGrid,
   FiHeart,
@@ -49,6 +50,7 @@ export function CrmHeader() {
     leads,
     selectedLeadId,
     closeLeadDetail,
+    exportLeadsCsv,
   } = useCrmLayoutContext();
 
   const { quickStatusTabs } = useLeadQuickStatusTabs();
@@ -149,13 +151,25 @@ export function CrmHeader() {
             setIsAddLeadOpen(true);
           }}
           disabled={!canModifyLeads}
-          className={`flex items-center space-x-1 sm:space-x-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs py-2 px-2.5 sm:px-3.5 rounded-xl transition-all shadow-md shadow-violet-500/10 ${
+          className={`flex items-center gap-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs py-1.5 px-2 rounded-xl transition-all shadow-md shadow-violet-500/10 ${
             !canModifyLeads ? "opacity-40 cursor-not-allowed" : ""
           }`}
         >
-          <FaPlus />
-          <span className="hidden sm:inline">Add New Lead</span>
+          <FaPlus className="text-[10px]" />
+          <span>New</span>
         </button>
+
+        {currentTab === "Leads" && !isLeadDetailRoute && (
+          <button
+            type="button"
+            onClick={exportLeadsCsv}
+            title="Export"
+            aria-label="Export leads"
+            className="p-2 rounded-xl bg-slate-900 border border-slate-800/80 text-slate-400 hover:text-violet-400 hover:border-violet-500/30 transition-all flex items-center justify-center shadow-md cursor-pointer"
+          >
+            <FiDownload className="text-sm" />
+          </button>
+        )}
       </div>
     </header>
   );

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { createPortal } from "react-dom";
 import { VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Meeting, Lead } from "@/context/CrmContext";
 import { ROLE_TABS, AVAILABLE_TABS } from "@/utils/crmConstants";
-import { docProgress, timeAgo, getStatusColor } from "@/utils/leadHelpers";
+import { docProgress, getStatusColor } from "@/utils/leadHelpers";
 import { AustraliaFlag, MalaysiaFlag, IndonesiaFlag, SingaporeFlag } from "@/components/CountryFlags";
 import {
   FaUserFriends, FaGlobe, FaCheckSquare, FaCalendarAlt, FaHistory,
@@ -18,12 +18,17 @@ import {
 import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiCheckCircle, FiEye, FiSettings, FiGlobe, FiMenu, FiUser, FiLock } from "react-icons/fi";
 import DataTable, { exportRowsToCsv, StatusPill, getPillClasses, ProgressBar } from "@/components/ui/DataTable";
 import { StatusSelectPill } from "@/components/ui/StatusSelectPill";
-import { CounselorSelectPill, COUNSELOR_OPTIONS } from "@/components/ui/CounselorSelectPill";
+import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
 import {
   SearchableCountrySelect,
   PhoneInput,
   leadStatusFilterOptions,
 } from "@/components/ui/FormInputs";
+import {
+  getCountryFilterOptions,
+  getCounselorFilterOptions,
+  getVisaServiceFilterOptions,
+} from "@/utils/leadFilterOptions";
 // @ts-ignore
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
 import { getLeadAvatar, getLeadDescription, getLeadCompany } from "../helpers/leadDisplayHelpers";
@@ -31,7 +36,6 @@ import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { useColumnSearch } from "@/hooks/useColumnSearch";
 import { applyColumnSearch } from "@/utils/columnSearch";
 import { HoverHint } from "@/components/ui/HoverHint";
-import { LeadManagementToolbar } from "@/components/ui/LeadManagementToolbar";
 import {
   IN_PROGRESS_STATUSES,
   QUICK_TAB_FILTERS,
@@ -55,7 +59,7 @@ export function LeadsTab() {
     pastedInvoiceUrl, setPastedInvoiceUrl, uploadInvoiceError, setUploadInvoiceError,
     uploadingInvoiceKey, setUploadingInvoiceKey,
     statusFilter, setStatusFilter,
-    kpiFilter, setKpiFilter, countryFilter, setCountryFilter,
+    kpiFilter, setKpiFilter,
     selectedLeadId, setSelectedLeadId, openLeadChecklist, openLeadDetail, isAddLeadOpen, setIsAddLeadOpen,
     addLeadStep, setAddLeadStep, addLeadSelectedCategory, setAddLeadSelectedCategory,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
@@ -81,24 +85,23 @@ export function LeadsTab() {
     countryBarChartData, maxLeadsCount, yLabels, getCountryAbbreviation,
     handlePeriodChange, handleCalendarDateClick, getDaysInMonth, monthNames,
     leadsMgmtData, topCountryStats, pipelineStats, cardMap, modalMap,
+    registerLeadsExport,
   } = useCrmLayoutContext();
 
   const columnSearch = useColumnSearch();
 
   const scopedLeads = useMemo(
-    () => filterScopedLeads(leads, kpiFilter, countryFilter, ""),
-    [leads, kpiFilter, countryFilter]
+    () => filterScopedLeads(leads, kpiFilter, "All", ""),
+    [leads, kpiFilter]
   );
 
-  const serviceFilterOptions = useMemo(() => {
-    const types = [...new Set(leads.map((l) => l.visaType).filter(Boolean))].sort();
-    return [{ value: "All", label: "All Services" }, ...types.map((t) => ({ value: t, label: t }))];
-  }, [leads]);
-
-  const counselorFilterOptions = useMemo(
-    () => [{ value: "All", label: "All Counselors" }, ...COUNSELOR_OPTIONS],
-    []
+  const serviceFilterOptions = useMemo(
+    () => getVisaServiceFilterOptions(leads),
+    [leads]
   );
+
+  const counselorFilterOptions = getCounselorFilterOptions();
+  const countryFilterOptions = getCountryFilterOptions();
 
   const baseFilteredLeads = useMemo(() => {
     const statusColFilter = columnSearch.debouncedFilters.status?.trim();
@@ -121,6 +124,7 @@ export function LeadsTab() {
           .filter(Boolean)
           .join(" "),
       service: (lead: Lead) => lead.visaType,
+      country: (lead: Lead) => lead.country,
       status: (lead: Lead) => lead.status,
       counselor: (lead: Lead) => lead.counselor,
     }),
@@ -144,11 +148,31 @@ export function LeadsTab() {
     [baseFilteredLeads, leadSearchColumns, columnSearch.debouncedFilters]
   );
 
+  useEffect(() => {
+    registerLeadsExport(() =>
+      exportRowsToCsv(
+        "leads",
+        ["#", "Lead", "Service", "Country", "Doc %", "Status", "Assign to"],
+        tableRows.map((l, i) => [
+          i + 1,
+          l.name,
+          l.visaType,
+          l.country,
+          `${Math.round(docProgress(l.checklist, l.employmentCategory))}%`,
+          l.status,
+          l.counselor,
+        ])
+      )
+    );
+    return () => registerLeadsExport(null);
+  }, [registerLeadsExport, tableRows]);
+
   return (
     <>
             <div className="-m-4 md:-m-8 p-4 md:p-6 bg-gray-50 dark:bg-transparent min-h-[calc(100vh-4rem)] space-y-5">
 
               {/* KPI cards */}
+              {false && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 {[
                   {
@@ -293,6 +317,7 @@ export function LeadsTab() {
                   );
                 })}
               </div>
+              )}
 
               {/* Lead detail split-screen */}
               <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-stretch h-auto xl:h-[600px]">
@@ -303,39 +328,17 @@ export function LeadsTab() {
                     className="h-full flex flex-col"
                     pagination={true}
                     defaultPageSize={8}
+                    showToolbar={false}
                     rows={tableRows}
                     columnSearch={columnSearch}
                     getRowId={(l) => l.id}
                     onRowClick={(l) => openLeadDetail(l.id)}
                     selectedRowId={selectedLeadId}
-                    filters={
-                      <LeadManagementToolbar
-                        countryFilter={countryFilter}
-                        onCountryFilterChange={setCountryFilter}
-                      />
-                    }
-                    onExport={() =>
-                      exportRowsToCsv(
-                        "leads",
-                        ["#", "Name", "Phone", "Destination", "Visa Class", "Doc %", "Status", "Counselor"],
-                        tableRows.map((l, i) => [
-                          i + 1,
-                          l.name,
-                          l.phone,
-                          l.country,
-                          l.visaType,
-                          `${Math.round(docProgress(l.checklist, l.employmentCategory))}%`,
-                          l.status,
-                          l.counselor,
-                        ])
-                      )
-                    }
                     columns={[
                       {
                         header: "Lead",
                         searchKey: "lead",
                         searchLabel: "Lead",
-                        searchPlaceholder: "Search lead...",
                         getSearchValue: leadSearchGetters.lead,
                         render: (lead) => (
                           <div className="min-w-0">
@@ -349,9 +352,9 @@ export function LeadsTab() {
                             >
                               {lead.name}
                             </button>
-                            <span className="text-[11px] text-gray-400 dark:text-slate-500 font-medium block max-w-[180px] truncate">
+                            {/* <span className="text-[11px] text-gray-400 dark:text-slate-500 font-medium block max-w-[180px] truncate">
                               {getLeadDescription(lead)}
-                            </span>
+                            </span> */}
                           </div>
                         ),
                       },
@@ -370,7 +373,20 @@ export function LeadsTab() {
                         ),
                       },
                       {
-                        header: "Doc Verification",
+                        header: "Country",
+                        searchKey: "country",
+                        searchLabel: "Country",
+                        filterSelectOptions: countryFilterOptions,
+                        filterSelectClearValue: "All",
+                        getSearchValue: leadSearchGetters.country,
+                        render: (lead) => (
+                          <span className="font-medium text-gray-600 dark:text-slate-300 text-[13px] whitespace-nowrap">
+                            {lead.country}
+                          </span>
+                        ),
+                      },
+                      {
+                        header: "Doc verifications",
                         render: (lead) => {
                           const pct = docProgress(lead.checklist, lead.employmentCategory);
                           const filledCount = pct === 0 ? 0 : Math.ceil(pct / 25);
@@ -424,9 +440,9 @@ export function LeadsTab() {
                         ),
                       },
                       {
-                        header: "Counselor",
+                        header: "Assign to",
                         searchKey: "counselor",
-                        searchLabel: "Counselor",
+                        searchLabel: "Assign to",
                         filterSelectOptions: counselorFilterOptions,
                         filterSelectPlaceholder: "All Counselors",
                         filterSelectClearValue: "All",
@@ -441,7 +457,7 @@ export function LeadsTab() {
                         ),
                       },
                       {
-                        header: "Visa Credential",
+                        header: "Credentials",
                         render: (lead) => (
                           <div className="flex items-center gap-2">
                             {lead.visaCredentials?.username ? (
@@ -457,7 +473,7 @@ export function LeadsTab() {
                                     showToast("Copied", "success");
                                   }
                                 }}
-                                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
                               >
                                 <FiUser className="text-[13.5px]" />
                               </button>
@@ -475,7 +491,7 @@ export function LeadsTab() {
                                     showToast("Copied", "success");
                                   }
                                 }}
-                                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
                               >
                                 <FiLock className="text-[13.5px]" />
                               </button>
@@ -484,14 +500,6 @@ export function LeadsTab() {
                               <span className="text-gray-400 dark:text-slate-500 text-[11px]">—</span>
                             ) : null}
                           </div>
-                        ),
-                      },
-                      {
-                        header: "Last Contact",
-                        render: (lead) => (
-                          <span className="text-gray-500 dark:text-slate-400 text-[12px] font-medium whitespace-nowrap">
-                            {timeAgo(lead.lastUpdated)}
-                          </span>
                         ),
                       },
                     ]}

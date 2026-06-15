@@ -60,7 +60,18 @@ export async function POST(req: NextRequest) {
 
     // Bulk sync from CRM frontend
     if (Array.isArray(body.leads)) {
-      const ok = await writeLeads(body.leads);
+      const incoming = body.leads as Lead[];
+      const existingById = new Map(existingLeads.map((l) => [l.id, l]));
+      const merged = incoming.map((lead) => {
+        if ("driveFolderId" in lead && lead.driveFolderId !== undefined) {
+          return lead;
+        }
+        const prev = existingById.get(lead.id);
+        return prev?.driveFolderId
+          ? { ...lead, driveFolderId: prev.driveFolderId }
+          : lead;
+      });
+      const ok = await writeLeads(merged);
       return ok
         ? NextResponse.json({ success: true })
         : NextResponse.json({ error: "Failed to write leads" }, { status: 500 });

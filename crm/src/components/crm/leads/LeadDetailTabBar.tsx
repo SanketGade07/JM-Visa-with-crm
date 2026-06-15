@@ -32,7 +32,7 @@ export function LeadDetailTabBar({
     <div
       role="tablist"
       aria-label="Lead detail sections"
-      className="flex shrink-0 items-center gap-1 rounded-xl border bg-slate-100 border-slate-200/90 p-1 dark:bg-slate-900/70 dark:border-slate-700/60"
+      className="flex shrink-0 items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-900"
     >
       {visibleTabs.map((tab) => {
         const isActive = activeTab === tab.id;
@@ -45,8 +45,8 @@ export function LeadDetailTabBar({
             onClick={() => onTabChange(tab.id)}
             className={`relative flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition-all duration-200 sm:px-4 ${
               isActive
-                ? "border-violet-200 bg-white text-slate-900 shadow-sm dark:border-violet-500/30 dark:bg-slate-800/90 dark:text-white"
-                : "border-transparent text-slate-500 hover:bg-white/60 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-200"
+                ? "border-blue-600 bg-white text-slate-900 shadow-sm dark:border-blue-400 dark:bg-slate-800 dark:text-white"
+                : "border-transparent text-slate-500 hover:bg-white hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             }`}
           >
             <span>{tab.label}</span>
@@ -54,8 +54,8 @@ export function LeadDetailTabBar({
               <span
                 className={`tabular-nums rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
                   isActive
-                    ? "bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300"
-                    : "bg-slate-200/70 text-slate-600 dark:bg-slate-950/80 dark:text-slate-400"
+                    ? "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+                    : "bg-slate-200 text-slate-600 dark:bg-slate-950 dark:text-slate-400"
                 }`}
               >
                 {checklistPct}%

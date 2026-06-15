@@ -9,6 +9,7 @@
     "seed:credentials": "node ./scripts/seed-supabase-credentials.js",
     "drive:oauth-token": "node ./scripts/generate-google-refresh-token.js",
     "drive:migrate-settings": "node ./scripts/run-drive-settings-migration.js",
+    "drive:migrate-lead-folder": "node ./scripts/run-lead-drive-folder-migration.js",
     "migrate:employment-category": "node ./scripts/run-employment-category-migration.js",
     "verify:employment-category": "node ./scripts/verify-employment-category-write.js",
     "drive:verify-setup": "node ./scripts/verify-google-drive-setup.js",

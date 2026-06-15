@@ -39,7 +39,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
     ...(body.notes !== undefined && { notes: body.notes }),
     ...(body.email !== undefined && { email: body.email }),
     ...(body.phone !== undefined && { phone: body.phone }),
+    ...(body.country !== undefined && { country: body.country }),
     ...(body.visaType !== undefined && { visaType: body.visaType }),
+    ...(body.driveFolderId !== undefined && {
+      driveFolderId: body.driveFolderId === "" ? null : (body.driveFolderId as string | null),
+    }),
     lastUpdated: today,
   };
 

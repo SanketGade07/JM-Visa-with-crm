@@ -60,7 +60,7 @@ export function InlineColumnFilterSelect({
   value,
   options,
   clearValue = "All",
-  placeholder = "Search...",
+  placeholder = "",
   portalId,
   isActive,
   hasFilter,
@@ -98,10 +98,17 @@ export function InlineColumnFilterSelect({
     setMenuOpen(true);
   };
 
+  const focusSearchAtStart = () => {
+    const input = searchRef.current;
+    if (!input) return;
+    input.focus();
+    input.setSelectionRange(0, 0);
+  };
+
   useLayoutEffect(() => {
     if (!menuOpen) return;
     updateMenuPosition();
-    searchRef.current?.focus();
+    focusSearchAtStart();
   }, [menuOpen]);
 
   useEffect(() => {
@@ -165,7 +172,7 @@ export function InlineColumnFilterSelect({
               value={menuSearch}
               onChange={(e) => setMenuSearch(e.target.value)}
               placeholder={placeholder}
-              className="w-full pl-7 pr-2 py-1.5 text-[11px] rounded-md border border-[var(--form-border)] bg-[var(--form-bg)] text-[var(--form-text)] placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[var(--form-focus)]"
+              className="w-full pl-7 pr-2 py-1.5 text-[11px] rounded-md border border-[var(--form-border)] bg-[var(--form-bg)] text-[var(--form-text)] placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[var(--form-focus)] !cursor-text"
             />
           </div>
         </div>
@@ -187,7 +194,7 @@ export function InlineColumnFilterSelect({
                     setMenuSearch("");
                     onDeactivate();
                   }}
-                    className={`w-full max-w-full text-left rounded-md px-2.5 py-2 text-[11px] leading-snug whitespace-nowrap overflow-hidden text-ellipsis transition-colors ${
+                    className={`w-full max-w-full text-left rounded-md px-2.5 py-2 text-[11px] leading-snug whitespace-nowrap overflow-hidden text-ellipsis transition-colors cursor-pointer ${
                     isSelected
                       ? "bg-[var(--form-selected-bg)] text-[var(--form-selected-text)]"
                       : "text-[var(--form-text)] hover:bg-[var(--form-selected-bg)]"

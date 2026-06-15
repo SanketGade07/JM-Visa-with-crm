@@ -28,9 +28,12 @@ export function useCrmLayoutState() {
     updateMeeting,
     restoreLead,
     updateLeadNotes,
+    updateLeadProfile,
     assignCounselor,
     updateEmploymentCategory,
     setLeadCredentials,
+    setLeadDriveFolder,
+    patchLeadDriveFolder,
     uploadDocument,
     uploadInvoice,
     getLeadDocuments,
@@ -288,7 +291,16 @@ export function useCrmLayoutState() {
   const [cardMapZoom, setCardMapZoom] = useState(2.7);
   const [cardMapCenter, setCardMapCenter] = useState<[number, number]>([122, -18]);
   const hoveredCountryRef = useRef<string | null>(null);
+  const leadsExportRef = useRef<(() => void) | null>(null);
   const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
+
+  const registerLeadsExport = useCallback((fn: (() => void) | null) => {
+    leadsExportRef.current = fn;
+  }, []);
+
+  const exportLeadsCsv = useCallback(() => {
+    leadsExportRef.current?.();
+  }, []);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const tooltipPosRef = useRef({ x: 0, y: 0 });
   const [isMounted, setIsMounted] = useState(false);
@@ -864,7 +876,7 @@ export function useCrmLayoutState() {
     leads, meetings, users, currentUser, currentRole, currentTab, setCurrentTab,
     setCurrentRole, setCurrentUser, addUser, deleteUser, addLead, updateLeadStatus,
     updateUsaSlots, addPayment, addMeeting, updateMeeting, restoreLead, updateLeadNotes,
-    assignCounselor, updateEmploymentCategory, setLeadCredentials, uploadDocument, uploadInvoice, getLeadDocuments, toggleChecklistItem,
+    updateLeadProfile, assignCounselor, updateEmploymentCategory, setLeadCredentials, setLeadDriveFolder, patchLeadDriveFolder, uploadDocument, uploadInvoice, getLeadDocuments, toggleChecklistItem,
     handleLogout, searchTerm, setSearchTerm, checklistSearch, setChecklistSearch,
     isMobileSidebarOpen, setIsMobileSidebarOpen, isMobileDetailOpen, setIsMobileDetailOpen,
     isMobileSlotSettingsOpen, setIsMobileSlotSettingsOpen, isMobileChecklistOpen, setIsMobileChecklistOpen,
@@ -904,6 +916,7 @@ export function useCrmLayoutState() {
     countryBarChartData, maxLeadsCount, yLabels, getCountryAbbreviation,
     handlePeriodChange, handleCalendarDateClick, getDaysInMonth, monthNames,
     leadsMgmtData, topCountryStats, pipelineStats, cardMap, modalMap,
+    registerLeadsExport, exportLeadsCsv,
   };
 }
 

@@ -36,9 +36,16 @@ export function InlineColumnSearch({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const focusInputAtStart = () => {
+    const input = inputRef.current;
+    if (!input) return;
+    input.focus();
+    input.setSelectionRange(0, 0);
+  };
+
   useEffect(() => {
     if (isActive) {
-      inputRef.current?.focus();
+      focusInputAtStart();
     }
   }, [isActive]);
 
@@ -56,36 +63,51 @@ export function InlineColumnSearch({
   }, [isActive, onDeactivate]);
 
   if (isActive) {
+    const hasTyped = value.length > 0;
+
     return (
-      <div ref={containerRef} className={`relative ${headerBase}`}>
+      <div
+        ref={containerRef}
+        className={`relative ${headerBase} !cursor-text`}
+        onClick={focusInputAtStart}
+      >
         <FiSearch className={iconHighlight} aria-hidden="true" />
-        <input
-          ref={inputRef}
-          type="text"
-          value={value}
-          placeholder={placeholder || label}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              e.preventDefault();
-              onDeactivate();
-            }
-            if (e.key === "Enter") {
-              e.preventDefault();
-              onDeactivate();
-            }
-          }}
-          className="column-search__input w-full min-w-0 bg-transparent border-0 shadow-none text-[13px] font-semibold normal-case tracking-normal py-0 pl-0 pr-6 rounded-none focus:outline-none focus:ring-0 text-slate-500 dark:text-slate-400 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-all duration-150"
-        />
+        <span className="inline-flex min-w-0 items-center gap-0">
+          <input
+            ref={inputRef}
+            type="text"
+            value={value}
+            placeholder={placeholder}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                onDeactivate();
+              }
+              if (e.key === "Enter") {
+                e.preventDefault();
+                onDeactivate();
+              }
+            }}
+            style={{
+              width: hasTyped ? `${Math.max(value.length, 1)}ch` : "2px",
+              maxWidth: hasTyped ? "100%" : undefined,
+            }}
+            className="column-search__input inline-block min-w-0 shrink-0 bg-transparent border-0 shadow-none text-[13px] font-semibold normal-case tracking-normal py-0 pl-0 pr-0 rounded-none focus:outline-none focus:ring-0 !cursor-text text-slate-500 dark:text-slate-400 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-all duration-150"
+          />
+          {!hasTyped && (
+            <span className="truncate normal-case shrink-0 pointer-events-none">{label}</span>
+          )}
+        </span>
         {value.trim().length > 0 && (
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onClear();
-              inputRef.current?.focus();
+              focusInputAtStart();
             }}
-            className="absolute right-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-all duration-150"
+            className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-all duration-150 cursor-pointer"
             aria-label={`Clear ${label} search`}
           >
             <svg viewBox="0 0 12 12" fill="none" aria-hidden="true" className="w-2.5 h-2.5">
@@ -107,7 +129,7 @@ export function InlineColumnSearch({
       <button
         type="button"
         onClick={onActivate}
-        className={`${headerBase} hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer`}
+        className={`${headerBase} hover:text-slate-600 dark:hover:text-slate-300 !cursor-text`}
         aria-label={`Search ${label}`}
       >
         <FiSearch

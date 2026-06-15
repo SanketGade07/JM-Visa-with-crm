@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useState, useEffect } from "react";
 import {
   DEFAULT_EMPLOYMENT_CATEGORY,
   getChecklistItemLabel,
@@ -140,6 +140,7 @@ export interface Lead {
     password?: string;
     portalUrl?: string;
   };
+  driveFolderId?: string | null;
   notes: string;
   lastUpdated: string;
   isDeleted: boolean;
@@ -181,8 +182,14 @@ interface CrmContextType {
   deleteLead: (leadId: string) => void;
   restoreLead: (leadId: string) => void;
   updateLeadNotes: (leadId: string, notes: string) => void;
+  updateLeadProfile: (
+    leadId: string,
+    patch: Partial<Pick<Lead, "email" | "country" | "visaType">>
+  ) => void;
   assignCounselor: (leadId: string, counselor: string) => void;
   setLeadCredentials: (leadId: string, creds: { username?: string; password?: string; portalUrl?: string } | null) => Promise<boolean>;
+  setLeadDriveFolder: (leadId: string, driveFolderId: string | null) => Promise<boolean>;
+  patchLeadDriveFolder: (leadId: string, driveFolderId: string) => void;
   refreshLeads: () => Promise<void>;
   getLeadActivities: (leadId: string) => Activity[];
   uploadDocument: (leadId: string, docType: string, fileOrUrl: File | string) => Promise<{ ok: boolean; error?: string }>;
@@ -306,12 +313,22 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // ── Persistence helpers ─────────────────────────────────────────────────────
 
   const syncLeads = async (updated: Lead[]) => {
-    setLeads(updated);
+    let merged = updated;
+    setLeads((prev) => {
+      merged = updated.map((lead) => {
+        if (lead.driveFolderId) return lead;
+        const fromPrev = prev.find((l) => l.id === lead.id);
+        return fromPrev?.driveFolderId
+          ? { ...lead, driveFolderId: fromPrev.driveFolderId }
+          : lead;
+      });
+      return merged;
+    });
     try {
       await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leads: updated }),
+        body: JSON.stringify({ leads: merged }),
       });
     } catch (error) {
       console.error("Failed to sync leads:", error);
@@ -365,7 +382,25 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lastUpdated: today,
       isDeleted: false,
     };
-    syncLeads([...leads, newLead]);
+    void syncLeads([...leads, newLead]).then(async () => {
+      try {
+        const res = await fetch(`/api/leads/${newLead.id}/drive-create`, { method: "POST" });
+        if (!res.ok) {
+          console.error(
+            "Drive folder provisioning failed for new lead:",
+            newLead.id,
+            await res.text()
+          );
+          return;
+        }
+        const data = await res.json();
+        if (data.driveFolderId) {
+          patchLeadDriveFolder(newLead.id, data.driveFolderId as string);
+        }
+      } catch (error) {
+        console.error("Failed to create Drive folder for lead:", error);
+      }
+    });
     logActivity({
       leadId: newLead.id,
       type: "lead_created",
@@ -405,6 +440,45 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lead.id === leadId ? { ...lead, notes, lastUpdated: today } : lead
     );
     syncLeads(updated);
+  };
+
+  const updateLeadProfile = (
+    leadId: string,
+    patch: Partial<Pick<Lead, "email" | "country" | "visaType">>
+  ) => {
+    const today = new Date().toISOString().split("T")[0];
+    const prev = leads.find((l) => l.id === leadId);
+    if (!prev) return;
+
+    const updated = leads.map((lead) =>
+      lead.id === leadId ? { ...lead, ...patch, lastUpdated: today } : lead
+    );
+    syncLeads(updated);
+
+    if (patch.email !== undefined && patch.email !== prev.email) {
+      logActivity({
+        leadId,
+        type: "note",
+        content: "Email updated",
+        createdBy: currentRole,
+      });
+    }
+    if (patch.country !== undefined && patch.country !== prev.country) {
+      logActivity({
+        leadId,
+        type: "note",
+        content: `Country changed from "${prev.country}" to "${patch.country}"`,
+        createdBy: currentRole,
+      });
+    }
+    if (patch.visaType !== undefined && patch.visaType !== prev.visaType) {
+      logActivity({
+        leadId,
+        type: "note",
+        content: `Visa service type changed from "${prev.visaType}" to "${patch.visaType}"`,
+        createdBy: currentRole,
+      });
+    }
   };
 
   const assignCounselor = (leadId: string, counselor: string) => {
@@ -803,6 +877,61 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const patchLeadDriveFolder = useCallback((leadId: string, driveFolderId: string) => {
+    const today = new Date().toISOString().split("T")[0];
+    setLeads((prev) => {
+      const existing = prev.find((lead) => lead.id === leadId);
+      if (existing?.driveFolderId === driveFolderId) return prev;
+      return prev.map((lead) =>
+        lead.id === leadId ? { ...lead, driveFolderId, lastUpdated: today } : lead
+      );
+    });
+  }, []);
+
+  const setLeadDriveFolder = async (
+    leadId: string,
+    driveFolderId: string | null
+  ): Promise<boolean> => {
+    const today = new Date().toISOString().split("T")[0];
+    const previousLeads = leads;
+    const optimistic = leads.map((lead) =>
+      lead.id === leadId
+        ? { ...lead, driveFolderId: driveFolderId ?? undefined, lastUpdated: today }
+        : lead
+    );
+    setLeads(optimistic);
+
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ driveFolderId }),
+      });
+      if (!res.ok) {
+        setLeads(previousLeads);
+        return false;
+      }
+
+      const data = (await res.json()) as { lead?: Lead };
+      if (data.lead) {
+        setLeads((prev) => prev.map((l) => (l.id === leadId ? data.lead! : l)));
+      }
+
+      logActivity({
+        leadId,
+        type: "note",
+        content: driveFolderId
+          ? "Drive folder linked for lead"
+          : "Drive folder unlinked for lead",
+        createdBy: currentRole,
+      });
+      return true;
+    } catch {
+      setLeads(previousLeads);
+      return false;
+    }
+  };
+
   const setLeadCredentials = async (
     leadId: string,
     creds: { username?: string; password?: string; portalUrl?: string } | null
@@ -885,8 +1014,11 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteLead,
         restoreLead,
         updateLeadNotes,
+        updateLeadProfile,
         assignCounselor,
         setLeadCredentials,
+        setLeadDriveFolder,
+        patchLeadDriveFolder,
         refreshLeads,
         getLeadActivities,
         uploadDocument,

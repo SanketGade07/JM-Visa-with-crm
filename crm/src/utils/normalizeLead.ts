@@ -66,6 +66,9 @@ export function normalizeLead(raw: Record<string, unknown>): Lead {
     visaCredentials:
       (raw.visaCredentials as Lead["visaCredentials"]) ??
       (raw.visacredentials as Lead["visaCredentials"]),
+    driveFolderId:
+      (raw.driveFolderId as Lead["driveFolderId"]) ??
+      (raw.drivefolderid as Lead["driveFolderId"]),
     employmentCategory,
     checklist: mergeChecklist(storedChecklist, employmentCategory),
     usaSlots:

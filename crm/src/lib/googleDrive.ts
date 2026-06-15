@@ -4,6 +4,7 @@ import { getSupabase, isSupabaseConfigured } from "@/utils/supabase";
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
+export const DRIVE_CLIENTS_FOLDER_NAME = "Clients";
 const CACHE_TTL_MS = 60_000;
 const LIST_FIELDS =
   "files(id,name,mimeType,size,createdTime,modifiedTime,webViewLink,webContentLink),nextPageToken";
@@ -347,6 +348,27 @@ export async function getOrCreateFolder(parentId: string, name: string): Promise
   const existingId = await findFolder(parentId, name);
   if (existingId) return existingId;
   return createFolder(parentId, name);
+}
+
+export interface LeadClientFolderResult {
+  folderId: string;
+  folderName: string;
+  clientsFolderId: string;
+}
+
+export async function ensureLeadClientFolder(
+  clientName: string
+): Promise<LeadClientFolderResult> {
+  const rootId = await getRootFolderId();
+  if (!rootId) {
+    throw new Error("Drive root folder is not configured");
+  }
+
+  const clientsFolderId = await getOrCreateFolder(rootId, DRIVE_CLIENTS_FOLDER_NAME);
+  const folderName = clientName.trim() || "Unnamed Client";
+  const folderId = await createFolder(clientsFolderId, folderName);
+
+  return { folderId, folderName, clientsFolderId };
 }
 
 export async function ensureFolderPath(

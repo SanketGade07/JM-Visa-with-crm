@@ -76,6 +76,25 @@ export const updateLeadCredentials = async (
   }
 };
 
+export const updateLeadDriveFolderId = async (
+  leadId: string,
+  driveFolderId: string | null
+): Promise<boolean> => {
+  const supabase = getSupabase();
+  try {
+    const payload = { driveFolderId };
+    const { error } = await supabase.from("leads").update(payload).eq("id", leadId);
+    if (error) {
+      console.error("Error updating lead driveFolderId in Supabase:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Exception updating lead driveFolderId:", err);
+    return false;
+  }
+};
+
 // ── Meetings ─────────────────────────────────────────────────────────────────
 export const readMeetings = async (): Promise<Meeting[]> => {
   const supabase = getSupabase();

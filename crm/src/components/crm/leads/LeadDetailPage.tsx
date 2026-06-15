@@ -4,6 +4,7 @@ import React from "react";
 import { FaChevronLeft } from "react-icons/fa";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { LeadChecklistSection } from "./LeadChecklistSection";
+import { LeadDriveTab } from "./LeadDriveTab";
 import { LeadManagementCard } from "./LeadManagementCard";
 import { LeadSettingsSection } from "./LeadSettingsSection";
 
@@ -65,12 +66,7 @@ export function LeadDetailPage() {
             description="You do not have permission to view or verify documents for this lead."
           />
         )}
-        {leadDetailTab === "drive" && (
-          <TabPlaceholder
-            title="Drive"
-            description="Per-lead Google Drive folders will appear here once linked."
-          />
-        )}
+        {leadDetailTab === "drive" && <LeadDriveTab lead={lead} />}
         {leadDetailTab === "settings" && <LeadSettingsSection lead={lead} />}
       </div>
     </div>
