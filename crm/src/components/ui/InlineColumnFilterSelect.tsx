@@ -2,7 +2,7 @@
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { FiSearch } from "react-icons/fi";
+import { FiFilter, FiSearch } from "react-icons/fi";
 import { FILTER_DROPDOWN_MAX_HEIGHT } from "@/utils/dropdownConstants";
 import { CRM_DROPDOWN_SCROLL_CLASS } from "@/utils/dropdownScrollStyles";
 
@@ -21,7 +21,10 @@ export type InlineColumnFilterSelectProps = {
 };
 
 const headerIdle =
-  "group inline-flex items-center gap-1.5 max-w-full border-0 bg-transparent p-0 text-[13px] font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-all duration-150 cursor-pointer";
+  "inline-flex items-center gap-1.5 max-w-full border-0 bg-transparent p-0 text-[13px] font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-all duration-150 cursor-pointer";
+
+const iconIdle = "shrink-0 text-[13px] text-slate-400 dark:text-slate-500";
+const iconHighlight = "shrink-0 text-[13px] text-sky-600 dark:text-sky-400";
 
 const FILTER_THEME_CSS = `
   .inline-column-filter {
@@ -212,14 +215,11 @@ export function InlineColumnFilterSelect({
         aria-haspopup="listbox"
         aria-expanded={menuOpen}
       >
-        <FiSearch
-          className={`shrink-0 text-[11px] transition-all duration-150 ${
-            hasFilter
-              ? "opacity-70"
-              : "w-0 opacity-0 overflow-hidden group-hover:w-auto group-hover:opacity-60"
-          }`}
-        />
         <span className="truncate normal-case">{label}</span>
+        <FiFilter
+          className={hasFilter ? iconHighlight : iconIdle}
+          aria-hidden="true"
+        />
       </button>
       {typeof document !== "undefined" && menu ? createPortal(menu, document.body) : null}
     </div>

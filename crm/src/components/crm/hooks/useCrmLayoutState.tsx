@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCrm, VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Meeting } from "@/context/CrmContext";
 import { ROLE_TABS } from "@/utils/crmConstants";
 // @ts-ignore
@@ -33,11 +33,44 @@ export function useCrmLayoutState() {
     setLeadCredentials,
     uploadDocument,
     uploadInvoice,
-    getLeadDocuments
+    getLeadDocuments,
+    toggleChecklistItem,
   } = useCrm();
 
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const LEAD_DETAIL_TABS = ["checklist", "drive", "settings"] as const;
+  type LeadDetailTab = (typeof LEAD_DETAIL_TABS)[number];
+
+  const parseLeadDetailTab = (value: string | null): LeadDetailTab => {
+    if (value && LEAD_DETAIL_TABS.includes(value as LeadDetailTab)) {
+      return value as LeadDetailTab;
+    }
+    return "checklist";
+  };
+
+  // Tabs the current user or active role is allowed to open
+  const allowedTabs = ROLE_TABS[currentRole as StaffRole] ?? ["Dashboard"];
+  const userAllowedTabs = currentUser?.allowedTabs ?? allowedTabs;
+
+  // Role-based permission checks
+  const canViewLeads = userAllowedTabs.includes("Leads");
+  const canModifyLeads = ["ADMIN", "COUNSELOR", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Leads");
+  const canVerifyDocs = ["ADMIN", "DOCUMENT TEAM", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Checklist");
+  const canAccessLeadChecklist = canVerifyDocs;
+  const canEditCredentials = userAllowedTabs.includes("USASlots");
+  const canSubmitVisa = ["ADMIN", "VISA TEAM", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Submissions");
+  const canManagePayments = ["ADMIN", "ACCOUNT TEAM", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Payments");
+
+  const resolveLeadDetailTab = useCallback(
+    (tab: LeadDetailTab): LeadDetailTab => {
+      if (tab === "checklist" && !canAccessLeadChecklist) return "settings";
+      return tab;
+    },
+    [canAccessLeadChecklist]
+  );
 
   const handleLogout = async () => {
     try {
@@ -132,43 +165,93 @@ export function useCrmLayoutState() {
   const [countryFilter, setCountryFilter] = useState<string>("All");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
 
+  const [leadDetailTab, setLeadDetailTabState] = useState<LeadDetailTab>("checklist");
+
+  const isLeadDetailRoute = Boolean(pathname?.match(/^\/leads\/([^/]+)$/));
   const isLeadChecklistRoute = Boolean(pathname?.match(/^\/checklist\/([^/]+)$/));
+
+  const openLeadDetail = useCallback(
+    (leadId: string, tab: LeadDetailTab = "checklist") => {
+      const resolvedTab = resolveLeadDetailTab(tab);
+      setSelectedLeadId(leadId);
+      setLeadDetailTabState(resolvedTab);
+      setCurrentTab("Leads");
+      router.push(`/leads/${encodeURIComponent(leadId)}?tab=${resolvedTab}`);
+    },
+    [router, setCurrentTab, resolveLeadDetailTab]
+  );
 
   const openLeadChecklist = useCallback(
     (leadId: string) => {
-      setSelectedLeadId(leadId);
-      setCurrentTab("Checklist");
-      router.push(`/checklist/${encodeURIComponent(leadId)}`);
+      openLeadDetail(leadId, "checklist");
     },
-    [router, setCurrentTab]
+    [openLeadDetail]
   );
 
   const navigateToTab = useCallback(
     (tab: string) => {
       setCurrentTab(tab);
       setIsMobileChecklistOpen(false);
-      if (pathname?.startsWith("/checklist/")) {
+      if (pathname?.startsWith("/checklist/") || pathname?.startsWith("/leads/")) {
         router.push("/");
       }
     },
     [router, setCurrentTab, pathname]
   );
 
-  const closeLeadChecklist = useCallback(() => {
+  const closeLeadDetail = useCallback(() => {
     navigateToTab("Leads");
   }, [navigateToTab]);
+
+  const closeLeadChecklist = useCallback(() => {
+    closeLeadDetail();
+  }, [closeLeadDetail]);
+
+  const setLeadDetailTab = useCallback(
+    (tab: LeadDetailTab) => {
+      const resolvedTab = resolveLeadDetailTab(tab);
+      setLeadDetailTabState(resolvedTab);
+      if (!selectedLeadId) return;
+      const onLeadDetailRoute = pathname?.match(/^\/leads\/([^/]+)$/);
+      if (!onLeadDetailRoute) return;
+      router.push(`/leads/${encodeURIComponent(selectedLeadId)}?tab=${resolvedTab}`);
+    },
+    [router, pathname, selectedLeadId, resolveLeadDetailTab]
+  );
 
   useEffect(() => {
     const match = pathname?.match(/^\/checklist\/([^/]+)$/);
     if (!match) return;
 
     const leadId = decodeURIComponent(match[1]);
+    const tab = resolveLeadDetailTab("checklist");
+    router.replace(`/leads/${encodeURIComponent(leadId)}?tab=${tab}`);
+  }, [pathname, router, resolveLeadDetailTab]);
+
+  useEffect(() => {
+    const match = pathname?.match(/^\/leads\/([^/]+)$/);
+    if (!match) return;
+
+    if (!canViewLeads) {
+      router.replace("/");
+      return;
+    }
+
+    const leadId = decodeURIComponent(match[1]);
     const leadExists = leads.some((l) => l.id === leadId);
     if (!leadExists) return;
 
+    const requestedTab = parseLeadDetailTab(searchParams.get("tab"));
+    const resolvedTab = resolveLeadDetailTab(requestedTab);
+
     setSelectedLeadId(leadId);
-    setCurrentTab("Checklist");
-  }, [pathname, leads, setCurrentTab]);
+    setCurrentTab("Leads");
+    setLeadDetailTabState(resolvedTab);
+
+    if (resolvedTab !== requestedTab) {
+      router.replace(`/leads/${encodeURIComponent(leadId)}?tab=${resolvedTab}`);
+    }
+  }, [pathname, leads, setCurrentTab, searchParams, canViewLeads, router, resolveLeadDetailTab]);
 
   // Modals
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
@@ -270,16 +353,6 @@ export function useCrmLayoutState() {
     }
   }, [isAddPaymentOpen, leads]);
   /* eslint-enable react-hooks/set-state-in-effect */
-
-  // Tabs the current user or active role is allowed to open
-  const allowedTabs = ROLE_TABS[currentRole as StaffRole] ?? ["Dashboard"];
-  const userAllowedTabs = currentUser?.allowedTabs ?? allowedTabs;
-
-  // Role SWITCH permission checks
-  const canModifyLeads = ["ADMIN", "COUNSELOR", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Leads");
-  const canVerifyDocs = ["ADMIN", "DOCUMENT TEAM", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Checklist");
-  const canSubmitVisa = ["ADMIN", "VISA TEAM", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Submissions");
-  const canManagePayments = ["ADMIN", "ACCOUNT TEAM", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Payments");
 
   // Helper: open a document URL. If it's a Supabase storage path, fetch a signed URL first.
   const openSignedUrl = useCallback(async (fileUrl: string) => {
@@ -791,7 +864,7 @@ export function useCrmLayoutState() {
     leads, meetings, users, currentUser, currentRole, currentTab, setCurrentTab,
     setCurrentRole, setCurrentUser, addUser, deleteUser, addLead, updateLeadStatus,
     updateUsaSlots, addPayment, addMeeting, updateMeeting, restoreLead, updateLeadNotes,
-    assignCounselor, updateEmploymentCategory, setLeadCredentials, uploadDocument, uploadInvoice, getLeadDocuments,
+    assignCounselor, updateEmploymentCategory, setLeadCredentials, uploadDocument, uploadInvoice, getLeadDocuments, toggleChecklistItem,
     handleLogout, searchTerm, setSearchTerm, checklistSearch, setChecklistSearch,
     isMobileSidebarOpen, setIsMobileSidebarOpen, isMobileDetailOpen, setIsMobileDetailOpen,
     isMobileSlotSettingsOpen, setIsMobileSlotSettingsOpen, isMobileChecklistOpen, setIsMobileChecklistOpen,
@@ -802,7 +875,10 @@ export function useCrmLayoutState() {
     pastedInvoiceUrl, setPastedInvoiceUrl, uploadInvoiceError, setUploadInvoiceError,
     uploadingInvoiceKey, setUploadingInvoiceKey, statusFilter, setStatusFilter,
     kpiFilter, setKpiFilter, countryFilter, setCountryFilter,
-    selectedLeadId, setSelectedLeadId, openLeadChecklist, closeLeadChecklist, navigateToTab, isLeadChecklistRoute, isAddLeadOpen, setIsAddLeadOpen,
+    selectedLeadId, setSelectedLeadId,
+    openLeadDetail, closeLeadDetail, leadDetailTab, setLeadDetailTab,
+    openLeadChecklist, closeLeadChecklist, navigateToTab,
+    isLeadDetailRoute, isLeadChecklistRoute, isAddLeadOpen, setIsAddLeadOpen,
     addLeadStep, setAddLeadStep, addLeadSelectedCategory, setAddLeadSelectedCategory,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
     selectedMeeting, setSelectedMeeting, isEditMeetingOpen, setIsEditMeetingOpen,
@@ -821,7 +897,8 @@ export function useCrmLayoutState() {
     handleCountryClick, resetMap, startDate, setStartDate, endDate, setEndDate,
     depositLeadId, setDepositLeadId, tempInvoiceFile, setTempInvoiceFile,
     tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
-    allowedTabs, userAllowedTabs, canModifyLeads, canVerifyDocs, canSubmitVisa, canManagePayments,
+    allowedTabs, userAllowedTabs, canViewLeads, canModifyLeads, canVerifyDocs, canAccessLeadChecklist,
+    canEditCredentials, canSubmitVisa, canManagePayments,
     openSignedUrl, selectedLead, activeLeads, monthlyChart, chartMax, countryColors,
     countryStats, countryTotal, donutSegments, calendarData, filteredLeads,
     countryBarChartData, maxLeadsCount, yLabels, getCountryAbbreviation,

@@ -18,7 +18,7 @@ import {
 import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiCheckCircle, FiEye, FiSettings, FiGlobe, FiMenu, FiUser, FiLock } from "react-icons/fi";
 import DataTable, { exportRowsToCsv, StatusPill, getPillClasses, ProgressBar } from "@/components/ui/DataTable";
 import { StatusSelectPill } from "@/components/ui/StatusSelectPill";
-import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
+import { CounselorSelectPill, COUNSELOR_OPTIONS } from "@/components/ui/CounselorSelectPill";
 import {
   SearchableCountrySelect,
   PhoneInput,
@@ -32,41 +32,12 @@ import { useColumnSearch } from "@/hooks/useColumnSearch";
 import { applyColumnSearch } from "@/utils/columnSearch";
 import { HoverHint } from "@/components/ui/HoverHint";
 import { LeadManagementToolbar } from "@/components/ui/LeadManagementToolbar";
-
-const IN_PROGRESS_STATUSES = [
-  "Lead Assigned",
-  "Contacted",
-  "Follow-Up",
-  "Interested",
-  "Documents Pending",
-  "Documents Received",
-  "Under Verification",
-  "Ready For Submission",
-  "Visa Submitted",
-];
-
-const COMPLETED_STATUSES: VisaStatus[] = ["Approved / Rejected", "Closed"];
-
-const QUICK_TAB_FILTERS: {
-  id: string;
-  label: string;
-  statuses: VisaStatus[] | "all-non-dropped";
-}[] = [
-  { id: "All", label: "All", statuses: "all-non-dropped" },
-  { id: "New", label: "New", statuses: ["New Lead", "Lead Assigned"] },
-  { id: "Follow-Up", label: "Follow-Up", statuses: ["Follow-Up"] },
-  { id: "Interested", label: "Interested", statuses: ["Interested"] },
-  { id: "Docs", label: "Docs", statuses: ["Documents Pending", "Documents Received"] },
-  { id: "Submitted", label: "Submitted", statuses: ["Ready For Submission", "Visa Submitted"] },
-  { id: "Completed", label: "Completed", statuses: COMPLETED_STATUSES },
-];
-
-function matchesQuickTab(lead: Lead, tabId: string): boolean {
-  const tab = QUICK_TAB_FILTERS.find((item) => item.id === tabId);
-  if (!tab) return true;
-  if (tab.statuses === "all-non-dropped") return lead.status !== "Dropped";
-  return tab.statuses.includes(lead.status);
-}
+import {
+  IN_PROGRESS_STATUSES,
+  QUICK_TAB_FILTERS,
+  filterScopedLeads,
+  matchesQuickTab,
+} from "@/utils/leadQuickFilters";
 
 export function LeadsTab() {
   const {
@@ -74,7 +45,7 @@ export function LeadsTab() {
     setCurrentRole, setCurrentUser, addUser, deleteUser, addLead, updateLeadStatus,
     updateUsaSlots, addPayment, addMeeting, updateMeeting, restoreLead, updateLeadNotes,
     assignCounselor, uploadDocument, uploadInvoice, getLeadDocuments,
-    handleLogout, searchTerm, setSearchTerm, checklistSearch, setChecklistSearch,
+    handleLogout, checklistSearch, setChecklistSearch,
     isMobileSidebarOpen, setIsMobileSidebarOpen, isMobileDetailOpen, setIsMobileDetailOpen,
     isMobileSlotSettingsOpen, setIsMobileSlotSettingsOpen, isMobileChecklistOpen, setIsMobileChecklistOpen,
     theme, setTheme, shouldAnimate, setShouldAnimate, getAnimClass, toggleTheme,
@@ -85,7 +56,7 @@ export function LeadsTab() {
     uploadingInvoiceKey, setUploadingInvoiceKey,
     statusFilter, setStatusFilter,
     kpiFilter, setKpiFilter, countryFilter, setCountryFilter,
-    selectedLeadId, setSelectedLeadId, openLeadChecklist, isAddLeadOpen, setIsAddLeadOpen,
+    selectedLeadId, setSelectedLeadId, openLeadChecklist, openLeadDetail, isAddLeadOpen, setIsAddLeadOpen,
     addLeadStep, setAddLeadStep, addLeadSelectedCategory, setAddLeadSelectedCategory,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
     selectedMeeting, setSelectedMeeting, isEditMeetingOpen, setIsEditMeetingOpen,
@@ -114,33 +85,19 @@ export function LeadsTab() {
 
   const columnSearch = useColumnSearch();
 
-  const scopedLeads = useMemo(() => {
-    return leads.filter((l) => {
-      if (kpiFilter === "New Today") {
-        const todayStr = new Date().toISOString().split("T")[0];
-        if (l.dateCreated !== todayStr) return false;
-      } else if (kpiFilter === "In Progress") {
-        if (!IN_PROGRESS_STATUSES.includes(l.status)) return false;
-      } else if (kpiFilter === "Total") {
-        if (l.status === "Dropped") return false;
-      } else if (kpiFilter === "Visa Success") {
-        if (l.status !== "Approved / Rejected") return false;
-      }
-      return (
-        (countryFilter === "All" || l.country === countryFilter) &&
-        (l.name.toLowerCase().includes(searchTerm.toLowerCase()) || l.phone.includes(searchTerm))
-      );
-    });
-  }, [leads, kpiFilter, countryFilter, searchTerm]);
+  const scopedLeads = useMemo(
+    () => filterScopedLeads(leads, kpiFilter, countryFilter, ""),
+    [leads, kpiFilter, countryFilter]
+  );
 
-  const quickStatusTabs = useMemo(
-    () =>
-      QUICK_TAB_FILTERS.map((tab) => ({
-        id: tab.id,
-        label: tab.label,
-        count: scopedLeads.filter((l) => matchesQuickTab(l, tab.id)).length,
-      })),
-    [scopedLeads]
+  const serviceFilterOptions = useMemo(() => {
+    const types = [...new Set(leads.map((l) => l.visaType).filter(Boolean))].sort();
+    return [{ value: "All", label: "All Services" }, ...types.map((t) => ({ value: t, label: t }))];
+  }, [leads]);
+
+  const counselorFilterOptions = useMemo(
+    () => [{ value: "All", label: "All Counselors" }, ...COUNSELOR_OPTIONS],
+    []
   );
 
   const baseFilteredLeads = useMemo(() => {
@@ -163,9 +120,7 @@ export function LeadsTab() {
         [lead.name, getLeadDescription(lead), lead.phone, lead.email, lead.country]
           .filter(Boolean)
           .join(" "),
-      service: (lead: Lead) => `${lead.visaType} ${lead.country}`,
-      docVerification: (lead: Lead) =>
-        `${Math.round(docProgress(lead.checklist, lead.employmentCategory))}%`,
+      service: (lead: Lead) => lead.visaType,
       status: (lead: Lead) => lead.status,
       counselor: (lead: Lead) => lead.counselor,
     }),
@@ -177,9 +132,9 @@ export function LeadsTab() {
       Object.entries(leadSearchGetters).map(([searchKey, getSearchValue]) => ({
         searchKey,
         getSearchValue,
-        ...(searchKey === "status"
-          ? { filterMode: "exact" as const, filterClearValue: "All" }
-          : {}),
+        ...(searchKey === "lead"
+          ? {}
+          : { filterMode: "exact" as const, filterClearValue: "All" }),
       })),
     [leadSearchGetters]
   );
@@ -351,21 +306,12 @@ export function LeadsTab() {
                     rows={tableRows}
                     columnSearch={columnSearch}
                     getRowId={(l) => l.id}
-                    onRowClick={(l) => {
-                      setSelectedLeadId(l.id);
-                      setIsMobileDetailOpen(true);
-                    }}
+                    onRowClick={(l) => openLeadDetail(l.id)}
                     selectedRowId={selectedLeadId}
-                    search={searchTerm}
-                    onSearchChange={setSearchTerm}
-                    searchPlaceholder="Search name or phone…"
                     filters={
                       <LeadManagementToolbar
                         countryFilter={countryFilter}
                         onCountryFilterChange={setCountryFilter}
-                        tabs={quickStatusTabs}
-                        activeTab={statusFilter}
-                        onTabChange={setStatusFilter}
                       />
                     }
                     onExport={() =>
@@ -393,7 +339,16 @@ export function LeadsTab() {
                         getSearchValue: leadSearchGetters.lead,
                         render: (lead) => (
                           <div className="min-w-0">
-                            <div className="font-bold text-gray-900 dark:text-slate-100 text-[13px] truncate">{lead.name}</div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openLeadDetail(lead.id);
+                              }}
+                              className="font-bold text-gray-900 dark:text-slate-100 text-[13px] truncate text-left hover:text-violet-600 dark:hover:text-violet-400 hover:underline cursor-pointer transition-colors"
+                            >
+                              {lead.name}
+                            </button>
                             <span className="text-[11px] text-gray-400 dark:text-slate-500 font-medium block max-w-[180px] truncate">
                               {getLeadDescription(lead)}
                             </span>
@@ -404,7 +359,9 @@ export function LeadsTab() {
                         header: "Service",
                         searchKey: "service",
                         searchLabel: "Service",
-                        searchPlaceholder: "Search service...",
+                        filterSelectOptions: serviceFilterOptions,
+                        filterSelectPlaceholder: "All Services",
+                        filterSelectClearValue: "All",
                         getSearchValue: leadSearchGetters.service,
                         render: (lead) => (
                           <span className="font-medium text-gray-600 dark:text-slate-300 text-[13px] whitespace-nowrap">
@@ -414,10 +371,6 @@ export function LeadsTab() {
                       },
                       {
                         header: "Doc Verification",
-                        searchKey: "docVerification",
-                        searchLabel: "Doc Verification",
-                        searchPlaceholder: "Search doc %...",
-                        getSearchValue: leadSearchGetters.docVerification,
                         render: (lead) => {
                           const pct = docProgress(lead.checklist, lead.employmentCategory);
                           const filledCount = pct === 0 ? 0 : Math.ceil(pct / 25);
@@ -474,7 +427,9 @@ export function LeadsTab() {
                         header: "Counselor",
                         searchKey: "counselor",
                         searchLabel: "Counselor",
-                        searchPlaceholder: "Search counselor...",
+                        filterSelectOptions: counselorFilterOptions,
+                        filterSelectPlaceholder: "All Counselors",
+                        filterSelectClearValue: "All",
                         getSearchValue: leadSearchGetters.counselor,
                         render: (lead) => (
                           <CounselorSelectPill

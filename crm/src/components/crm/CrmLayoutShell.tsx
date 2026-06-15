@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { CrmLayoutProvider, useCrmLayoutContext } from "./context/CrmLayoutContext";
 import { CrmSidebar } from "./layout/CrmSidebar";
 import { CrmHeader } from "./layout/CrmHeader";
@@ -16,7 +16,7 @@ function CrmLayoutContent() {
   }
 
   return (
-    <div className="relative flex min-h-screen w-full bg-[#070712] text-slate-100 font-sans overflow-x-hidden">
+    <div className="relative flex h-screen overflow-hidden w-full bg-[#070712] text-slate-100 font-sans">
       {isMobileSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden transition-opacity duration-300"
@@ -26,7 +26,7 @@ function CrmLayoutContent() {
 
       <CrmSidebar />
 
-      <main className="flex-1 flex flex-col min-w-0 w-full">
+      <main className="flex-1 flex flex-col min-w-0 min-h-0 w-full">
         <CrmHeader />
         <CrmTabViews />
       </main>
@@ -39,8 +39,10 @@ function CrmLayoutContent() {
 
 export default function CrmLayout() {
   return (
-    <CrmLayoutProvider>
-      <CrmLayoutContent />
-    </CrmLayoutProvider>
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <CrmLayoutProvider>
+        <CrmLayoutContent />
+      </CrmLayoutProvider>
+    </Suspense>
   );
 }

@@ -1821,6 +1821,18 @@ html.dark .lead-mgmt-toolbar__tabs-panel {
   display: none;
 }
 
+.crm-header__tabs {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 36px;
+}
+
+.crm-header__tabs .quick-status-tabs-outer,
+.crm-header__tabs .quick-status-tabs--header {
+  width: 100%;
+}
+
 /* ── Quick Status Tabs ───────────────────────────────────────────────────── */
 .quick-status-tabs {
   display: inline-flex;

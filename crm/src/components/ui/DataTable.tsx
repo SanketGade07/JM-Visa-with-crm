@@ -347,9 +347,7 @@ export default function DataTable<T>({
                     key={searchKey || i}
                     className={`${getColumnEdgePadding(i, columns.length, showCheckbox, Boolean(actions))} py-5 text-[13px] font-semibold tracking-normal text-slate-500 dark:text-slate-400 whitespace-nowrap ${alignClass(
                       col.align
-                    )} ${col.headerClassName || ""} ${
-                      canSearch && columnSearch?.activeColumn === searchKey ? "min-w-[155px]" : ""
-                    }`}
+                    )} ${col.headerClassName || ""}`}
                   >
                     {hasSelectFilter && searchKey && columnSearch ? (
                       <InlineColumnFilterSelect

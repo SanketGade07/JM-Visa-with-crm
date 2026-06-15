@@ -27,7 +27,7 @@ export function CrmSidebar() {
     pastedInvoiceUrl, setPastedInvoiceUrl, uploadInvoiceError, setUploadInvoiceError,
     uploadingInvoiceKey, setUploadingInvoiceKey, statusFilter, setStatusFilter,
     kpiFilter, setKpiFilter, countryFilter, setCountryFilter,
-    selectedLeadId, setSelectedLeadId, navigateToTab, isLeadChecklistRoute, isAddLeadOpen, setIsAddLeadOpen,
+    selectedLeadId, setSelectedLeadId, navigateToTab, isLeadDetailRoute, isLeadChecklistRoute, isAddLeadOpen, setIsAddLeadOpen,
     addLeadStep, setAddLeadStep, addLeadSelectedCategory, setAddLeadSelectedCategory,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
     selectedMeeting, setSelectedMeeting, isEditMeetingOpen, setIsEditMeetingOpen,
@@ -57,8 +57,8 @@ export function CrmSidebar() {
   return (
     <>
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 border-r border-slate-800/80 bg-[#0a0a1a] flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0
-        lg:static lg:translate-x-0 lg:z-auto lg:flex
+        fixed inset-y-0 left-0 z-50 w-64 h-screen border-r border-slate-800/80 bg-[#0a0a1a] flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0
+        lg:sticky lg:top-0 lg:translate-x-0 lg:z-auto
         ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}>
         <div>
@@ -77,7 +77,7 @@ export function CrmSidebar() {
 
 
           {/* Navigation Menu */}
-          <nav className="p-4 space-y-1">
+          <nav className="p-4 space-y-1 overflow-y-auto">
             <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider px-3 block mb-2">
               Main Operations
             </span>
@@ -99,7 +99,7 @@ export function CrmSidebar() {
               const Icon = tab.icon;
               const isActive =
                 currentTab === tab.id ||
-                (tab.id === "Leads" && currentTab === "Checklist");
+                (tab.id === "Leads" && (isLeadDetailRoute || isLeadChecklistRoute));
               return (
                 <button
                   key={tab.id}
