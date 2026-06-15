@@ -267,28 +267,29 @@ export default function DataTable<T>({
             <div className="flex items-end flex-1 min-w-0 overflow-visible">{filters}</div>
             <div className="data-table-toolbar__actions shrink-0">
               {rightSlot}
-              {onSearchChange && (searchOpen || (search && search.length > 0)) ? (
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 dark:text-slate-500">
-                    <FiSearch className="text-[11px]" />
-                  </span>
-                  <input
-                    autoFocus
-                    type="text"
-                    value={search}
-                    onChange={(e) => onSearchChange(e.target.value)}
-                    onBlur={() => !search && setSearchOpen(false)}
-                    placeholder={searchPlaceholder}
-                    className="w-44 bg-white dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 text-xs pl-8 pr-3 py-1.5 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-gray-700 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 shadow-sm"
+              {onSearchChange &&
+                (searchOpen || (search && search.length > 0) ? (
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 dark:text-slate-500">
+                      <FiSearch className="text-[11px]" />
+                    </span>
+                    <input
+                      autoFocus
+                      type="text"
+                      value={search}
+                      onChange={(e) => onSearchChange(e.target.value)}
+                      onBlur={() => !search && setSearchOpen(false)}
+                      placeholder={searchPlaceholder}
+                      className="w-44 bg-white dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 text-xs pl-8 pr-3 py-1.5 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-gray-700 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 shadow-sm"
+                    />
+                  </div>
+                ) : (
+                  <ToolbarButton
+                    icon={FiSearch}
+                    title="Search"
+                    onClick={() => setSearchOpen(true)}
                   />
-                </div>
-              ) : (
-                <ToolbarButton
-                  icon={FiSearch}
-                  title="Search"
-                  onClick={() => (onSearchChange ? setSearchOpen(true) : undefined)}
-                />
-              )}
+                ))}
               {onRefresh && <ToolbarButton icon={FiRefreshCw} title="Refresh" onClick={onRefresh} />}
               <ToolbarButton icon={FiDownload} title="Export" onClick={onExport} />
               {onFilter && (
