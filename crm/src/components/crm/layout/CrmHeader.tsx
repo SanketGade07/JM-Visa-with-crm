@@ -82,6 +82,18 @@ export function CrmHeader() {
         <FiMenu className="text-lg" />
       </button>
 
+      {currentTab === "Leads" && !isLeadDetailRoute && (
+        <div className="crm-header__tabs crm-header__tabs--list min-w-0 flex-1">
+          <QuickStatusTabs
+            variant="header"
+            scroll
+            tabs={tabsWithIcons}
+            activeTab={statusFilter}
+            onChange={setStatusFilter}
+          />
+        </div>
+      )}
+
       {currentTab === "Leads" && isLeadDetailRoute && lead && (
         <div className="flex items-center gap-2 md:gap-3 min-w-0 shrink z-10">
           <button
@@ -105,33 +117,17 @@ export function CrmHeader() {
         </div>
       )}
 
-      {currentTab === "Leads" && (
-        <div
-          className={
-            isLeadDetailRoute
-              ? "crm-header__tabs crm-header__tabs--lead-detail absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0"
-              : "crm-header__tabs flex-1 min-w-0"
-          }
-        >
-          {!isLeadDetailRoute ? (
-            <QuickStatusTabs
-              variant="header"
-              scroll
-              tabs={tabsWithIcons}
-              activeTab={statusFilter}
-              onChange={setStatusFilter}
-            />
-          ) : (
-            <LeadDetailTabBar
-              activeTab={leadDetailTab}
-              onTabChange={setLeadDetailTab}
-              checklistPct={checklistPct}
-            />
-          )}
+      {currentTab === "Leads" && isLeadDetailRoute && (
+        <div className="crm-header__tabs crm-header__tabs--lead-detail absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
+          <LeadDetailTabBar
+            activeTab={leadDetailTab}
+            onTabChange={setLeadDetailTab}
+            checklistPct={checklistPct}
+          />
         </div>
       )}
 
-      <div className="flex items-center space-x-2 md:space-x-4 ml-auto shrink-0 z-10">
+      <div className="flex items-center gap-2 md:gap-3 ml-auto shrink-0 z-10">
         <button
           onClick={toggleTheme}
           className="p-2 rounded-xl bg-slate-900 border border-slate-800/80 text-slate-400 hover:text-violet-400 hover:border-violet-500/30 transition-all flex items-center justify-center shadow-md cursor-pointer group"

@@ -1802,15 +1802,6 @@ html.dark .lead-mgmt-toolbar__tabs-panel {
   background: #0a0e17;
 }
 
-.lead-mgmt-toolbar__tabs-panel .quick-status-tabs-outer,
-.lead-mgmt-toolbar__tabs-panel .quick-status-tabs--header {
-  width: 100%;
-}
-
-.lead-mgmt-toolbar__tabs-panel .quick-status-tabs-outer {
-  overflow: visible;
-}
-
 .data-table-toolbar__actions {
   display: flex;
   align-items: center;
@@ -1825,12 +1816,19 @@ html.dark .lead-mgmt-toolbar__tabs-panel {
   display: flex;
   align-items: center;
   min-width: 0;
-  height: 36px;
+  height: auto;
+  min-height: 36px;
 }
 
-.crm-header__tabs .quick-status-tabs-outer,
-.crm-header__tabs .quick-status-tabs--header {
-  width: 100%;
+.crm-header__tabs--list {
+  flex: 1 1 auto;
+}
+
+.crm-header__tabs--list .quick-status-tabs-outer {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
 }
 
 .crm-header__tabs--lead-detail {
@@ -1847,17 +1845,16 @@ html.dark .lead-mgmt-toolbar__tabs-panel {
   box-sizing: border-box;
   overflow: visible;
   flex-shrink: 0;
+  gap: 3px;
+  padding: 4px 5px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
 }
 
-.quick-status-tabs--header {
-  flex: 1;
-  width: 100%;
-  min-width: 0;
-  gap: 0;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
+html.dark .quick-status-tabs {
+  border-color: #1a2332;
+  background: #070b12;
 }
 
 .quick-status-tabs-outer {
@@ -1887,173 +1884,25 @@ html.dark .lead-mgmt-toolbar__tabs-panel {
   transition: color 0.15s ease, background 0.15s ease;
 }
 
-.quick-status-tab--header {
-  position: relative;
-  flex: 1 1 0;
-  min-width: 0;
-  padding: 0 6px;
-  height: 36px;
-  color: #334155;
-  border-radius: 0;
-  border-bottom: 2px solid transparent;
-  box-sizing: border-box;
-}
-
-.quick-status-tab--header:hover:not(.quick-status-tab--active) {
-  color: #1e293b;
-}
-
-html.dark .quick-status-tab--header {
-  color: #94a3b8;
-}
-
-html.dark .quick-status-tab--header:hover:not(.quick-status-tab--active) {
-  color: #cbd5e1;
-}
-
-.quick-status-tab--header.quick-status-tab--active {
-  color: #2563eb;
-  background: transparent;
-  border-bottom: 2px solid #2563eb;
-  box-shadow: none;
-}
-
-html.dark .quick-status-tab--header.quick-status-tab--active {
-  color: #60a5fa;
-  background: transparent;
-  border-bottom-color: rgba(96, 165, 250, 0.38);
-}
-
-.quick-status-tab__row {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  white-space: nowrap;
-  max-width: 100%;
-}
-
-.quick-status-tab__icon {
-  flex-shrink: 0;
-  width: 15px;
-  height: 15px;
-  stroke-width: 1.75;
-}
-
-.quick-status-tab--header .quick-status-tab__icon {
-  color: #64748b;
-}
-
-html.dark .quick-status-tab--header .quick-status-tab__icon {
-  color: #64748b;
-}
-
-.quick-status-tab--header.quick-status-tab--active .quick-status-tab__icon {
-  color: #2563eb;
-}
-
-html.dark .quick-status-tab--header.quick-status-tab--active .quick-status-tab__icon {
-  color: #60a5fa;
-}
-
-.quick-status-tab__label {
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: 0;
-  text-transform: none;
-  white-space: nowrap;
-}
-
-.quick-status-tab--header.quick-status-tab--active .quick-status-tab__label {
-  font-weight: 600;
-}
-
-.quick-status-tab--header .quick-status-tab__label {
-  font-size: 12px;
-}
-
-.quick-status-tab--header .quick-status-tab__badge {
-  position: static;
-  top: auto;
-  right: auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 5px;
-  background: #eff6ff;
-  border: none;
-  color: #3b82f6;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  box-sizing: border-box;
-  text-align: center;
-}
-
-html.dark .quick-status-tab--header .quick-status-tab__badge {
-  background: rgba(59, 130, 246, 0.14);
-  color: #93c5fd;
-}
-
-.quick-status-tab--header.quick-status-tab--active .quick-status-tab__badge {
-  background: #dbeafe;
-  color: #2563eb;
-}
-
-html.dark .quick-status-tab--header.quick-status-tab--active .quick-status-tab__badge {
-  background: rgba(96, 165, 250, 0.2);
-  color: #bfdbfe;
-}
-
-.quick-status-tab__divider {
-  flex-shrink: 0;
-  width: 1px;
-  height: 22px;
-  background: #e2e8f0;
-}
-
-html.dark .quick-status-tab__divider {
-  background: #1e293b;
-}
-
-/* Default variant (legacy pill bar) */
-.quick-status-tabs:not(.quick-status-tabs--header) {
-  gap: 3px;
-  padding: 4px 5px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-}
-
-html.dark .quick-status-tabs:not(.quick-status-tabs--header) {
-  border-color: #1a2332;
-  background: #070b12;
-}
-
-.quick-status-tabs:not(.quick-status-tabs--header) .quick-status-tab {
+.quick-status-tabs .quick-status-tab {
   padding: 5px 11px;
   border: 1px solid transparent;
   border-radius: 6px;
   color: #64748b;
 }
 
-.quick-status-tabs:not(.quick-status-tabs--header) .quick-status-tab__inner {
+.quick-status-tabs .quick-status-tab__inner {
   position: relative;
   display: inline-block;
   white-space: nowrap;
 }
 
-.quick-status-tabs:not(.quick-status-tabs--header) .quick-status-tab__label {
+.quick-status-tabs .quick-status-tab__label {
   font-size: 11px;
   font-weight: 600;
 }
 
-.quick-status-tabs:not(.quick-status-tabs--header) .quick-status-tab__badge {
+.quick-status-tabs .quick-status-tab__badge {
   position: absolute;
   top: -14px;
   right: -6px;
@@ -2067,19 +1916,19 @@ html.dark .quick-status-tabs:not(.quick-status-tabs--header) {
   font-size: 8px;
 }
 
-html.dark .quick-status-tabs:not(.quick-status-tabs--header) .quick-status-tab__badge {
+html.dark .quick-status-tabs .quick-status-tab__badge {
   background: #1a2436;
   border-color: #2d3f5c;
   color: #8da2bd;
 }
 
-.quick-status-tabs:not(.quick-status-tabs--header) .quick-status-tab--active {
+.quick-status-tabs .quick-status-tab--active {
   color: #2563eb;
   background: #eff6ff;
   border-color: #bfdbfe;
 }
 
-html.dark .quick-status-tabs:not(.quick-status-tabs--header) .quick-status-tab--active {
+html.dark .quick-status-tabs .quick-status-tab--active {
   color: #60a5fa;
   background: #151c28;
   border-color: #1e293b;
