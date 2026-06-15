@@ -29,6 +29,7 @@ export function LeadChecklistSection({
   const {
     updateEmploymentCategory,
     canModifyLeads,
+    canAccessLeadChecklist,
     uploadDocument,
     getLeadDocuments,
     showToast,
@@ -91,9 +92,16 @@ export function LeadChecklistSection({
         )}
 
         <div className="space-y-1.5">
-          <label className="text-gray-400 dark:text-slate-500 font-bold uppercase text-[10px] tracking-wider block">
-            Employment Category
-          </label>
+          <div className="flex items-center justify-between gap-3">
+            <label className="text-gray-400 dark:text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+              Employment Category
+            </label>
+            {canAccessLeadChecklist && (
+              <span className="inline-flex shrink-0 items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold tabular-nums text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400">
+                {checkedCount}/{activeKeys.length} docs · {pct}%
+              </span>
+            )}
+          </div>
           <select
             value={employmentCategory}
             onChange={(e) =>
@@ -112,23 +120,6 @@ export function LeadChecklistSection({
             General requirements always apply. Category-specific items update when you change the
             selection.
           </p>
-        </div>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-[11px] font-semibold">
-            <span className="text-gray-500 dark:text-slate-400">
-              Verification Progress ({checkedCount}/{activeKeys.length})
-            </span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">
-              {pct}% Complete
-            </span>
-          </div>
-          <div className="w-full bg-gray-100 dark:bg-slate-950 rounded-[4px] h-2 overflow-hidden border border-gray-200/60 dark:border-slate-800/50">
-            <div
-              className="bg-emerald-500 h-full rounded-[2px] transition-all duration-500"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
         </div>
       </div>
 

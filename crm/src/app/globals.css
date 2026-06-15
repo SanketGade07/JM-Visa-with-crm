@@ -1833,6 +1833,12 @@ html.dark .lead-mgmt-toolbar__tabs-panel {
   width: 100%;
 }
 
+.crm-header__tabs--lead-detail {
+  overflow: visible;
+  max-width: min(100%, 420px);
+  height: auto;
+}
+
 /* ── Quick Status Tabs ───────────────────────────────────────────────────── */
 .quick-status-tabs {
   display: inline-flex;
