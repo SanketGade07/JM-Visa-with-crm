@@ -16,6 +16,7 @@ import {
 import { ThinScrollMenuList } from '@/components/ui/ThinScrollMenuList';
 import { CRM_DROPDOWN_SCROLL_CLASS } from '@/utils/dropdownScrollStyles';
 import { useDropdownPortal } from '@/utils/useDropdownPortal';
+import { LEAD_STATUS_ORDER, getStatusLabel } from '@/utils/leadStatusConfig';
 
 type FilterOption = { value: string; label: string };
 
@@ -42,7 +43,7 @@ function PremiumClearIndicator(props: ClearIndicatorProps<FilterOption>) {
 import { getNames } from 'country-list';
 import { defaultCountries, parseCountry, FlagImage } from 'react-international-phone';
 import 'react-international-phone/style.css';
-import { PhoneNumberUtil } from 'google-libphonenumber';
+import { validatePhone } from '@/utils/validatePhone';
 
 const countryOptions = getNames().map(name => ({ value: name, label: name })).sort((a, b) => a.label.localeCompare(b.label));
 
@@ -53,19 +54,10 @@ export const destinationFilterOptions = [
 
 export const leadStatusFilterOptions = [
   { value: "All", label: "All Statuses" },
-  { value: "New Lead", label: "New Lead" },
-  { value: "Lead Assigned", label: "Lead Assigned" },
-  { value: "Contacted", label: "Contacted" },
-  { value: "Follow-Up", label: "Follow-Up" },
-  { value: "Interested", label: "Interested" },
-  { value: "Documents Pending", label: "Documents Pending" },
-  { value: "Documents Received", label: "Documents Received" },
-  { value: "Under Verification", label: "Under Verification" },
-  { value: "Ready For Submission", label: "Ready For Submission" },
-  { value: "Visa Submitted", label: "Visa Submitted" },
-  { value: "Approved / Rejected", label: "Approved / Rejected" },
-  { value: "Closed", label: "Closed" },
-  { value: "Dropped", label: "Dropped" },
+  ...LEAD_STATUS_ORDER.map((status) => ({
+    value: status,
+    label: getStatusLabel(status),
+  })),
 ];
 
 /** Individual statuses for lead-management quick tabs (excludes "All"). */
@@ -388,21 +380,49 @@ export function SearchableCountrySelect({ name, value, onChange, required }: { n
           --form-selected-text: #a78bfa;
         }
         html.light {
-          --form-bg: #ffffff;
-          --form-border: #cbd5e1;
+          --form-bg: #f8fafc;
+          --form-border: #e2e8f0;
           --form-text: #0f172a;
           --form-hover: #f1f5f9;
           --form-selected-bg: #e2e8f0;
           --form-selected-text: var(--color-violet-600, #2563eb);
         }
+        .custom-react-select input,
+        .custom-react-select input:focus,
+        .custom-react-select input:focus-visible,
+        .country-select__input,
+        .country-select__input:focus,
+        .country-select__input:focus-visible,
         html.light .custom-react-select input,
         html.light .custom-react-select input:focus,
-        .custom-react-select input,
-        .custom-react-select input:focus {
-          background-color: transparent !important;
+        html.light .country-select__input,
+        html.light .country-select__input:focus {
+          background: transparent !important;
+          border: none !important;
           border-color: transparent !important;
           box-shadow: none !important;
           outline: none !important;
+          -webkit-appearance: none;
+          appearance: none;
+        }
+        .country-select__input-container,
+        .country-select__input-container:focus,
+        .country-select__input-container:focus-within {
+          margin: 0 !important;
+          padding: 0 !important;
+          border: none !important;
+          box-shadow: none !important;
+          outline: none !important;
+          background: transparent !important;
+        }
+        .country-select__control--menu-is-open .country-select__single-value {
+          display: none !important;
+        }
+        .country-select__control:not(.country-select__control--menu-is-open) .country-select__input-container {
+          position: absolute !important;
+          width: 0 !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
         }
         .country-select__option {
           overflow: hidden !important;
@@ -428,9 +448,28 @@ export function SearchableCountrySelect({ name, value, onChange, required }: { n
           styles={{
             menuPortal: base => ({ ...base, zIndex: 99999 }),
             valueContainer: base => ({ ...base, padding: '0 8px' }),
-            input: base => ({ ...base, margin: '0px', padding: '0px', color: 'var(--form-text)' }),
-            placeholder: base => ({ ...base, margin: '0px' }),
-            singleValue: base => ({ ...base, margin: '0px', color: 'var(--form-text)' }),
+            input: (base, props) => ({
+              ...base,
+              margin: 0,
+              padding: 0,
+              border: 'none',
+              outline: 'none',
+              boxShadow: 'none',
+              background: 'transparent',
+              color: 'var(--form-text)',
+              opacity: props.selectProps.menuIsOpen ? 1 : 0,
+              width: props.selectProps.menuIsOpen ? '100%' : 0,
+              minWidth: props.selectProps.menuIsOpen ? '2px' : 0,
+              caretColor: 'var(--form-focus)',
+            }),
+            placeholder: base => ({ ...base, margin: '0px', fontSize: '12px' }),
+            singleValue: (base, props) => ({
+              ...base,
+              display: props.selectProps.menuIsOpen ? 'none' : 'block',
+              margin: '0px',
+              color: 'var(--form-text)',
+              fontSize: '12px',
+            }),
             control: (base, state) => ({
                ...base,
                backgroundColor: 'var(--form-bg)',
@@ -438,6 +477,8 @@ export function SearchableCountrySelect({ name, value, onChange, required }: { n
                color: 'var(--form-text)',
                borderRadius: '0.75rem',
                minHeight: '40px',
+               height: '40px',
+               fontSize: '12px',
                boxShadow: state.isFocused ? '0 0 0 1px var(--form-focus)' : 'none',
                '&:hover': {
                   borderColor: state.isFocused ? 'var(--form-focus)' : 'var(--form-border)'
@@ -483,7 +524,7 @@ export function SearchableCountrySelect({ name, value, onChange, required }: { n
             const option = !val || Array.isArray(val) ? null : (val as FilterOption);
             onChange?.(option?.value ?? "");
           }}
-          defaultValue={value ? { value, label: value } : null}
+          value={value ? { value, label: value } : null}
           placeholder="Select Country"
         />
       )}
@@ -501,51 +542,78 @@ const countriesList = defaultCountries.map((c) => {
 });
 
 const DEFAULT_COUNTRY = countriesList.find((c) => c.iso2 === 'in') || countriesList[0];
-const phoneUtil = PhoneNumberUtil.getInstance();
 
-function validatePhone(dialCode: string, nationalNumber: string, iso2: string) {
-  if (!nationalNumber) return { isValid: true, error: null };
-  
-  const digitsOnly = nationalNumber.replace(/\D/g, '');
-  if (digitsOnly.length === 0) return { isValid: true, error: null };
+type PhoneCountry = (typeof countriesList)[number];
 
-  try {
-    const fullNumber = dialCode + digitsOnly;
-    const parsed = phoneUtil.parseAndKeepRawInput(fullNumber, iso2.toUpperCase());
-    
-    const parsedDialCode = `+${parsed.getCountryCode()}`;
-    if (parsedDialCode !== dialCode) {
-      return { isValid: false, error: 'invalid' };
-    }
-
-    const isValid = phoneUtil.isValidNumber(parsed);
-    if (!isValid) {
-      return { isValid: false, error: 'invalid number' };
-    }
-    
-    return { isValid: true, error: null };
-  } catch (error: any) {
-    const msg = error.toString().toLowerCase();
-    if (msg.includes('country code') || msg.includes('calling code') || msg.includes('missing or invalid')) {
-      return { isValid: false, error: 'invalid' };
-    }
-    return { isValid: false, error: 'invalid number' };
+function parseE164Phone(e164: string): { country: PhoneCountry; nationalNumber: string } {
+  if (!e164.trim()) {
+    return { country: DEFAULT_COUNTRY, nationalNumber: '' };
   }
+
+  const cleaned = e164.replace(/[^\d+]/g, '');
+  if (!cleaned.startsWith('+')) {
+    return { country: DEFAULT_COUNTRY, nationalNumber: cleaned.replace(/\D/g, '') };
+  }
+
+  const sortedCountries = [...countriesList].sort((a, b) => b.dialCode.length - a.dialCode.length);
+  const matched = sortedCountries.find((c) => cleaned.startsWith(c.dialCode));
+  if (matched) {
+    return {
+      country: matched,
+      nationalNumber: cleaned.substring(matched.dialCode.length),
+    };
+  }
+
+  return { country: DEFAULT_COUNTRY, nationalNumber: cleaned.replace(/^\+/, '') };
 }
 
-export function PhoneInput({ name, required, placeholder }: { name: string, required?: boolean, placeholder?: string }) {
-  const [selectedCountry, setSelectedCountry] = useState(DEFAULT_COUNTRY);
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [phone, setPhone] = useState('');
+function buildE164Phone(country: PhoneCountry, nationalNumber: string): string {
+  const digitsOnly = nationalNumber.replace(/\D/g, '');
+  return digitsOnly ? `${country.dialCode}${digitsOnly}` : '';
+}
+
+export type PhoneInputProps = {
+  name?: string;
+  required?: boolean;
+  placeholder?: string;
+  /** Full E.164 value (e.g. +919876543210). When set, the input is controlled. */
+  value?: string;
+  /** Called with the full E.164 string whenever the phone value changes. */
+  onChange?: (value: string) => void;
+};
+
+export function PhoneInput({ name, required, placeholder, value, onChange }: PhoneInputProps) {
+  const isControlled = value !== undefined;
+  const parsedControlled = isControlled ? parseE164Phone(value ?? '') : null;
+
+  const [uncontrolledCountry, setUncontrolledCountry] = useState<PhoneCountry>(DEFAULT_COUNTRY);
+  const [uncontrolledNationalNumber, setUncontrolledNationalNumber] = useState('');
+  const [uncontrolledE164, setUncontrolledE164] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  
+  const [prefixError, setPrefixError] = useState<string | null>(null);
+
+  const selectedCountry = isControlled ? parsedControlled!.country : uncontrolledCountry;
+  const phoneNumber = isControlled ? parsedControlled!.nationalNumber : uncontrolledNationalNumber;
+  const validation = validatePhone(selectedCountry.dialCode, phoneNumber, selectedCountry.iso2);
+  const errorMsg = prefixError ?? validation.error;
+
   const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
   const portalNode = useDropdownPortal('phone-dropdown-portal');
 
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const visibleInputRef = React.useRef<HTMLInputElement>(null);
+
+  const applyPhoneUpdate = (country: PhoneCountry, nationalNumber: string) => {
+    const full = buildE164Phone(country, nationalNumber);
+    if (isControlled) {
+      onChange?.(full);
+    } else {
+      setUncontrolledCountry(country);
+      setUncontrolledNationalNumber(nationalNumber);
+      setUncontrolledE164(full);
+    }
+  };
 
   const updateCoords = () => {
     if (buttonRef.current) {
@@ -588,44 +656,34 @@ export function PhoneInput({ name, required, placeholder }: { name: string, requ
   }, [isOpen]);
 
   React.useEffect(() => {
-    const digitsOnly = phoneNumber.replace(/\D/g, '');
-    const full = digitsOnly ? `${selectedCountry.dialCode}${digitsOnly}` : '';
-    setPhone(full);
-
-    const validation = validatePhone(selectedCountry.dialCode, phoneNumber, selectedCountry.iso2);
-    setErrorMsg(validation.error);
-  }, [selectedCountry, phoneNumber]);
-
-  React.useEffect(() => {
     if (visibleInputRef.current) {
-      if (errorMsg) {
-        visibleInputRef.current.setCustomValidity(errorMsg);
-      } else {
-        visibleInputRef.current.setCustomValidity('');
-      }
+      visibleInputRef.current.setCustomValidity(errorMsg ?? '');
     }
   }, [errorMsg]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
-    
+    let nextCountry = selectedCountry;
+    let nextPrefixError: string | null = null;
+
     if (val.trim().startsWith('+')) {
       const cleaned = val.replace(/[^\d+]/g, '');
       const sortedCountries = [...countriesList].sort((a, b) => b.dialCode.length - a.dialCode.length);
       const matched = sortedCountries.find((c) => cleaned.startsWith(c.dialCode));
       if (matched) {
-        setSelectedCountry(matched);
+        nextCountry = matched;
         val = cleaned.substring(matched.dialCode.length);
       } else {
         const hasPrefix = countriesList.some((c) => c.dialCode.startsWith(cleaned));
         if (!hasPrefix && cleaned.length > 2) {
-          setErrorMsg('invalid');
+          nextPrefixError = 'invalid';
         }
       }
     }
-    
+
+    setPrefixError(nextPrefixError);
     const filtered = val.replace(/[^\d\s\-\(\)]/g, '');
-    setPhoneNumber(filtered);
+    applyPhoneUpdate(nextCountry, filtered);
   };
 
   const filteredCountries = countriesList.filter(c => 
@@ -636,8 +694,27 @@ export function PhoneInput({ name, required, placeholder }: { name: string, requ
 
   return (
     <div className="w-full relative">
-      <input type="hidden" name={name} value={phone} />
+      {name ? (
+        <input type="hidden" name={name} value={isControlled ? (value ?? '') : uncontrolledE164} />
+      ) : null}
       <style>{`
+        :root {
+          --form-bg: #020617;
+          --form-border: #1e293b;
+          --form-text: #e2e8f0;
+          --form-focus: var(--color-violet-500, #3b82f6);
+          --form-hover: #0f172a;
+          --form-selected-bg: #1e293b;
+          --form-selected-text: #a78bfa;
+        }
+        html.light {
+          --form-bg: #f8fafc;
+          --form-border: #e2e8f0;
+          --form-text: #0f172a;
+          --form-hover: #f1f5f9;
+          --form-selected-bg: #e2e8f0;
+          --form-selected-text: var(--color-violet-600, #2563eb);
+        }
         .phone-input-container {
           display: flex;
           width: 100%;
@@ -664,7 +741,7 @@ export function PhoneInput({ name, required, placeholder }: { name: string, requ
           padding: 0 0.6rem;
           height: 40px;
           cursor: pointer;
-          font-size: 0.7rem;
+          font-size: 12px;
           font-weight: 600;
           transition: border-color 0.2s;
           user-select: none;
@@ -686,7 +763,7 @@ export function PhoneInput({ name, required, placeholder }: { name: string, requ
           border-radius: 0 0.75rem 0.75rem 0;
           padding: 0 0.75rem;
           height: 40px;
-          font-size: 0.75rem;
+          font-size: 12px;
           outline: none;
           width: 100%;
           background: transparent;
@@ -818,7 +895,8 @@ export function PhoneInput({ name, required, placeholder }: { name: string, requ
                   key={c.iso2}
                   type="button"
                   onClick={() => {
-                    setSelectedCountry(c);
+                    setPrefixError(null);
+                    applyPhoneUpdate(c, phoneNumber);
                     setIsOpen(false);
                     setSearchQuery('');
                   }}

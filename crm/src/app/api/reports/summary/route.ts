@@ -39,13 +39,13 @@ export async function GET() {
     const netProfit = totalRevenue - totalExpenses;
 
     // Conversion rate: Approved / (total non-dropped)
-    const approved = leads.filter((l) => l.status === "Approved / Rejected").length;
+    const approved = leads.filter((l) => l.status === "VISA_APPROVED").length;
     const conversionRate = leads.length > 0 ? ((approved / leads.length) * 100).toFixed(1) : "0";
 
     const dropRate =
       leads.length > 0
         ? (
-            (leads.filter((l) => l.status === "Dropped").length / leads.length) *
+            (leads.filter((l) => l.status === "DROPPED").length / leads.length) *
             100
           ).toFixed(1)
         : "0";

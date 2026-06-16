@@ -2,29 +2,17 @@
 
 import React from "react";
 import type { VisaStatus } from "@/context/CrmContext";
-import { getPillClasses } from "@/components/ui/DataTable";
 import { TablePillSelect } from "@/components/ui/TablePillSelect";
 import { STATUS_PILL_DROPDOWN_MAX_HEIGHT } from "@/utils/dropdownConstants";
+import {
+  LEAD_STATUS_ORDER,
+  getStatusLabel,
+  getStatusPillStyle,
+} from "@/utils/leadStatusConfig";
 
-const STATUS_OPTIONS: VisaStatus[] = [
-  "New Lead",
-  "Lead Assigned",
-  "Contacted",
-  "Follow-Up",
-  "Interested",
-  "Documents Pending",
-  "Documents Received",
-  "Under Verification",
-  "Ready For Submission",
-  "Visa Submitted",
-  "Approved / Rejected",
-  "Closed",
-  "Dropped",
-];
-
-const STATUS_OPTIONS_LIST = STATUS_OPTIONS.map((status) => ({
+const STATUS_OPTIONS_LIST = LEAD_STATUS_ORDER.map((status) => ({
   value: status,
-  label: status,
+  label: getStatusLabel(status),
 }));
 
 type StatusSelectPillProps = {
@@ -47,8 +35,8 @@ export function StatusSelectPill({
       onChange={(v) => onChange(v as VisaStatus)}
       disabled={disabled}
       portalId={portalId}
-      getPillClassName={getPillClasses}
-      ariaLabel={`Status: ${value}`}
+      getPillStyle={getStatusPillStyle}
+      ariaLabel={`Status: ${getStatusLabel(value)}`}
       searchPlaceholder="Search status..."
       maxMenuHeight={STATUS_PILL_DROPDOWN_MAX_HEIGHT}
     />

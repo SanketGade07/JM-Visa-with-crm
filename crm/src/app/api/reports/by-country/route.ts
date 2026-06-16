@@ -22,8 +22,8 @@ export async function GET() {
         country,
         total: countryLeads.length,
         revenue,
-        approved: countryLeads.filter((l) => l.status === "Approved / Rejected").length,
-        dropped: countryLeads.filter((l) => l.status === "Dropped").length,
+        approved: countryLeads.filter((l) => l.status === "VISA_APPROVED").length,
+        dropped: countryLeads.filter((l) => l.status === "DROPPED").length,
         byStatus,
       };
     });

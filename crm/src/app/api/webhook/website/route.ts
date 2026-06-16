@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       phone: body.phone || "",
       country,
       visaType: body.service || "Visa Application",
-      status: "New Lead",
+      status: "NEW_LEAD",
       source: "WEBSITE",
       counselor: "Unassigned",
       dateCreated: today,

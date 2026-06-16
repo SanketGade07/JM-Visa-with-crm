@@ -9,25 +9,13 @@ import {
   type EmploymentCategory,
 } from "@/utils/documentChecklistConfig";
 import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
+import type { LeadStatus } from "@/utils/leadStatusConfig";
 
 export type { EmploymentCategory } from "@/utils/documentChecklistConfig";
 
 // ── Enums / union types ───────────────────────────────────────────────────────
 
-export type VisaStatus =
-  | "New Lead"
-  | "Lead Assigned"
-  | "Contacted"
-  | "Follow-Up"
-  | "Interested"
-  | "Documents Pending"
-  | "Documents Received"
-  | "Under Verification"
-  | "Ready For Submission"
-  | "Visa Submitted"
-  | "Approved / Rejected"
-  | "Closed"
-  | "Dropped";
+export type VisaStatus = LeadStatus;
 
 export type CountryType = string;
 
@@ -87,6 +75,8 @@ export interface UsaSlotTracking {
   securityCar: string;
   securityFood: string;
   securityCity: string;
+  slotPortalUsername?: string;
+  slotPortalPassword?: string;
 }
 
 export interface Activity {
@@ -171,7 +161,7 @@ interface CrmContextType {
   setCurrentUser: (user: CrmUser | null) => void;
   addUser: (user: Omit<CrmUser, "id" | "createdAt"> & { id?: string; password?: string; createdAt?: string }) => Promise<{ ok: boolean; error?: string }>;
   deleteUser: (userId: string) => Promise<{ ok: boolean; error?: string }>;
-  addLead: (lead: Omit<Lead, "id" | "dateCreated" | "lastUpdated" | "isDeleted">) => void;
+  addLead: (lead: Omit<Lead, "id" | "dateCreated" | "lastUpdated" | "isDeleted">) => string;
   updateLeadStatus: (leadId: string, status: VisaStatus) => void;
   updateEmploymentCategory: (leadId: string, category: EmploymentCategory) => void;
   toggleChecklistItem: (leadId: string, item: string) => void;
@@ -207,31 +197,32 @@ const resolveStatusAfterCounselorChange = (
   status: VisaStatus,
   counselor: string
 ): VisaStatus => {
-  if (isAssignedCounselor(counselor) && status === "New Lead") return "Lead Assigned";
-  if (!isAssignedCounselor(counselor) && status === "Lead Assigned") return "New Lead";
+  if (isAssignedCounselor(counselor) && status === "NEW_LEAD") return "IN_PROGRESS";
+  if (!isAssignedCounselor(counselor) && status === "IN_PROGRESS") return "NEW_LEAD";
   return status;
 };
 
 const TERMINAL_STATUSES: VisaStatus[] = [
-  "Ready For Submission",
-  "Visa Submitted",
-  "Approved / Rejected",
-  "Closed",
+  "VISA_SUBMISSION",
+  "VISA_APPROVED",
+  "VISA_REJECTED",
 ];
 
 const resolveStatusAfterChecklistChange = (
   lead: Lead,
   updatedChecklist: DocumentChecklist
 ): VisaStatus => {
+  if (lead.status === "DROPPED") return lead.status;
+
   const category = lead.employmentCategory ?? DEFAULT_EMPLOYMENT_CATEGORY;
   const requiredDocs = getChecklistKeysForLead(category);
   const allRequired = requiredDocs.every((key) => updatedChecklist[key]);
 
   if (allRequired && !TERMINAL_STATUSES.includes(lead.status)) {
-    return "Ready For Submission";
+    return "VISA_SUBMISSION";
   }
-  if (!allRequired && lead.status === "Ready For Submission") {
-    return "Documents Pending";
+  if (!allRequired && lead.status === "VISA_SUBMISSION") {
+    return "IN_PROGRESS";
   }
   return lead.status;
 };
@@ -368,7 +359,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // ── Lead operations ─────────────────────────────────────────────────────────
 
-  const addLead = (newLeadData: Omit<Lead, "id" | "dateCreated" | "lastUpdated" | "isDeleted">) => {
+  const addLead = (newLeadData: Omit<Lead, "id" | "dateCreated" | "lastUpdated" | "isDeleted">): string => {
     const today = new Date().toISOString().split("T")[0];
     const category = newLeadData.employmentCategory ?? DEFAULT_EMPLOYMENT_CATEGORY;
     const status = resolveStatusAfterCounselorChange(newLeadData.status, newLeadData.counselor);
@@ -415,6 +406,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createdBy: "SYSTEM",
       });
     }
+    return newLead.id;
   };
 
   const updateLeadStatus = (leadId: string, status: VisaStatus) => {
@@ -623,7 +615,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const today = new Date().toISOString().split("T")[0];
     const updated = leads.map((lead) =>
       lead.id === leadId
-        ? { ...lead, status: "Dropped" as VisaStatus, isDeleted: true, lastUpdated: today }
+        ? { ...lead, status: "DROPPED" as VisaStatus, isDeleted: true, lastUpdated: today }
         : lead
     );
     syncLeads(updated);
@@ -639,7 +631,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const today = new Date().toISOString().split("T")[0];
     const updated = leads.map((lead) =>
       lead.id === leadId
-        ? { ...lead, status: "New Lead" as VisaStatus, isDeleted: false, lastUpdated: today }
+        ? { ...lead, status: "NEW_LEAD" as VisaStatus, isDeleted: false, lastUpdated: today }
         : lead
     );
     syncLeads(updated);

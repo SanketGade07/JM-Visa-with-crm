@@ -1,18 +1,18 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import type { IconType } from "react-icons";
 import { FaChevronLeft, FaPlus, FaSun, FaMoon } from "react-icons/fa";
 import {
   FiCheckCircle,
   FiDownload,
-  FiFolder,
   FiGrid,
-  FiHeart,
   FiMenu,
   FiRefreshCw,
   FiSend,
   FiStar,
+  FiX,
 } from "react-icons/fi";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { getLeadAvatar } from "../helpers/leadDisplayHelpers";
@@ -24,25 +24,23 @@ import { docProgress } from "@/utils/leadHelpers";
 
 const QUICK_TAB_ICONS: Record<string, IconType> = {
   All: FiGrid,
-  New: FiStar,
-  "Follow-Up": FiRefreshCw,
-  Interested: FiHeart,
-  Docs: FiFolder,
-  Submitted: FiSend,
-  Completed: FiCheckCircle,
+  NEW_LEAD: FiStar,
+  IN_PROGRESS: FiRefreshCw,
+  VISA_SUBMISSION: FiSend,
+  VISA_APPROVED: FiCheckCircle,
+  VISA_REJECTED: FiX,
 };
 
 export function CrmHeader() {
+  const router = useRouter();
   const {
     currentTab,
     isLeadDetailRoute,
+    isLeadNewRoute,
     setIsMobileSidebarOpen,
     theme,
     toggleTheme,
     canModifyLeads,
-    setAddLeadStep,
-    setAddLeadSelectedCategory,
-    setIsAddLeadOpen,
     statusFilter,
     setStatusFilter,
     leadDetailTab,
@@ -82,7 +80,7 @@ export function CrmHeader() {
         <FiMenu className="text-lg" />
       </button>
 
-      {currentTab === "Leads" && !isLeadDetailRoute && (
+      {currentTab === "Leads" && !isLeadDetailRoute && !isLeadNewRoute && (
         <div className="crm-header__tabs crm-header__tabs--list min-w-0 flex-1">
           <QuickStatusTabs
             variant="header"
@@ -139,23 +137,23 @@ export function CrmHeader() {
           )}
         </button>
 
-        <button
-          onClick={() => {
-            if (!canModifyLeads) return;
-            setAddLeadStep("initial");
-            setAddLeadSelectedCategory("");
-            setIsAddLeadOpen(true);
-          }}
-          disabled={!canModifyLeads}
-          className={`flex items-center gap-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs py-1.5 px-2 rounded-xl transition-all shadow-md shadow-violet-500/10 ${
-            !canModifyLeads ? "opacity-40 cursor-not-allowed" : ""
-          }`}
-        >
-          <FaPlus className="text-[10px]" />
-          <span>New</span>
-        </button>
+        {!isLeadNewRoute && (
+          <button
+            onClick={() => {
+              if (!canModifyLeads) return;
+              router.push("/leads/new");
+            }}
+            disabled={!canModifyLeads}
+            className={`flex items-center gap-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs py-1.5 px-2 rounded-xl transition-all shadow-md shadow-violet-500/10 ${
+              !canModifyLeads ? "opacity-40 cursor-not-allowed" : ""
+            }`}
+          >
+            <FaPlus className="text-[10px]" />
+            <span>New</span>
+          </button>
+        )}
 
-        {currentTab === "Leads" && !isLeadDetailRoute && (
+        {currentTab === "Leads" && !isLeadDetailRoute && !isLeadNewRoute && (
           <button
             type="button"
             onClick={exportLeadsCsv}

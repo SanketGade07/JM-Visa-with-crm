@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
-import { FaChevronLeft } from "react-icons/fa";
+import React, { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FaChevronLeft, FaTimes } from "react-icons/fa";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { LeadChecklistSection } from "./LeadChecklistSection";
 import { LeadDriveTab } from "./LeadDriveTab";
@@ -20,6 +21,12 @@ function TabPlaceholder({ title, description }: { title: string; description: st
 }
 
 export function LeadDetailPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const createdHandledRef = useRef(false);
+  const [showCreatedBanner, setShowCreatedBanner] = useState(false);
+  const [highlightSummary, setHighlightSummary] = useState(false);
+
   const {
     leads,
     selectedLeadId,
@@ -30,6 +37,28 @@ export function LeadDetailPage() {
   } = useCrmLayoutContext();
 
   const lead = selectedLeadId ? leads.find((l) => l.id === selectedLeadId) ?? null : null;
+
+  useEffect(() => {
+    if (searchParams.get("created") !== "1" || !selectedLeadId) return;
+    if (createdHandledRef.current) return;
+    createdHandledRef.current = true;
+
+    setShowCreatedBanner(true);
+    setHighlightSummary(true);
+
+    const tab = searchParams.get("tab") || leadDetailTab;
+    const stripTimer = window.setTimeout(() => {
+      router.replace(`/leads/${encodeURIComponent(selectedLeadId)}?tab=${tab}`);
+    }, 2800);
+    const unhighlightTimer = window.setTimeout(() => {
+      setHighlightSummary(false);
+    }, 3600);
+
+    return () => {
+      window.clearTimeout(stripTimer);
+      window.clearTimeout(unhighlightTimer);
+    };
+  }, [leadDetailTab, router, searchParams, selectedLeadId]);
 
   if (!canViewLeads) {
     return null;
@@ -53,11 +82,39 @@ export function LeadDetailPage() {
 
   return (
     <div className="space-y-6">
+      {showCreatedBanner && (
+        <div
+          role="status"
+          className="flex items-start justify-between gap-3 rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3 animate-premium-fade-in-up"
+        >
+          <div>
+            <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">
+              Lead created successfully
+            </p>
+            <p className="mt-0.5 text-xs text-emerald-700/80 dark:text-emerald-300/80">
+              Review the summary panel and begin the document checklist when ready.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowCreatedBanner(false)}
+            className="shrink-0 p-1.5 rounded-lg text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+            aria-label="Dismiss success message"
+          >
+            <FaTimes className="text-xs" />
+          </button>
+        </div>
+      )}
+
       <div role="tabpanel" aria-label={leadDetailTab}>
         {leadDetailTab === "checklist" && canAccessLeadChecklist && (
           <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start">
             <LeadChecklistSection lead={lead} />
-            <LeadManagementCard lead={lead} className="xl:sticky xl:top-4" />
+            <LeadManagementCard
+              lead={lead}
+              highlighted={highlightSummary}
+              className="xl:sticky xl:top-4"
+            />
           </div>
         )}
         {leadDetailTab === "checklist" && !canAccessLeadChecklist && (

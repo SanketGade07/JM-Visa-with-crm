@@ -1,18 +1,13 @@
 import { Lead, VisaStatus } from "@/context/CrmContext";
+import { getStatusLabel, type LeadStatus } from "@/utils/leadStatusConfig";
 
-export const IN_PROGRESS_STATUSES: VisaStatus[] = [
-  "Lead Assigned",
-  "Contacted",
-  "Follow-Up",
-  "Interested",
-  "Documents Pending",
-  "Documents Received",
-  "Under Verification",
-  "Ready For Submission",
-  "Visa Submitted",
+const ACTIVE_PIPELINE_STATUSES: LeadStatus[] = [
+  "NEW_LEAD",
+  "IN_PROGRESS",
+  "VISA_SUBMISSION",
+  "VISA_APPROVED",
+  "VISA_REJECTED",
 ];
-
-export const COMPLETED_STATUSES: VisaStatus[] = ["Approved / Rejected", "Closed"];
 
 export type QuickTabFilter = {
   id: string;
@@ -22,18 +17,17 @@ export type QuickTabFilter = {
 
 export const QUICK_TAB_FILTERS: QuickTabFilter[] = [
   { id: "All", label: "All", statuses: "all-non-dropped" },
-  { id: "New", label: "New", statuses: ["New Lead", "Lead Assigned"] },
-  { id: "Follow-Up", label: "Follow-Up", statuses: ["Follow-Up"] },
-  { id: "Interested", label: "Interested", statuses: ["Interested"] },
-  { id: "Docs", label: "Docs", statuses: ["Documents Pending", "Documents Received"] },
-  { id: "Submitted", label: "Submitted", statuses: ["Ready For Submission", "Visa Submitted"] },
-  { id: "Completed", label: "Completed", statuses: COMPLETED_STATUSES },
+  ...ACTIVE_PIPELINE_STATUSES.map((status) => ({
+    id: status,
+    label: getStatusLabel(status),
+    statuses: [status] as VisaStatus[],
+  })),
 ];
 
 export function matchesQuickTab(lead: Lead, tabId: string): boolean {
   const tab = QUICK_TAB_FILTERS.find((item) => item.id === tabId);
   if (!tab) return true;
-  if (tab.statuses === "all-non-dropped") return lead.status !== "Dropped";
+  if (tab.statuses === "all-non-dropped") return lead.status !== "DROPPED";
   return tab.statuses.includes(lead.status);
 }
 
@@ -48,11 +42,11 @@ export function filterScopedLeads(
       const todayStr = new Date().toISOString().split("T")[0];
       if (l.dateCreated !== todayStr) return false;
     } else if (kpiFilter === "In Progress") {
-      if (!IN_PROGRESS_STATUSES.includes(l.status)) return false;
+      if (l.status !== "IN_PROGRESS") return false;
     } else if (kpiFilter === "Total") {
-      if (l.status === "Dropped") return false;
+      if (l.status === "DROPPED") return false;
     } else if (kpiFilter === "Visa Success") {
-      if (l.status !== "Approved / Rejected") return false;
+      if (l.status !== "VISA_APPROVED") return false;
     }
     return (
       (countryFilter === "All" || l.country === countryFilter) &&

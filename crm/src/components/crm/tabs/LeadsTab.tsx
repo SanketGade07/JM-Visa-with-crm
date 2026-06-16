@@ -37,7 +37,6 @@ import { useColumnSearch } from "@/hooks/useColumnSearch";
 import { applyColumnSearch } from "@/utils/columnSearch";
 import { HoverHint } from "@/components/ui/HoverHint";
 import {
-  IN_PROGRESS_STATUSES,
   QUICK_TAB_FILTERS,
   filterScopedLeads,
   matchesQuickTab,
@@ -60,8 +59,7 @@ export function LeadsTab() {
     uploadingInvoiceKey, setUploadingInvoiceKey,
     statusFilter, setStatusFilter,
     kpiFilter, setKpiFilter,
-    selectedLeadId, setSelectedLeadId, openLeadChecklist, openLeadDetail, isAddLeadOpen, setIsAddLeadOpen,
-    addLeadStep, setAddLeadStep, addLeadSelectedCategory, setAddLeadSelectedCategory,
+    selectedLeadId, setSelectedLeadId, openLeadChecklist, openLeadDetail,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
     selectedMeeting, setSelectedMeeting, isEditMeetingOpen, setIsEditMeetingOpen,
     isAddStaffOpen, setIsAddStaffOpen, isEditStaffOpen, setIsEditStaffOpen,
@@ -109,7 +107,7 @@ export function LeadsTab() {
 
     if (!tab) {
       return scopedLeads.filter((l) => {
-        if (!statusColFilter && l.status === "Dropped") return false;
+        if (!statusColFilter && l.status === "DROPPED") return false;
         return true;
       });
     }
@@ -152,15 +150,15 @@ export function LeadsTab() {
     registerLeadsExport(() =>
       exportRowsToCsv(
         "leads",
-        ["#", "Lead", "Service", "Country", "Doc %", "Status", "Assign to"],
+        ["#", "Lead", "Service", "Country", "Status", "Assign to", "Doc %"],
         tableRows.map((l, i) => [
           i + 1,
           l.name,
           l.visaType,
           l.country,
-          `${Math.round(docProgress(l.checklist, l.employmentCategory))}%`,
           l.status,
           l.counselor,
+          `${Math.round(docProgress(l.checklist, l.employmentCategory))}%`,
         ])
       )
     );
@@ -191,7 +189,7 @@ export function LeadsTab() {
                   },
                   {
                     label: "In Progress",
-                    value: leads.filter(l => IN_PROGRESS_STATUSES.includes(l.status)).length,
+                    value: leads.filter(l => l.status === "IN_PROGRESS").length,
                     icon: FiClock,
                     iconClass: "bg-sky-100 border border-sky-200/90 text-sky-600 dark:bg-sky-500/10 dark:border-sky-500/25 dark:text-sky-400",
                     trend: "↑ 8%",
@@ -205,7 +203,7 @@ export function LeadsTab() {
                   },
                   {
                     label: "Visa Success",
-                    value: leads.filter(l => l.status === "Approved / Rejected").length,
+                    value: leads.filter(l => l.status === "VISA_APPROVED").length,
                     icon: FiCheckCircle,
                     iconClass: "bg-emerald-100 border border-emerald-200/90 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/25 dark:text-emerald-400",
                     trend: "↑ 10%",
@@ -219,7 +217,7 @@ export function LeadsTab() {
                   },
                   {
                     label: "Total Leads",
-                    value: leads.filter(l => l.status !== "Dropped").length,
+                    value: leads.filter(l => l.status !== "DROPPED").length,
                     icon: FiUsers,
                     iconClass: "bg-blue-100 border border-blue-200/90 text-blue-600 dark:bg-blue-500/10 dark:border-blue-500/25 dark:text-blue-400",
                     trend: "↑ 12%",
@@ -327,7 +325,7 @@ export function LeadsTab() {
                   <DataTable
                     className="h-full flex flex-col"
                     pagination={true}
-                    defaultPageSize={8}
+                    defaultPageSize={10}
                     showToolbar={false}
                     rows={tableRows}
                     columnSearch={columnSearch}
@@ -386,6 +384,41 @@ export function LeadsTab() {
                         ),
                       },
                       {
+                        header: "Status",
+                        searchKey: "status",
+                        searchLabel: "Status",
+                        filterSelectOptions: leadStatusFilterOptions,
+                        filterSelectPlaceholder: "All Statuses",
+                        filterSelectPortalId: "lead-status-column-filter-portal",
+                        filterSelectClearValue: "All",
+                        getSearchValue: leadSearchGetters.status,
+                        render: (lead) => (
+                          <StatusSelectPill
+                            value={lead.status}
+                            disabled={!canModifyLeads}
+                            portalId={`status-select-${lead.id}`}
+                            onChange={(status) => updateLeadStatus(lead.id, status)}
+                          />
+                        ),
+                      },
+                      {
+                        header: "Assign to",
+                        searchKey: "counselor",
+                        searchLabel: "Assign to",
+                        filterSelectOptions: counselorFilterOptions,
+                        filterSelectPlaceholder: "All Counselors",
+                        filterSelectClearValue: "All",
+                        getSearchValue: leadSearchGetters.counselor,
+                        render: (lead) => (
+                          <CounselorSelectPill
+                            value={lead.counselor}
+                            disabled={!canModifyLeads}
+                            portalId={`counselor-select-${lead.id}`}
+                            onChange={(counselor) => assignCounselor(lead.id, counselor)}
+                          />
+                        ),
+                      },
+                      {
                         header: "Doc verifications",
                         render: (lead) => {
                           const pct = docProgress(lead.checklist, lead.employmentCategory);
@@ -420,41 +453,6 @@ export function LeadsTab() {
                             </div>
                           );
                         },
-                      },
-                      {
-                        header: "Status",
-                        searchKey: "status",
-                        searchLabel: "Status",
-                        filterSelectOptions: leadStatusFilterOptions,
-                        filterSelectPlaceholder: "All Statuses",
-                        filterSelectPortalId: "lead-status-column-filter-portal",
-                        filterSelectClearValue: "All",
-                        getSearchValue: leadSearchGetters.status,
-                        render: (lead) => (
-                          <StatusSelectPill
-                            value={lead.status}
-                            disabled={!canModifyLeads}
-                            portalId={`status-select-${lead.id}`}
-                            onChange={(status) => updateLeadStatus(lead.id, status)}
-                          />
-                        ),
-                      },
-                      {
-                        header: "Assign to",
-                        searchKey: "counselor",
-                        searchLabel: "Assign to",
-                        filterSelectOptions: counselorFilterOptions,
-                        filterSelectPlaceholder: "All Counselors",
-                        filterSelectClearValue: "All",
-                        getSearchValue: leadSearchGetters.counselor,
-                        render: (lead) => (
-                          <CounselorSelectPill
-                            value={lead.counselor}
-                            disabled={!canModifyLeads}
-                            portalId={`counselor-select-${lead.id}`}
-                            onChange={(counselor) => assignCounselor(lead.id, counselor)}
-                          />
-                        ),
                       },
                       {
                         header: "Credentials",

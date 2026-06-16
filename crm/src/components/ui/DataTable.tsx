@@ -10,8 +10,13 @@ import {
   FiInbox,
   FiRefreshCw
 } from "react-icons/fi";
-import { Pagination } from "@/components/crm/ui/Pagination";
+import {
+  Pagination,
+  resolveEffectivePageSize,
+  type PageSizeOption,
+} from "@/components/crm/ui/Pagination";
 import { RiWhatsappLine } from "react-icons/ri";
+import { getStatusLabel, getStatusPillStyle } from "@/utils/leadStatusConfig";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Pixel-faithful "Lead Management" table — theme-aware (light + dark).
@@ -80,6 +85,7 @@ type DataTableProps<T> = {
   className?: string;
   pagination?: boolean;
   defaultPageSize?: number;
+  pageSizeOptions?: PageSizeOption[];
   columnSearch?: ColumnSearchState;
 };
 
@@ -149,34 +155,25 @@ function ToolbarButton({
   );
 }
 
-// ── Status pill (theme-aware outline badges matching screenshot) ─────────────────────────────
-const PILL_MAP: Record<string, string> = {
-  "New Lead": "border-blue-500/40 text-blue-600 bg-blue-500/5 dark:border-blue-400/30 dark:text-blue-400 dark:bg-blue-400/5",
-  "Lead Assigned": "border-cyan-500/40 text-cyan-600 bg-cyan-500/5 dark:border-cyan-400/30 dark:text-cyan-400 dark:bg-cyan-400/5",
-  Contacted: "border-emerald-500/40 text-emerald-600 bg-emerald-500/5 dark:border-emerald-400/30 dark:text-emerald-400 dark:bg-emerald-400/5",
-  "Follow-Up": "border-orange-500/40 text-orange-600 bg-orange-500/5 dark:border-orange-400/30 dark:text-orange-400 dark:bg-orange-400/5",
-  Interested: "border-purple-500/40 text-purple-600 bg-purple-500/5 dark:border-purple-400/30 dark:text-purple-400 dark:bg-purple-400/5",
-  "Documents Pending": "border-blue-500/40 text-blue-600 bg-blue-500/5 dark:border-blue-400/30 dark:text-blue-400 dark:bg-blue-400/5",
-  "Documents Received": "border-orange-500/40 text-orange-600 bg-orange-500/5 dark:border-orange-400/30 dark:text-orange-400 dark:bg-orange-400/5",
-  "Under Verification": "border-orange-500/40 text-orange-600 bg-orange-500/5 dark:border-orange-400/30 dark:text-orange-400 dark:bg-orange-400/5",
-  "Ready For Submission": "border-purple-500/40 text-purple-600 bg-purple-500/5 dark:border-purple-400/30 dark:text-purple-400 dark:bg-purple-400/5",
-  "Visa Submitted": "border-blue-500/40 text-blue-600 bg-blue-500/5 dark:border-blue-400/30 dark:text-blue-400 dark:bg-blue-400/5",
-  "Approved / Rejected": "border-emerald-500/40 text-emerald-600 bg-emerald-500/5 dark:border-emerald-400/30 dark:text-emerald-400 dark:bg-emerald-400/5",
-  Closed: "border-slate-400/40 text-slate-500 bg-slate-500/5 dark:border-slate-500/30 dark:text-slate-400 dark:bg-slate-400/5",
-  Dropped: "border-rose-500/40 text-rose-600 bg-rose-500/5 dark:border-rose-400/30 dark:text-rose-400 dark:bg-rose-400/5",
-};
-export const getPillClasses = (status: string) =>
-  PILL_MAP[status] ||
-  "bg-gray-100 text-gray-500 border-gray-200 dark:bg-slate-700/40 dark:text-slate-400 dark:border-slate-700";
+// ── Status pill (config-driven inline colors from leadStatusConfig) ───────────
+const PILL_BASE_CLASS =
+  "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border whitespace-nowrap";
+
+/** Thin fallback for class-based pill selects (e.g. counselor). Status pills use inline styles. */
+export const getPillClasses = (_status: string) => "";
 
 export function StatusPill({ status }: { status: string }) {
+  const pillStyle = getStatusPillStyle(status);
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border whitespace-nowrap ${getPillClasses(
-        status
-      )}`}
+      className={PILL_BASE_CLASS}
+      style={{
+        backgroundColor: pillStyle.backgroundColor,
+        color: pillStyle.color,
+        borderColor: pillStyle.borderColor,
+      }}
     >
-      {status}
+      {getStatusLabel(status)}
     </span>
   );
 }
@@ -223,7 +220,8 @@ export default function DataTable<T>({
   belowTitle,
   className = "",
   pagination = false,
-  defaultPageSize = 5,
+  defaultPageSize = 10,
+  pageSizeOptions,
   columnSearch,
 }: DataTableProps<T>) {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -233,12 +231,13 @@ export default function DataTable<T>({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
 
-  const totalPages = Math.ceil(rows.length / pageSize) || 1;
+  const effectiveSize = resolveEffectivePageSize(pageSize, rows.length);
+  const totalPages = Math.ceil(rows.length / effectiveSize) || 1;
   const activePage = Math.max(1, Math.min(currentPage, totalPages));
 
   // Sliced rows to show on current page
   const displayRows = pagination
-    ? rows.slice((activePage - 1) * pageSize, activePage * pageSize)
+    ? rows.slice((activePage - 1) * effectiveSize, activePage * effectiveSize)
     : rows;
 
   const allIds = rows.map(getRowId);
@@ -399,7 +398,7 @@ export default function DataTable<T>({
               const isSelected = selectedRowId === id;
               const isChecked = selectedIds.has(id);
               const rowActions = actions ? actions(row).filter((a) => !a.hidden?.(row)) : [];
-              const absoluteIndex = pagination ? (activePage - 1) * pageSize + index : index;
+              const absoluteIndex = pagination ? (activePage - 1) * effectiveSize + index : index;
               return (
                 <tr
                   key={id}
@@ -485,6 +484,7 @@ export default function DataTable<T>({
           currentPage={activePage}
           onPageSizeChange={setPageSize}
           onPageChange={setCurrentPage}
+          pageSizeOptions={pageSizeOptions}
         />
       )}
     </div>

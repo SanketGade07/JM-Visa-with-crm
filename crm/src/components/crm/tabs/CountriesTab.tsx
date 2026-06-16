@@ -40,8 +40,7 @@ export function CountriesTab() {
     pastedInvoiceUrl, setPastedInvoiceUrl, uploadInvoiceError, setUploadInvoiceError,
     uploadingInvoiceKey, setUploadingInvoiceKey, statusFilter, setStatusFilter,
     kpiFilter, setKpiFilter, countryFilter, setCountryFilter,
-    selectedLeadId, setSelectedLeadId, isAddLeadOpen, setIsAddLeadOpen,
-    addLeadStep, setAddLeadStep, addLeadSelectedCategory, setAddLeadSelectedCategory,
+    selectedLeadId, setSelectedLeadId,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
     selectedMeeting, setSelectedMeeting, isEditMeetingOpen, setIsEditMeetingOpen,
     isAddStaffOpen, setIsAddStaffOpen, isEditStaffOpen, setIsEditStaffOpen,
@@ -98,7 +97,7 @@ export function CountriesTab() {
                       <p className="text-[10px] text-slate-400 tracking-normal block">{item.desc}</p>
                     </div>
                     <span className="text-[10px] mt-6 bg-slate-950 py-1 px-3 border border-slate-900 rounded-lg text-slate-400 font-bold block self-start">
-                      {leads.filter(l => l.country === item.key && l.status !== "Dropped").length} Active Files
+                      {leads.filter(l => l.country === item.key && l.status !== "DROPPED").length} Active Files
                     </span>
                   </button>
                 ))}
@@ -107,14 +106,14 @@ export function CountriesTab() {
               {/* Department Specific Table */}
               <DataTable
                 title={countryFilter === "All" ? "Select a country above to filter files" : `${countryFilter} Desk - File Registrations`}
-                rows={leads.filter(l => l.status !== "Dropped" && (countryFilter === "All" || l.country === countryFilter))}
+                rows={leads.filter(l => l.status !== "DROPPED" && (countryFilter === "All" || l.country === countryFilter))}
                 getRowId={(l) => l.id}
                 onExport={() =>
                   exportRowsToCsv(
                     `${countryFilter.toLowerCase()}-files`,
                     ["#", "Client Name", "Sub Visa Type", "Status", "Counselor"],
                     leads
-                      .filter(l => l.status !== "Dropped" && (countryFilter === "All" || l.country === countryFilter))
+                      .filter(l => l.status !== "DROPPED" && (countryFilter === "All" || l.country === countryFilter))
                       .map((l, i) => [i + 1, l.name, l.visaType, l.status, l.counselor])
                   )
                 }

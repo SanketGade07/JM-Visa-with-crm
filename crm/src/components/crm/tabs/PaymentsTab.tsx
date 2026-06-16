@@ -322,7 +322,7 @@ export function PaymentsTab() {
         <DataTable
           title="Clients Accounts Ledger"
           pagination={true}
-          defaultPageSize={8}
+          defaultPageSize={10}
           rows={ledgerRows}
           getRowId={(l) => l.id}
           filters={viewToggle}
@@ -348,7 +348,7 @@ export function PaymentsTab() {
         <DataTable
           title="Destination Desk Revenue"
           pagination={true}
-          defaultPageSize={8}
+          defaultPageSize={10}
           rows={deskRevenueRows}
           getRowId={(row) => row.id}
           filters={viewToggle}

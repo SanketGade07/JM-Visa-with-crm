@@ -6,7 +6,42 @@ import {
   FiChevronsRight,
 } from "react-icons/fi";
 
-const DEFAULT_PAGE_SIZE_OPTIONS = [5, 8, 10, 20, 50];
+/** Sentinel page size meaning "show all rows on one page". */
+export const ALL_PAGE_SIZE = -1;
+
+export type PageSizeOption = number | "all";
+
+const DEFAULT_PAGE_SIZE_OPTIONS: PageSizeOption[] = [10, 50, 100, "all"];
+
+export function isAllPageSize(pageSize: number): boolean {
+  return pageSize === ALL_PAGE_SIZE;
+}
+
+export function resolveEffectivePageSize(pageSize: number, totalItems: number): number {
+  return isAllPageSize(pageSize) ? Math.max(totalItems, 1) : pageSize;
+}
+
+function optionToPageSize(option: PageSizeOption): number {
+  return option === "all" ? ALL_PAGE_SIZE : option;
+}
+
+function formatRangeText(
+  activePage: number,
+  pageSize: number,
+  totalItems: number
+): string {
+  if (totalItems === 0) {
+    return "0 of 0";
+  }
+
+  if (isAllPageSize(pageSize)) {
+    return `1-${totalItems} of ${totalItems}`;
+  }
+
+  const start = (activePage - 1) * pageSize + 1;
+  const end = Math.min(activePage * pageSize, totalItems);
+  return `${start}-${end} of ${totalItems}`;
+}
 
 export type PaginationProps = {
   totalItems: number;
@@ -14,7 +49,7 @@ export type PaginationProps = {
   currentPage: number;
   onPageSizeChange: (size: number) => void;
   onPageChange: (page: number) => void;
-  pageSizeOptions?: number[];
+  pageSizeOptions?: PageSizeOption[];
   className?: string;
 };
 
@@ -27,7 +62,9 @@ export function Pagination({
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   className = "",
 }: PaginationProps) {
-  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const showingAll = isAllPageSize(pageSize);
+  const effectivePageSize = resolveEffectivePageSize(pageSize, totalItems);
+  const totalPages = showingAll ? 1 : Math.ceil(totalItems / effectivePageSize) || 1;
   const activePage = Math.max(1, Math.min(currentPage, totalPages));
 
   return (
@@ -45,11 +82,14 @@ export function Pagination({
             }}
             className="appearance-none bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-gray-750 dark:text-slate-200 text-xs font-semibold rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500 shadow-sm cursor-pointer transition-colors hover:border-gray-300 dark:hover:border-slate-700"
           >
-            {pageSizeOptions.map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
+            {pageSizeOptions.map((size) => {
+              const value = optionToPageSize(size);
+              return (
+                <option key={String(size)} value={value}>
+                  {size === "all" ? "All" : size}
+                </option>
+              );
+            })}
           </select>
           <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-slate-400">
             <svg className="w-3.5 h-3.5 text-gray-455" viewBox="0 0 20 20" fill="currentColor">
@@ -64,10 +104,7 @@ export function Pagination({
       </div>
 
       <div className="font-medium tabular-nums text-slate-600 dark:text-slate-350">
-        {`${(activePage - 1) * pageSize + 1}-${Math.min(
-          activePage * pageSize,
-          totalItems
-        )} of ${totalItems}`}
+        {formatRangeText(activePage, pageSize, totalItems)}
       </div>
 
       <div className="flex items-center gap-1">

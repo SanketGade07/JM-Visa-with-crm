@@ -4,18 +4,10 @@ import React from "react";
 import { StaffRole, CountryType, LeadSource } from "@/context/CrmContext";
 import { AVAILABLE_TABS } from "@/utils/crmConstants";
 import {
-  FaTimes, FaChevronRight, FaChevronLeft, FaFileUpload, FaFileDownload,
+  FaTimes, FaFileUpload, FaFileDownload,
   FaGlobe, FaTrash, FaInfoCircle, FaCheckCircle
 } from "react-icons/fa";
-import { SearchableCountrySelect, PhoneInput } from "@/components/ui/FormInputs";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
-import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
-import {
-  buildEmptyChecklist,
-  DEFAULT_EMPLOYMENT_CATEGORY,
-  EMPLOYMENT_CATEGORY_OPTIONS,
-  type EmploymentCategory,
-} from "@/utils/documentChecklistConfig";
 
 
 export function CrmModals() {
@@ -34,8 +26,7 @@ export function CrmModals() {
     pastedInvoiceUrl, setPastedInvoiceUrl, uploadInvoiceError, setUploadInvoiceError,
     uploadingInvoiceKey, setUploadingInvoiceKey, statusFilter, setStatusFilter,
     kpiFilter, setKpiFilter, countryFilter, setCountryFilter,
-    selectedLeadId, setSelectedLeadId, isAddLeadOpen, setIsAddLeadOpen,
-    addLeadStep, setAddLeadStep, addLeadSelectedCategory, setAddLeadSelectedCategory,
+    selectedLeadId, setSelectedLeadId,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
     selectedMeeting, setSelectedMeeting, isEditMeetingOpen, setIsEditMeetingOpen,
     isAddStaffOpen, setIsAddStaffOpen, isEditStaffOpen, setIsEditStaffOpen,
@@ -63,199 +54,6 @@ export function CrmModals() {
 
   return (
     <>
-      {/* A. ADD NEW LEAD MODAL */}
-      {isAddLeadOpen && (
-        <div className="fixed inset-0 z-50 bg-[#020207]/80 dark:bg-[#020207]/80 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="w-full max-w-lg bg-white dark:bg-[#0a0a1a] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5 overflow-visible">
-            <button 
-              onClick={() => setIsAddLeadOpen(false)}
-              className="absolute top-4 right-4 p-2 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg"
-            >
-              <FaTimes />
-            </button>
-
-            <h3 className="text-sm font-bold text-slate-800 dark:text-white border-b border-slate-200 dark:border-slate-900 pb-3">Initiate New Lead File</h3>
-
-            {addLeadStep === "initial" && (
-              <div className="flex flex-col space-y-4 py-4">
-                <button 
-                  onClick={() => {
-                    setAddLeadSelectedCategory("Study Abroad");
-                    setAddLeadStep("form");
-                  }}
-                  className="group w-full py-4 px-6 bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600 rounded-2xl text-slate-700 dark:text-slate-200 font-bold transition-all duration-200 text-left flex justify-between items-center shadow-sm"
-                >
-                  <span className="text-sm font-bold text-slate-800 dark:text-white">Study Abroad</span>
-                  <FaChevronRight className="text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 group-hover:translate-x-0.5 transition-all" />
-                </button>
-                <button 
-                  onClick={() => {
-                    setAddLeadStep("visa-options");
-                  }}
-                  className="group w-full py-4 px-6 bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600 rounded-2xl text-slate-700 dark:text-slate-200 font-bold transition-all duration-200 text-left flex justify-between items-center shadow-sm"
-                >
-                  <span className="text-sm font-bold text-slate-800 dark:text-white">Visa</span>
-                  <FaChevronRight className="text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 group-hover:translate-x-0.5 transition-all" />
-                </button>
-              </div>
-            )}
-
-            {addLeadStep === "visa-options" && (
-              <div className="flex flex-col space-y-4 py-4">
-                <div className="flex items-center space-x-2 text-slate-500 dark:text-slate-400 mb-2">
-                  <button onClick={() => setAddLeadStep("initial")} className="hover:text-slate-800 dark:hover:text-white transition-colors p-1"><FaChevronLeft /></button>
-                  <span className="text-xs font-bold uppercase tracking-wider">Select Visa Type</span>
-                </div>
-                {["Work", "Business", "Residence", "Tourist"].map((visaOpt) => (
-                  <button 
-                    key={visaOpt}
-                    onClick={() => {
-                      setAddLeadSelectedCategory(visaOpt + " Visa");
-                      setAddLeadStep("form");
-                    }}
-                    className="group w-full py-4 px-6 bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600 rounded-2xl text-slate-700 dark:text-slate-200 font-bold transition-all duration-200 text-left flex justify-between items-center shadow-sm"
-                  >
-                    <span className="text-sm font-bold text-slate-800 dark:text-white">{visaOpt} Visa</span>
-                    <FaChevronRight className="text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 group-hover:translate-x-0.5 transition-all" />
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {addLeadStep === "form" && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const fd = new FormData(e.currentTarget);
-                const name = fd.get("name") as string;
-                const email = fd.get("email") as string;
-                const phone = fd.get("phone") as string;
-                const country = fd.get("country") as CountryType;
-                const visaType = fd.get("visaType") as string;
-                const counselor = fd.get("counselor") as string;
-                const notes = fd.get("notes") as string;
-                const totalPackage = parseFloat(fd.get("totalPackage") as string) || 0;
-
-                const source = (fd.get("source") as string) || "MANUAL";
-                const employmentCategory =
-                  (fd.get("employmentCategory") as EmploymentCategory) ||
-                  DEFAULT_EMPLOYMENT_CATEGORY;
-                addLead({
-                  name,
-                  email,
-                  phone,
-                  country,
-                  visaType,
-                  status: "New Lead",
-                  source: source as LeadSource,
-                  counselor,
-                  notes,
-                  employmentCategory,
-                  checklist: buildEmptyChecklist(employmentCategory),
-                  payments: totalPackage > 0 ? [
-                    {
-                      totalPackage,
-                      amountPaid: 0,
-                      pendingAmount: totalPackage,
-                      paymentMethod: "Pending",
-                      invoiceNumber: `INV-2026-${Math.floor(100 + Math.random() * 900)}`,
-                      date: new Date().toISOString().split("T")[0]
-                    }
-                  ] : [],
-                  usaSlots: country === "USA" ? { ...DEFAULT_USA_SLOTS, slotLocation: "Delhi" } : undefined
-                });
-
-                showToast("Lead initialized successfully!");
-                setIsAddLeadOpen(false);
-              }}
-              className="space-y-4 text-xs px-1.5 -mx-1.5 py-1 overflow-visible"
-            >
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Client Full Name</label>
-                  <input required name="name" placeholder="e.g. John Doe" type="text" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl focus:outline-none" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Contact Number</label>
-                  <PhoneInput name="phone" required placeholder="9876543210" />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-slate-500 dark:text-slate-400 font-bold block">Email Address</label>
-                <input required name="email" placeholder="e.g. john.doe@example.com" type="email" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl focus:outline-none" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Immigration Country</label>
-                  <SearchableCountrySelect name="country" required />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Visa Subtype</label>
-                  <input required name="visaType" defaultValue={addLeadSelectedCategory} placeholder="e.g. Student (F-1)" type="text" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl focus:outline-none" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Assign Case Officer</label>
-                  <select name="counselor" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl focus:outline-none">
-                    <option value="Priya Mehta">Priya Mehta</option>
-                    <option value="Rohit Verma">Rohit Verma</option>
-                    <option value="Simran Kaur">Simran Kaur</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Lead Source</label>
-                  <select name="source" defaultValue="MANUAL" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl focus:outline-none">
-                    <option value="MANUAL">Manual Entry</option>
-                    <option value="WEBSITE">Website</option>
-                    <option value="REFERRAL">Referral</option>
-                    <option value="WALK_IN">Walk-In</option>
-                    <option value="SOCIAL_MEDIA">Social Media</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Employment Category</label>
-                  <select
-                    name="employmentCategory"
-                    defaultValue={DEFAULT_EMPLOYMENT_CATEGORY}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl focus:outline-none"
-                  >
-                    {EMPLOYMENT_CATEGORY_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-slate-500 dark:text-slate-400 font-bold block">Initial Invoiced Package (INR)</label>
-                  <input min="0" name="totalPackage" placeholder="50000 (optional)" type="number" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl focus:outline-none" />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-slate-500 dark:text-slate-400 font-bold block">Initial File Notes</label>
-                <textarea rows={2} name="notes" placeholder="Any initial information provided by client..." className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 p-3 rounded-xl focus:outline-none" />
-              </div>
-
-              <button 
-                type="submit"
-                className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-bold text-white rounded-xl shadow-lg"
-              >
-                Open Case Roster
-              </button>
-            </form>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* B. RECORD PAYMENT DEPOSIT MODAL */}
       {isAddPaymentOpen && (
         <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">

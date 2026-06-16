@@ -256,7 +256,7 @@ export function SubmissionsTab() {
         title={cardMeta.title}
         subtitle={cardMeta.subtitle}
         pagination={true}
-        defaultPageSize={8}
+        defaultPageSize={10}
         rows={tableRows}
         getRowId={(l) => l.id}
         filters={viewToggle}

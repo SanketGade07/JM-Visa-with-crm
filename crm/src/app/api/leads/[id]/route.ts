@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readLeads, writeLeads, readActivities, appendActivity } from "@/utils/db";
 import { Activity, VisaStatus } from "@/context/CrmContext";
+import { normalizeLeadStatus } from "@/utils/leadStatusConfig";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -34,7 +35,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   const updated = {
     ...prev,
-    ...(body.status !== undefined && { status: body.status as VisaStatus }),
+    ...(body.status !== undefined && {
+      status: normalizeLeadStatus(String(body.status)) as VisaStatus,
+    }),
     ...(body.counselor !== undefined && { counselor: body.counselor }),
     ...(body.notes !== undefined && { notes: body.notes }),
     ...(body.email !== undefined && { email: body.email }),
@@ -79,7 +82,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   leads[index] = {
     ...leads[index],
-    status: "Dropped",
+    status: "DROPPED",
     isDeleted: true,
     lastUpdated: new Date().toISOString().split("T")[0],
   };

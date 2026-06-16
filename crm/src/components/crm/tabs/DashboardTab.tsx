@@ -39,8 +39,7 @@ export function DashboardTab() {
     pastedInvoiceUrl, setPastedInvoiceUrl, uploadInvoiceError, setUploadInvoiceError,
     uploadingInvoiceKey, setUploadingInvoiceKey, statusFilter, setStatusFilter,
     kpiFilter, setKpiFilter, countryFilter, setCountryFilter,
-    selectedLeadId, setSelectedLeadId, isAddLeadOpen, setIsAddLeadOpen,
-    addLeadStep, setAddLeadStep, addLeadSelectedCategory, setAddLeadSelectedCategory,
+    selectedLeadId, setSelectedLeadId,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
     selectedMeeting, setSelectedMeeting, isEditMeetingOpen, setIsEditMeetingOpen,
     isAddStaffOpen, setIsAddStaffOpen, isEditStaffOpen, setIsEditStaffOpen,
@@ -75,7 +74,7 @@ export function DashboardTab() {
                 {[
                   {
                     label: "Leads",
-                    value: leads.filter(l => l.status !== "Dropped").length,
+                    value: leads.filter(l => l.status !== "DROPPED").length,
                     badge: "↑ 2%",
                     badgeColor: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
                     subtext: "vs last week",
@@ -91,7 +90,7 @@ export function DashboardTab() {
                   // },
                   {
                     label: "Active Leads",
-                    value: leads.filter(l => !["Dropped", "Closed", "Approved / Rejected"].includes(l.status)).length,
+                    value: leads.filter(l => !["DROPPED", "VISA_APPROVED", "VISA_REJECTED"].includes(l.status)).length,
                     badge: "Active",
                     badgeColor: "bg-cyan-500/10 border-cyan-500/20 text-[#00C1D4]",
                     subtext: "in progress",
@@ -99,7 +98,7 @@ export function DashboardTab() {
                   },
                   {
                     label: "Conversion Rate",
-                    value: `${leads.length > 0 ? Math.round((leads.filter(l => l.status === "Approved / Rejected").length / leads.length) * 100) : 0}%`,
+                    value: `${leads.length > 0 ? Math.round((leads.filter(l => l.status === "VISA_APPROVED").length / leads.length) * 100) : 0}%`,
                     badge: "↑ 1.5%",
                     badgeColor: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
                     subtext: "approved visas",
@@ -107,8 +106,8 @@ export function DashboardTab() {
                   },
                   {
                     label: "Visa Submitted",
-                    value: leads.filter((l) => l.status === "Visa Submitted").length,
-                    badge: leads.filter((l) => l.status === "Visa Submitted").length > 0 ? "Active" : "—",
+                    value: leads.filter((l) => l.status === "VISA_SUBMISSION").length,
+                    badge: leads.filter((l) => l.status === "VISA_SUBMISSION").length > 0 ? "Active" : "—",
                     badgeColor: "bg-cyan-500/10 border-cyan-500/20 text-[#00C1D4]",
                     subtext: "with embassies",
                     icon: FaPlaneDeparture

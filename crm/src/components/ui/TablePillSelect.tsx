@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { FiChevronDown, FiSearch } from "react-icons/fi";
 import { TABLE_PILL_DROPDOWN_MAX_HEIGHT } from "@/utils/dropdownConstants";
 import { CRM_DROPDOWN_SCROLL_CLASS } from "@/utils/dropdownScrollStyles";
+import type { StatusPillStyle } from "@/utils/leadStatusConfig";
 
 export type TablePillOption = { value: string; label: string };
 
@@ -14,7 +15,10 @@ type TablePillSelectProps = {
   onChange: (value: string) => void;
   disabled?: boolean;
   portalId: string;
-  getPillClassName: (value: string) => string;
+  /** Class-based styling (e.g. counselor pill). Omit when using getPillStyle. */
+  getPillClassName?: (value: string) => string;
+  /** Inline status colors from leadStatusConfig. Takes precedence over getPillClassName. */
+  getPillStyle?: (value: string) => StatusPillStyle;
   ariaLabel?: string;
   searchPlaceholder?: string;
   /** Override list max-height (e.g. status pill uses full height for all options). */
@@ -82,6 +86,7 @@ export function TablePillSelect({
   disabled,
   portalId,
   getPillClassName,
+  getPillStyle,
   ariaLabel,
   searchPlaceholder = "Search...",
   maxMenuHeight = TABLE_PILL_DROPDOWN_MAX_HEIGHT,
@@ -95,7 +100,8 @@ export function TablePillSelect({
   const searchRef = useRef<HTMLInputElement>(null);
 
   const selected = options.find((o) => o.value === value) ?? { value, label: value };
-  const pillClass = getPillClassName(value);
+  const pillClass = getPillClassName?.(value) ?? "";
+  const pillStyle = getPillStyle?.(value);
 
   const filteredOptions = useMemo(() => {
     const q = menuSearch.trim().toLowerCase();
@@ -263,6 +269,15 @@ export function TablePillSelect({
           <>
             <span
               className={`inline-flex items-center max-w-full py-0.5 px-2.5 text-[11px] font-semibold rounded-full border leading-tight whitespace-nowrap ${pillClass}`}
+              style={
+                pillStyle
+                  ? {
+                      backgroundColor: pillStyle.backgroundColor,
+                      color: pillStyle.color,
+                      borderColor: pillStyle.borderColor,
+                    }
+                  : undefined
+              }
             >
               <span className="truncate">{selected.label}</span>
             </span>

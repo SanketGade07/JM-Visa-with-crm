@@ -7,6 +7,7 @@ import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 type LeadManagementCardProps = {
   lead: Lead;
   className?: string;
+  highlighted?: boolean;
 };
 
 const fieldLabelCls =
@@ -14,13 +15,21 @@ const fieldLabelCls =
 const fieldInputCls =
   "w-full bg-white dark:bg-slate-800/40 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-60 disabled:cursor-not-allowed";
 
-export function LeadManagementCard({ lead, className = "" }: LeadManagementCardProps) {
+export function LeadManagementCard({
+  lead,
+  className = "",
+  highlighted = false,
+}: LeadManagementCardProps) {
   const { updateLeadStatus, assignCounselor, updateLeadNotes, canModifyLeads } =
     useCrmLayoutContext();
 
   return (
     <section
-      className={`rounded-2xl border border-gray-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none ${className}`}
+      className={`rounded-2xl border border-gray-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none transition-shadow duration-300 ${
+        highlighted
+          ? "ring-2 ring-violet-500/70 ring-offset-2 ring-offset-white dark:ring-offset-slate-950 animate-lead-created-highlight"
+          : ""
+      } ${className}`}
     >
       <div className="flex items-center justify-between gap-3 mb-4">
         <h2 className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">

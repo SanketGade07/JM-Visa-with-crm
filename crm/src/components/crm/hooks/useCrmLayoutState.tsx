@@ -7,6 +7,17 @@ import { ROLE_TABS } from "@/utils/crmConstants";
 // @ts-ignore
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
 
+const LEAD_ID_PATTERN = /^\/leads\/([^/]+)$/;
+const RESERVED_LEAD_SEGMENTS = new Set(["new"]);
+
+function getLeadIdFromPathname(pathname: string | null | undefined): string | null {
+  const match = pathname?.match(LEAD_ID_PATTERN);
+  if (!match) return null;
+  const segment = decodeURIComponent(match[1]);
+  if (RESERVED_LEAD_SEGMENTS.has(segment) || segment.endsWith("/edit")) return null;
+  return segment;
+}
+
 export function useCrmLayoutState() {
   const {
     leads,
@@ -170,16 +181,25 @@ export function useCrmLayoutState() {
 
   const [leadDetailTab, setLeadDetailTabState] = useState<LeadDetailTab>("checklist");
 
-  const isLeadDetailRoute = Boolean(pathname?.match(/^\/leads\/([^/]+)$/));
+  const isLeadsListRoute = pathname === "/leads";
+  const isLeadNewRoute = pathname === "/leads/new";
+  const isLeadDetailRoute = getLeadIdFromPathname(pathname) !== null;
   const isLeadChecklistRoute = Boolean(pathname?.match(/^\/checklist\/([^/]+)$/));
 
   const openLeadDetail = useCallback(
-    (leadId: string, tab: LeadDetailTab = "checklist") => {
+    (
+      leadId: string,
+      tab: LeadDetailTab = "checklist",
+      options?: { created?: boolean }
+    ) => {
       const resolvedTab = resolveLeadDetailTab(tab);
       setSelectedLeadId(leadId);
       setLeadDetailTabState(resolvedTab);
       setCurrentTab("Leads");
-      router.push(`/leads/${encodeURIComponent(leadId)}?tab=${resolvedTab}`);
+      const createdQuery = options?.created ? "&created=1" : "";
+      router.push(
+        `/leads/${encodeURIComponent(leadId)}?tab=${resolvedTab}${createdQuery}`
+      );
     },
     [router, setCurrentTab, resolveLeadDetailTab]
   );
@@ -195,16 +215,18 @@ export function useCrmLayoutState() {
     (tab: string) => {
       setCurrentTab(tab);
       setIsMobileChecklistOpen(false);
-      if (pathname?.startsWith("/checklist/") || pathname?.startsWith("/leads/")) {
-        router.push("/");
+      if (pathname?.startsWith("/checklist/") || pathname?.startsWith("/leads")) {
+        router.push(tab === "Leads" ? "/leads" : "/");
       }
     },
     [router, setCurrentTab, pathname]
   );
 
   const closeLeadDetail = useCallback(() => {
-    navigateToTab("Leads");
-  }, [navigateToTab]);
+    setSelectedLeadId(null);
+    setCurrentTab("Leads");
+    router.push("/leads");
+  }, [router, setCurrentTab]);
 
   const closeLeadChecklist = useCallback(() => {
     closeLeadDetail();
@@ -215,8 +237,7 @@ export function useCrmLayoutState() {
       const resolvedTab = resolveLeadDetailTab(tab);
       setLeadDetailTabState(resolvedTab);
       if (!selectedLeadId) return;
-      const onLeadDetailRoute = pathname?.match(/^\/leads\/([^/]+)$/);
-      if (!onLeadDetailRoute) return;
+      if (!getLeadIdFromPathname(pathname)) return;
       router.push(`/leads/${encodeURIComponent(selectedLeadId)}?tab=${resolvedTab}`);
     },
     [router, pathname, selectedLeadId, resolveLeadDetailTab]
@@ -232,15 +253,27 @@ export function useCrmLayoutState() {
   }, [pathname, router, resolveLeadDetailTab]);
 
   useEffect(() => {
-    const match = pathname?.match(/^\/leads\/([^/]+)$/);
-    if (!match) return;
+    if (pathname === "/leads" || pathname === "/leads/new") {
+      setCurrentTab("Leads");
+      setSelectedLeadId(null);
+    }
+  }, [pathname, setCurrentTab]);
+
+  useEffect(() => {
+    if (isLeadNewRoute && !canModifyLeads) {
+      router.replace("/leads");
+    }
+  }, [isLeadNewRoute, canModifyLeads, router]);
+
+  useEffect(() => {
+    const leadId = getLeadIdFromPathname(pathname);
+    if (!leadId) return;
 
     if (!canViewLeads) {
       router.replace("/");
       return;
     }
 
-    const leadId = decodeURIComponent(match[1]);
     const leadExists = leads.some((l) => l.id === leadId);
     if (!leadExists) return;
 
@@ -257,9 +290,6 @@ export function useCrmLayoutState() {
   }, [pathname, leads, setCurrentTab, searchParams, canViewLeads, router, resolveLeadDetailTab]);
 
   // Modals
-  const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
-  const [addLeadStep, setAddLeadStep] = useState<"initial" | "visa-options" | "form">("initial");
-  const [addLeadSelectedCategory, setAddLeadSelectedCategory] = useState<string>("");
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [isAddMeetingOpen, setIsAddMeetingOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
@@ -890,8 +920,7 @@ export function useCrmLayoutState() {
     selectedLeadId, setSelectedLeadId,
     openLeadDetail, closeLeadDetail, leadDetailTab, setLeadDetailTab,
     openLeadChecklist, closeLeadChecklist, navigateToTab,
-    isLeadDetailRoute, isLeadChecklistRoute, isAddLeadOpen, setIsAddLeadOpen,
-    addLeadStep, setAddLeadStep, addLeadSelectedCategory, setAddLeadSelectedCategory,
+    isLeadsListRoute, isLeadNewRoute, isLeadDetailRoute, isLeadChecklistRoute,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
     selectedMeeting, setSelectedMeeting, isEditMeetingOpen, setIsEditMeetingOpen,
     isAddStaffOpen, setIsAddStaffOpen, isEditStaffOpen, setIsEditStaffOpen,

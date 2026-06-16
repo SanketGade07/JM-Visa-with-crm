@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readLeads, writeLeads, appendActivity } from "@/utils/db";
 import { Lead, Activity } from "@/context/CrmContext";
-import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
+import { DEFAULT_USA_SLOTS, normalizeLead } from "@/utils/normalizeLead";
+import { normalizeLeadStatus } from "@/utils/leadStatusConfig";
 import {
   buildEmptyChecklist,
   DEFAULT_EMPLOYMENT_CATEGORY,
@@ -63,13 +64,16 @@ export async function POST(req: NextRequest) {
       const incoming = body.leads as Lead[];
       const existingById = new Map(existingLeads.map((l) => [l.id, l]));
       const merged = incoming.map((lead) => {
+        const normalized = normalizeLead(lead as unknown as Record<string, unknown>);
         if ("driveFolderId" in lead && lead.driveFolderId !== undefined) {
-          return lead;
+          return normalized.driveFolderId !== undefined
+            ? normalized
+            : { ...normalized, driveFolderId: lead.driveFolderId };
         }
         const prev = existingById.get(lead.id);
         return prev?.driveFolderId
-          ? { ...lead, driveFolderId: prev.driveFolderId }
-          : lead;
+          ? { ...normalized, driveFolderId: prev.driveFolderId }
+          : normalized;
       });
       const ok = await writeLeads(merged);
       return ok
@@ -94,7 +98,7 @@ export async function POST(req: NextRequest) {
       phone: body.phone || body.phoneNumber || "",
       country,
       visaType: body.visaType || body.category || "General Inquiry",
-      status: body.status || "New Lead",
+      status: normalizeLeadStatus(typeof body.status === "string" ? body.status : "NEW_LEAD"),
       source: body.source || "MANUAL",
       counselor: body.counselor || "Unassigned",
       dateCreated: today,

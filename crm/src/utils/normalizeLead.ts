@@ -1,4 +1,6 @@
 import type { Lead, UsaSlotTracking } from "@/context/CrmContext";
+import { normalizeLeadStatus } from "./leadStatusConfig";
+import { isUsaCountry, normalizeCrmCountry } from "./countryUtils";
 import {
   DEFAULT_EMPLOYMENT_CATEGORY,
   EMPLOYMENT_CATEGORIES,
@@ -43,6 +45,8 @@ export function normalizeUsaSlots(raw: unknown): UsaSlotTracking {
     securityCar: slots.securityCar ?? "",
     securityFood: slots.securityFood ?? "",
     securityCity: slots.securityCity ?? "",
+    slotPortalUsername: slots.slotPortalUsername ?? "",
+    slotPortalPassword: slots.slotPortalPassword ?? "",
   };
 }
 
@@ -58,11 +62,15 @@ export function normalizeLead(raw: Record<string, unknown>): Lead {
       ? (raw.checklist as DocumentChecklistState)
       : {};
 
-  const country = typeof raw.country === "string" ? raw.country : "";
+  const countryRaw = typeof raw.country === "string" ? raw.country : "";
+  const country = normalizeCrmCountry(countryRaw);
   const usaSlotsRaw = raw.usaSlots ?? raw.usaslots;
+  const rawStatus = typeof raw.status === "string" ? raw.status : "NEW_LEAD";
 
   return {
     ...raw,
+    status: normalizeLeadStatus(rawStatus),
+    country,
     visaCredentials:
       (raw.visaCredentials as Lead["visaCredentials"]) ??
       (raw.visacredentials as Lead["visaCredentials"]),
@@ -72,7 +80,7 @@ export function normalizeLead(raw: Record<string, unknown>): Lead {
     employmentCategory,
     checklist: mergeChecklist(storedChecklist, employmentCategory),
     usaSlots:
-      country === "USA" || usaSlotsRaw
+      isUsaCountry(country) || usaSlotsRaw
         ? normalizeUsaSlots(usaSlotsRaw)
         : undefined,
   } as Lead;

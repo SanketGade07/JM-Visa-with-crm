@@ -360,7 +360,7 @@ export function USASlotsTab() {
       <DataTable
         title="USA Client Profiles"
         pagination={true}
-        defaultPageSize={8}
+        defaultPageSize={10}
         rows={usaLeads}
         getRowId={(l) => l.id}
         onRowClick={openSlotSettings}
