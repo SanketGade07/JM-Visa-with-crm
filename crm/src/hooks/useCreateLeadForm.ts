@@ -354,11 +354,16 @@ export function useCreateLeadForm() {
   const navigateToStep = useCallback(
     (step: WizardStepId) => {
       if (step === currentStep) return;
+      goToStep(step);
+    },
+    [currentStep, goToStep]
+  );
 
-      if (currentStep === 5 && step < 5) {
-        setReturnToReview(true);
-      }
-
+  const editStepFromReview = useCallback(
+    (step: WizardStepId) => {
+      if (step === currentStep) return;
+      if (currentStep !== 5 || step >= 5) return;
+      setReturnToReview(true);
       goToStep(step);
     },
     [currentStep, goToStep]
@@ -425,6 +430,7 @@ export function useCreateLeadForm() {
     completedSteps,
     returnToReview,
     navigateToStep,
+    editStepFromReview,
     advanceStep,
     validateStep: validateCurrentStep,
     isStepValid: isCurrentStepValid,

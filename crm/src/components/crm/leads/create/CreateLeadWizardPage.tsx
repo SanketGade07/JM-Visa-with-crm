@@ -57,6 +57,7 @@ export function CreateLeadWizardPage({
     isStepValid,
     returnToReview,
     navigateToStep,
+    editStepFromReview,
     advanceStep,
     getFieldError,
     markFieldTouched,
@@ -157,11 +158,18 @@ export function CreateLeadWizardPage({
     advanceStep();
   }, [advanceStep]);
 
-  const handleEditStep = useCallback(
+  const handleProgressStepClick = useCallback(
     (step: WizardStepId) => {
       navigateToStep(step);
     },
     [navigateToStep]
+  );
+
+  const handleReviewEditStep = useCallback(
+    (step: WizardStepId) => {
+      editStepFromReview(step);
+    },
+    [editStepFromReview]
   );
 
   const handleSubmit = useCallback(() => {
@@ -668,7 +676,7 @@ export function CreateLeadWizardPage({
       }
 
       case 5:
-        return <CreateLeadReviewStep state={state} onEditStep={handleEditStep} />;
+        return <CreateLeadReviewStep state={state} onEditStep={handleReviewEditStep} />;
 
       default:
         return null;
@@ -715,7 +723,7 @@ export function CreateLeadWizardPage({
           </div>
           <WizardProgress
             currentStep={currentStep}
-            onStepClick={handleEditStep}
+            onStepClick={handleProgressStepClick}
             allowFullNavigation
             completedSteps={completedSteps}
           />
