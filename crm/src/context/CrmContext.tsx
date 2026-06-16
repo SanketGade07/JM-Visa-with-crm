@@ -82,7 +82,7 @@ export interface UsaSlotTracking {
 export interface Activity {
   id: string;
   leadId: string;
-  type: "status_change" | "note" | "call" | "email" | "document" | "lead_created" | "payment";
+  type: "status_change" | "note" | "call" | "email" | "document" | "lead_created" | "payment" | "discussion";
   content: string;
   createdAt: string;
   createdBy: string;
@@ -182,6 +182,7 @@ interface CrmContextType {
   patchLeadDriveFolder: (leadId: string, driveFolderId: string) => void;
   refreshLeads: () => Promise<void>;
   getLeadActivities: (leadId: string) => Activity[];
+  postLeadDiscussionMessage: (leadId: string, content: string) => Promise<void>;
   uploadDocument: (leadId: string, docType: string, fileOrUrl: File | string) => Promise<{ ok: boolean; error?: string }>;
   uploadInvoice: (leadId: string, invoiceNumber: string, fileOrUrl: File | string) => Promise<{ ok: boolean; error?: string }>;
   getLeadDocuments: (leadId: string) => Document[];
@@ -646,6 +647,17 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const getLeadActivities = (leadId: string) =>
     activities.filter((a) => a.leadId === leadId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
+  const postLeadDiscussionMessage = async (leadId: string, content: string) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    await logActivity({
+      leadId,
+      type: "discussion",
+      content: trimmed,
+      createdBy: currentUser?.name ?? String(currentRole),
+    });
+  };
+
   const getLeadDocuments = (leadId: string) =>
     documents.filter((d) => d.leadId === leadId);
 
@@ -1013,6 +1025,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         patchLeadDriveFolder,
         refreshLeads,
         getLeadActivities,
+        postLeadDiscussionMessage,
         uploadDocument,
         uploadInvoice,
         getLeadDocuments,

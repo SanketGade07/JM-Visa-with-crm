@@ -133,7 +133,7 @@ export function CreateLeadWizardPage() {
       const payload = buildCreateLeadPayload(state);
       const newId = addLead(payload);
       showToast("Lead initialized successfully!");
-      openLeadDetail(newId, "checklist", { created: true });
+      openLeadDetail(newId, "details", { created: true });
     } finally {
       setIsSubmitting(false);
     }
@@ -407,7 +407,7 @@ export function CreateLeadWizardPage() {
       }`}
     >
       <div className="bg-white dark:bg-[#0a0a1a] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden">
-        <div className="sticky top-0 z-20 px-5 md:px-6 pt-5 pb-3 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-[#0a0a1a]/95 backdrop-blur-sm">
+        <div className="sticky top-0 z-20 px-5 md:px-6 pt-5 pb-3 bg-white/95 dark:bg-[#0a0a1a]/95 backdrop-blur-sm">
           <WizardProgress
             currentStep={currentStep}
             onStepClick={handleEditStep}

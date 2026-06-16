@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FaChevronLeft, FaTimes } from "react-icons/fa";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { LeadChecklistSection } from "./LeadChecklistSection";
+import { LeadDetailsSection } from "./LeadDetailsSection";
 import { LeadDriveTab } from "./LeadDriveTab";
 import { LeadManagementCard } from "./LeadManagementCard";
 import { LeadSettingsSection } from "./LeadSettingsSection";
@@ -91,7 +92,7 @@ export function LeadDetailPage() {
               Lead created successfully
             </p>
             <p className="mt-0.5 text-xs text-emerald-700/80 dark:text-emerald-300/80">
-              Review the summary panel and begin the document checklist when ready.
+              Review the request details and manage this lead from the panel on the right.
             </p>
           </div>
           <button
@@ -106,6 +107,9 @@ export function LeadDetailPage() {
       )}
 
       <div role="tabpanel" aria-label={leadDetailTab}>
+        {leadDetailTab === "details" && (
+          <LeadDetailsSection lead={lead} highlighted={highlightSummary} />
+        )}
         {leadDetailTab === "checklist" && canAccessLeadChecklist && (
           <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start">
             <LeadChecklistSection lead={lead} />
