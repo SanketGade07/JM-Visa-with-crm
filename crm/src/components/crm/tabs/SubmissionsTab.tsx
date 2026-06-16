@@ -38,7 +38,7 @@ export function SubmissionsTab() {
       leads.filter(
         (l) =>
           !l.isDeleted &&
-          l.status === "Ready For Submission" &&
+          l.status === "IN_PROGRESS" &&
           (countryFilter === "All" || l.country === countryFilter)
       ),
     [leads, countryFilter]
@@ -49,7 +49,7 @@ export function SubmissionsTab() {
       leads.filter(
         (l) =>
           !l.isDeleted &&
-          l.status === "Visa Submitted" &&
+          l.status === "VISA_SUBMISSION" &&
           (countryFilter === "All" || l.country === countryFilter)
       ),
     [leads, countryFilter]
@@ -57,12 +57,12 @@ export function SubmissionsTab() {
 
   const readyLeadsUnfiltered = useMemo(
     () =>
-      leads.filter((l) => !l.isDeleted && l.status === "Ready For Submission"),
+      leads.filter((l) => !l.isDeleted && l.status === "IN_PROGRESS"),
     [leads]
   );
 
   const dispatchedLeadsUnfiltered = useMemo(
-    () => leads.filter((l) => !l.isDeleted && l.status === "Visa Submitted"),
+    () => leads.filter((l) => !l.isDeleted && l.status === "VISA_SUBMISSION"),
     [leads]
   );
 
@@ -117,7 +117,7 @@ export function SubmissionsTab() {
           <button
             type="button"
             disabled={!canSubmitVisa}
-            onClick={() => updateLeadStatus(lead.id, "Visa Submitted")}
+            onClick={() => updateLeadStatus(lead.id, "VISA_SUBMISSION")}
             className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed max-w-full"
           >
             <FiSend className="text-[12px] shrink-0" />
@@ -183,7 +183,7 @@ export function SubmissionsTab() {
           <button
             type="button"
             disabled={!canSubmitVisa}
-            onClick={() => updateLeadStatus(lead.id, "Closed")}
+            onClick={() => updateLeadStatus(lead.id, "VISA_APPROVED")}
             className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed max-w-full"
           >
             <FiArchive className="text-[12px] shrink-0" />

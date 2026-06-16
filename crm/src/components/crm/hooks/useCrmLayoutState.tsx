@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCrm, VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Meeting } from "@/context/CrmContext";
 import { ROLE_TABS } from "@/utils/crmConstants";
+import { LEAD_STATUS_ORDER, getStatusLabel } from "@/utils/leadStatusConfig";
 // @ts-ignore
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
 
@@ -55,14 +56,14 @@ export function useCrmLayoutState() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const LEAD_DETAIL_TABS = ["checklist", "drive", "settings"] as const;
+  const LEAD_DETAIL_TABS = ["details", "checklist", "drive", "settings"] as const;
   type LeadDetailTab = (typeof LEAD_DETAIL_TABS)[number];
 
   const parseLeadDetailTab = (value: string | null): LeadDetailTab => {
     if (value && LEAD_DETAIL_TABS.includes(value as LeadDetailTab)) {
       return value as LeadDetailTab;
     }
-    return "checklist";
+    return "details";
   };
 
   // Tabs the current user or active role is allowed to open
@@ -179,7 +180,7 @@ export function useCrmLayoutState() {
   const [countryFilter, setCountryFilter] = useState<string>("All");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
 
-  const [leadDetailTab, setLeadDetailTabState] = useState<LeadDetailTab>("checklist");
+  const [leadDetailTab, setLeadDetailTabState] = useState<LeadDetailTab>("details");
 
   const isLeadsListRoute = pathname === "/leads";
   const isLeadNewRoute = pathname === "/leads/new";
@@ -189,7 +190,7 @@ export function useCrmLayoutState() {
   const openLeadDetail = useCallback(
     (
       leadId: string,
-      tab: LeadDetailTab = "checklist",
+      tab: LeadDetailTab = "details",
       options?: { created?: boolean }
     ) => {
       const resolvedTab = resolveLeadDetailTab(tab);
@@ -384,7 +385,7 @@ export function useCrmLayoutState() {
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (isAddPaymentOpen) {
-      const filtered = leads.filter(l => l.status !== "Dropped" && (l.payments[0]?.totalPackage || 0) > 0);
+      const filtered = leads.filter(l => l.status !== "DROPPED" && (l.payments[0]?.totalPackage || 0) > 0);
       if (filtered.length > 0) {
         setDepositLeadId(filtered[0].id);
       } else {
@@ -438,11 +439,10 @@ export function useCrmLayoutState() {
   const selectedLead = leads.find((l) => l.id === selectedLeadId) || leads[0];
 
   // ── Real dashboard analytics (computed from live leads) ─────────────────────
-  const activeLeads = leads.filter((l) => l.status !== "Dropped");
+  const activeLeads = leads.filter((l) => l.status !== "DROPPED");
 
   // Monthly chart: last 6 months, bucketed by lead creation date.
   // submissions = leads that reached submission stage; approvals = approved leads.
-  const submittedStages = ["Visa Submitted", "Approved / Rejected", "Closed"];
   const monthlyChart = (() => {
     const now = new Date();
     const months: { month: string; sub: number; app: number }[] = [];
@@ -453,8 +453,8 @@ export function useCrmLayoutState() {
       const inMonth = leads.filter((l) => (l.dateCreated || "").startsWith(key));
       months.push({
         month: label,
-        sub: inMonth.filter((l) => submittedStages.includes(l.status)).length,
-        app: inMonth.filter((l) => l.status === "Approved / Rejected").length,
+        sub: inMonth.filter((l) => l.status === "VISA_SUBMISSION" || l.status === "VISA_APPROVED").length,
+        app: inMonth.filter((l) => l.status === "VISA_APPROVED").length,
       });
     }
     return months;
@@ -648,11 +648,11 @@ export function useCrmLayoutState() {
 
   const leadsMgmtData = (() => {
     if (leadsMgmtTab === "Status") {
-      const statuses = ["New Lead", "Documents Pending", "Under Verification", "Ready for Submission", "Visa Submitted", "Approved / Rejected"];
+      const statuses = LEAD_STATUS_ORDER.filter((s) => s !== "DROPPED");
       return statuses.map(status => {
         const count = leads.filter(l => l.status === status).length;
         const pct = leads.length > 0 ? (count / leads.length) * 100 : 15 + (status.length * 7) % 45; // Fallback for aesthetic progress bars
-        return { label: status, count, pct };
+        return { label: getStatusLabel(status), count, pct };
       });
     } else if (leadsMgmtTab === "Sources") {
       const sources: LeadSource[] = ["WEBSITE", "REFERRAL", "WALK_IN", "SOCIAL_MEDIA", "MANUAL"];
@@ -690,9 +690,9 @@ export function useCrmLayoutState() {
   const pipelineStats = (() => {
     return (["USA", "UK", "Canada", "Europe"] as const).map((c) => {
       const cLeads = leads.filter(l => l.country === c);
-      const approved = cLeads.filter(l => l.status === "Approved / Rejected").length;
-      const pending = cLeads.filter(l => ["Documents Pending", "Under Verification", "Ready for Submission", "Visa Submitted"].includes(l.status)).length;
-      const newLeads = cLeads.filter(l => l.status === "New Lead").length;
+      const approved = cLeads.filter(l => l.status === "VISA_APPROVED").length;
+      const pending = cLeads.filter(l => l.status === "IN_PROGRESS" || l.status === "VISA_SUBMISSION").length;
+      const newLeads = cLeads.filter(l => l.status === "NEW_LEAD").length;
       
       const total = Math.max(1, approved + pending + newLeads);
       return {

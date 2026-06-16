@@ -104,7 +104,7 @@ export function CrmModals() {
                   onChange={(e) => setDepositLeadId(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none"
                 >
-                  {leads.filter(l => l.status !== "Dropped" && (l.payments[0]?.totalPackage || 0) > 0).map(l => {
+                  {leads.filter(l => l.status !== "DROPPED" && (l.payments[0]?.totalPackage || 0) > 0).map(l => {
                     const total = l.payments[0]?.totalPackage || 0;
                     const paid = l.payments.reduce((a, p) => a + p.amountPaid, 0);
                     const outstanding = total > 0 ? Math.max(0, total - paid) : 0;

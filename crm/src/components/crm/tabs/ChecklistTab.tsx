@@ -31,8 +31,8 @@ export function ChecklistTab() {
   }
 
   const leadDisplayId =
-    leads.filter((l) => l.status !== "Dropped").findIndex((l) => l.id === checklistLead.id) !== -1
-      ? leads.filter((l) => l.status !== "Dropped").findIndex((l) => l.id === checklistLead.id) + 1
+    leads.filter((l) => l.status !== "DROPPED").findIndex((l) => l.id === checklistLead.id) !== -1
+      ? leads.filter((l) => l.status !== "DROPPED").findIndex((l) => l.id === checklistLead.id) + 1
       : checklistLead.id;
 
   const leadFirstName = checklistLead.name.trim().split(/\s+/)[0] || checklistLead.name;

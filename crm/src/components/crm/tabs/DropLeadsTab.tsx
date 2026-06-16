@@ -78,13 +78,13 @@ export function DropLeadsTab() {
               {/* Dropped leads log table */}
               <DataTable
                 title="Archived & Dropped Leads"
-                rows={leads.filter((l) => l.status === "Dropped")}
+                rows={leads.filter((l) => l.status === "DROPPED")}
                 getRowId={(l) => l.id}
                 onExport={() =>
                   exportRowsToCsv(
                     "dropped-leads",
                     ["#", "Client Name", "Destination", "Sub Visa Type", "Counselor", "Date Created"],
-                    leads.filter((l) => l.status === "Dropped").map((l, i) => [i + 1, l.name, l.country, l.visaType, l.counselor, l.dateCreated])
+                    leads.filter((l) => l.status === "DROPPED").map((l, i) => [i + 1, l.name, l.country, l.visaType, l.counselor, l.dateCreated])
                   )
                 }
                 columns={[

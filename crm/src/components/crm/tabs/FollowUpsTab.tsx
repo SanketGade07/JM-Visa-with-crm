@@ -77,21 +77,21 @@ export function FollowUpsTab() {
                   <p className="text-xs text-slate-400">List of clients requiring contact followups or document updates.</p>
                 </div>
                 <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 font-extrabold text-sm rounded-xl">
-                  {leads.filter(l => l.status === "Follow-Up" || l.status === "Contacted").length} Pending Callback Leads
+                  {leads.filter(l => l.status === "IN_PROGRESS").length} Pending Callback Leads
                 </div>
               </div>
 
               {/* Followups leads table */}
               <DataTable
                 title="Pending Follow-Ups"
-                rows={leads.filter(l => ["Follow-Up", "Contacted", "Interested"].includes(l.status))}
+                rows={leads.filter(l => l.status === "IN_PROGRESS")}
                 getRowId={(l) => l.id}
                 onExport={() =>
                   exportRowsToCsv(
                     "follow-ups",
                     ["#", "Name", "Visa Type", "Status", "Notes", "Counselor"],
                     leads
-                      .filter(l => ["Follow-Up", "Contacted", "Interested"].includes(l.status))
+                      .filter(l => l.status === "IN_PROGRESS")
                       .map((l, i) => [i + 1, l.name, `${l.country} - ${l.visaType}`, l.status, l.notes || "", l.counselor])
                   )
                 }

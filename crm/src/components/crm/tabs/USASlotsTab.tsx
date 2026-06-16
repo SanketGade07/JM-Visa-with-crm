@@ -294,7 +294,7 @@ export function USASlotsTab() {
   } = useCrmLayoutContext();
 
   const usaLeads = useMemo(
-    () => leads.filter((l) => l.country === "USA" && l.status !== "Dropped"),
+    () => leads.filter((l) => l.country === "USA" && l.status !== "DROPPED"),
     [leads]
   );
 

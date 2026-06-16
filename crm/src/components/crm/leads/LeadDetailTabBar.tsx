@@ -7,14 +7,9 @@ import {
   segmentedTabListHeaderClass,
 } from "@/components/ui/segmentedTabStyles";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
+import { LEAD_DETAIL_TAB_ITEMS, type LeadDetailTab } from "./leadDetailTabConfig";
 
-export type LeadDetailTab = "checklist" | "drive" | "settings";
-
-const TABS: { id: LeadDetailTab; label: string }[] = [
-  { id: "checklist", label: "CHECKLIST" },
-  { id: "drive", label: "DRIVE" },
-  { id: "settings", label: "SETTINGS" },
-];
+export type { LeadDetailTab };
 
 type LeadDetailTabBarProps = {
   activeTab: LeadDetailTab;
@@ -29,7 +24,7 @@ export function LeadDetailTabBar({
 }: LeadDetailTabBarProps) {
   const { canAccessLeadChecklist } = useCrmLayoutContext();
 
-  const visibleTabs = TABS.filter(
+  const visibleTabs = LEAD_DETAIL_TAB_ITEMS.filter(
     (tab) => tab.id !== "checklist" || canAccessLeadChecklist
   );
 

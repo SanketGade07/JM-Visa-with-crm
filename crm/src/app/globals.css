@@ -1894,9 +1894,23 @@ html.dark .lead-mgmt-toolbar__tabs-panel {
 }
 
 .crm-header__tabs--lead-detail {
-  overflow: visible;
-  max-width: min(100%, 420px);
-  height: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+/* ── Lead detail vertical tab rail ───────────────────────────────────────── */
+.lead-detail-vertical-tabs {
+  scrollbar-width: thin;
+}
+
+.lead-detail-vertical-tabs--horizontal {
+  max-width: 100%;
+}
+
+.lead-detail-vertical-tabs--vertical {
+  max-width: 72px;
 }
 
 /* ── Quick Status Tabs ───────────────────────────────────────────────────── */

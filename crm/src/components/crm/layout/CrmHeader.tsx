@@ -15,7 +15,6 @@ import {
   FiX,
 } from "react-icons/fi";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
-import { getLeadAvatar } from "../helpers/leadDisplayHelpers";
 import { LeadDetailTabBar } from "../leads/LeadDetailTabBar";
 import { QuickStatusTabs } from "@/components/ui/QuickStatusTabs";
 import { useLeadQuickStatusTabs } from "@/hooks/useLeadQuickStatusTabs";
@@ -43,12 +42,12 @@ export function CrmHeader() {
     canModifyLeads,
     statusFilter,
     setStatusFilter,
-    leadDetailTab,
-    setLeadDetailTab,
     leads,
     selectedLeadId,
     closeLeadDetail,
     exportLeadsCsv,
+    leadDetailTab,
+    setLeadDetailTab,
   } = useCrmLayoutContext();
 
   const { quickStatusTabs } = useLeadQuickStatusTabs();
@@ -63,13 +62,12 @@ export function CrmHeader() {
   );
 
   const lead = selectedLeadId ? leads.find((l) => l.id === selectedLeadId) : null;
+
   const checklistPct = lead
     ? Math.round(
         docProgress(lead.checklist, lead.employmentCategory ?? DEFAULT_EMPLOYMENT_CATEGORY)
       )
     : 0;
-  const leadIndex = lead ? leads.findIndex((l) => l.id === lead.id) : -1;
-  const avatarUrl = lead ? getLeadAvatar(lead.id, leadIndex >= 0 ? leadIndex : 0) : "";
 
   return (
     <header className="relative h-16 border-b border-slate-800/80 bg-[#0a0a1a] px-4 md:px-8 flex items-center gap-2 md:gap-4 shrink-0 overflow-visible">
@@ -93,36 +91,31 @@ export function CrmHeader() {
       )}
 
       {currentTab === "Leads" && isLeadDetailRoute && lead && (
-        <div className="flex items-center gap-2 md:gap-3 min-w-0 shrink z-10">
-          <button
-            type="button"
-            onClick={closeLeadDetail}
-            className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-700/80 bg-slate-900/60 text-slate-300 hover:text-white hover:border-blue-500/40 hover:bg-blue-500/10 transition-colors shrink-0 cursor-pointer"
-            aria-label="Back to Lead Management"
-          >
-            <FaChevronLeft className="text-xs" />
-          </button>
-          <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-700 shrink-0 hidden sm:block">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+        <>
+          <div className="flex items-center gap-2 min-w-0 flex-1 z-10">
+            <button
+              type="button"
+              onClick={closeLeadDetail}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-700/80 bg-slate-900/60 text-slate-300 hover:text-white hover:border-blue-500/40 hover:bg-blue-500/10 transition-colors shrink-0 cursor-pointer"
+              aria-label="Back to Lead Management"
+            >
+              <FaChevronLeft className="text-xs" />
+            </button>
+            <div className="crm-header__tabs crm-header__tabs--lead-detail min-w-0">
+              <LeadDetailTabBar
+                activeTab={leadDetailTab}
+                onTabChange={setLeadDetailTab}
+                checklistPct={checklistPct}
+              />
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-xs font-bold text-white truncate leading-tight">{lead.name}</p>
-            <p className="text-[10px] text-slate-400 truncate leading-tight">
+          <div className="pointer-events-none absolute left-1/2 top-1/2 z-0 w-full max-w-[min(100%,calc(100%-9rem))] -translate-x-1/2 -translate-y-1/2 px-2 text-center">
+            <p className="truncate text-xs font-bold leading-tight text-white">{lead.name}</p>
+            <p className="truncate text-[10px] leading-tight text-slate-400">
               {lead.country} · {lead.visaType}
             </p>
           </div>
-        </div>
-      )}
-
-      {currentTab === "Leads" && isLeadDetailRoute && (
-        <div className="crm-header__tabs crm-header__tabs--lead-detail absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
-          <LeadDetailTabBar
-            activeTab={leadDetailTab}
-            onTabChange={setLeadDetailTab}
-            checklistPct={checklistPct}
-          />
-        </div>
+        </>
       )}
 
       <div className="flex items-center gap-2 md:gap-3 ml-auto shrink-0 z-10">

@@ -37,7 +37,6 @@ export function LeadDetailPage() {
   } = useCrmLayoutContext();
 
   const lead = selectedLeadId ? leads.find((l) => l.id === selectedLeadId) ?? null : null;
-
   useEffect(() => {
     if (searchParams.get("created") !== "1" || !selectedLeadId) return;
     if (createdHandledRef.current) return;

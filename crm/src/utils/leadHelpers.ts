@@ -8,7 +8,7 @@ import {
 export function getDeskCountriesFromLeads(leads: Lead[]): string[] {
   const set = new Set<string>();
   for (const l of leads) {
-    if (l.status !== "Dropped" && l.country?.trim()) set.add(l.country.trim());
+    if (l.status !== "DROPPED" && l.country?.trim()) set.add(l.country.trim());
   }
   return [...set].sort((a, b) => a.localeCompare(b));
 }
@@ -42,19 +42,12 @@ export const timeAgo = (dateStr: string) => {
 // Dark-theme status badge classes (used outside the shared light/dark pills)
 export const getStatusColor = (status: VisaStatus) => {
   switch (status) {
-    case "New Lead": return "bg-sky-500/10 text-sky-400 border border-sky-500/20";
-    case "Lead Assigned": return "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20";
-    case "Contacted": return "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20";
-    case "Follow-Up": return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
-    case "Interested": return "bg-purple-500/10 text-purple-400 border border-purple-500/20";
-    case "Documents Pending": return "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20";
-    case "Documents Received": return "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20";
-    case "Under Verification": return "bg-orange-500/10 text-orange-400 border border-orange-500/20";
-    case "Ready For Submission": return "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
-    case "Visa Submitted": return "bg-violet-500/15 text-violet-300 border border-violet-500/30";
-    case "Approved / Rejected": return "bg-teal-500/10 text-teal-400 border border-teal-500/20";
-    case "Closed": return "bg-slate-500/10 text-slate-400 border border-slate-500/20";
-    case "Dropped": return "bg-rose-500/10 text-rose-400 border border-rose-500/20";
+    case "NEW_LEAD": return "bg-sky-500/10 text-sky-400 border border-sky-500/20";
+    case "IN_PROGRESS": return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
+    case "VISA_SUBMISSION": return "bg-violet-500/15 text-violet-300 border border-violet-500/30";
+    case "VISA_APPROVED": return "bg-teal-500/10 text-teal-400 border border-teal-500/20";
+    case "VISA_REJECTED": return "bg-orange-500/10 text-orange-400 border border-orange-500/20";
+    case "DROPPED": return "bg-rose-500/10 text-rose-400 border border-rose-500/20";
     default: return "bg-slate-600/10 text-slate-400 border border-slate-600/20";
   }
 };

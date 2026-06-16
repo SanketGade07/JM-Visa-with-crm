@@ -58,7 +58,7 @@ export function PaymentsTab() {
   const dateFilterActive = isDateRangeActive(startDate, endDate);
 
   const ledgerRows = useMemo(() => {
-    const active = leads.filter((l) => l.status !== "Dropped");
+    const active = leads.filter((l) => l.status !== "DROPPED");
     if (!dateFilterActive) return active;
     return active.filter((l) =>
       l.payments.some((p) => isPaymentInRange(p, startDate, endDate))
@@ -66,7 +66,7 @@ export function PaymentsTab() {
   }, [leads, startDate, endDate, dateFilterActive]);
 
   const financeMetrics = useMemo(() => {
-    const activeLeads = leads.filter((l) => l.status !== "Dropped");
+    const activeLeads = leads.filter((l) => l.status !== "DROPPED");
 
     const grossInvoiced = activeLeads.reduce(
       (acc, l) => acc + (l.payments[0]?.totalPackage || 0),
@@ -99,7 +99,7 @@ export function PaymentsTab() {
     () =>
       getDeskCountriesFromLeads(leads).map((country) => {
         const cLeads = leads.filter(
-          (l) => l.country === country && l.status !== "Dropped"
+          (l) => l.country === country && l.status !== "DROPPED"
         );
         const relevantLeads = dateFilterActive
           ? cLeads.filter((l) =>
