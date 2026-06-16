@@ -17,6 +17,10 @@ export type CreateLeadFormState = {
   password: string;
   slotPortalLoginId: string;
   slotPortalPassword: string;
+  usaTrackingMobile: string;
+  usaSecurityCar: string;
+  usaSecurityFood: string;
+  usaSecurityCity: string;
   slotStatus: CreateLeadSlotStatus;
   caseOfficer: string;
   leadSource: LeadSource;
@@ -36,8 +40,12 @@ export const CREATE_LEAD_INITIAL_STATE: CreateLeadFormState = {
   password: "",
   slotPortalLoginId: "",
   slotPortalPassword: "",
+  usaTrackingMobile: "",
+  usaSecurityCar: "",
+  usaSecurityFood: "",
+  usaSecurityCity: "",
   slotStatus: "",
-  caseOfficer: "",
+  caseOfficer: "Priya Mehta",
   leadSource: "MANUAL",
   employmentCategory: DEFAULT_EMPLOYMENT_CATEGORY,
   packageAmount: "",

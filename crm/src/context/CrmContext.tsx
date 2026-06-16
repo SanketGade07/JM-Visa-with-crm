@@ -72,6 +72,7 @@ export interface UsaSlotTracking {
   interviewDate: string;
   slotLocation: string;
   paidDate: string;
+  trackingMobile: string;
   securityCar: string;
   securityFood: string;
   securityCity: string;

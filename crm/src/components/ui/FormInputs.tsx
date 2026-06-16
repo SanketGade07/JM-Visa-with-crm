@@ -364,7 +364,7 @@ export function SearchableFilterSelect({
   );
 }
 
-export function SearchableCountrySelect({ name, value, onChange, required }: { name?: string, value?: string, onChange?: (val: string) => void, required?: boolean }) {
+export function SearchableCountrySelect({ name, value, onChange, required, inputId }: { name?: string, value?: string, onChange?: (val: string) => void, required?: boolean, inputId?: string }) {
   const menuPortalTarget = getMenuPortalTarget();
 
   return (
@@ -435,7 +435,8 @@ export function SearchableCountrySelect({ name, value, onChange, required }: { n
         <Select
           className="custom-react-select"
           classNamePrefix="country-select"
-          instanceId="country-select"
+          instanceId={inputId ?? "country-select"}
+          inputId={inputId}
           components={{ MenuList: ThinScrollMenuList }}
           options={countryOptions}
           name={name}
@@ -573,6 +574,7 @@ function buildE164Phone(country: PhoneCountry, nationalNumber: string): string {
 }
 
 export type PhoneInputProps = {
+  id?: string;
   name?: string;
   required?: boolean;
   placeholder?: string;
@@ -582,19 +584,33 @@ export type PhoneInputProps = {
   onChange?: (value: string) => void;
 };
 
-export function PhoneInput({ name, required, placeholder, value, onChange }: PhoneInputProps) {
+export function PhoneInput({ id, name, required, placeholder, value, onChange }: PhoneInputProps) {
   const isControlled = value !== undefined;
-  const parsedControlled = isControlled ? parseE164Phone(value ?? '') : null;
 
   const [uncontrolledCountry, setUncontrolledCountry] = useState<PhoneCountry>(DEFAULT_COUNTRY);
   const [uncontrolledNationalNumber, setUncontrolledNationalNumber] = useState('');
   const [uncontrolledE164, setUncontrolledE164] = useState('');
+  /** Preserves country selection in controlled mode when value is still empty. */
+  const [controlledCountry, setControlledCountry] = useState<PhoneCountry>(() =>
+    isControlled && value?.trim() ? parseE164Phone(value).country : DEFAULT_COUNTRY
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [prefixError, setPrefixError] = useState<string | null>(null);
 
-  const selectedCountry = isControlled ? parsedControlled!.country : uncontrolledCountry;
-  const phoneNumber = isControlled ? parsedControlled!.nationalNumber : uncontrolledNationalNumber;
+  React.useEffect(() => {
+    if (!isControlled || !value?.trim()) return;
+    setControlledCountry(parseE164Phone(value).country);
+  }, [value, isControlled]);
+
+  const parsedFromValue =
+    isControlled && value?.trim() ? parseE164Phone(value) : null;
+  const selectedCountry = isControlled
+    ? (parsedFromValue?.country ?? controlledCountry)
+    : uncontrolledCountry;
+  const phoneNumber = isControlled
+    ? (parsedFromValue?.nationalNumber ?? '')
+    : uncontrolledNationalNumber;
   const validation = validatePhone(selectedCountry.dialCode, phoneNumber, selectedCountry.iso2);
   const errorMsg = prefixError ?? validation.error;
 
@@ -602,11 +618,13 @@ export function PhoneInput({ name, required, placeholder, value, onChange }: Pho
   const portalNode = useDropdownPortal('phone-dropdown-portal');
 
   const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
   const visibleInputRef = React.useRef<HTMLInputElement>(null);
 
   const applyPhoneUpdate = (country: PhoneCountry, nationalNumber: string) => {
     const full = buildE164Phone(country, nationalNumber);
     if (isControlled) {
+      setControlledCountry(country);
       onChange?.(full);
     } else {
       setUncontrolledCountry(country);
@@ -619,8 +637,8 @@ export function PhoneInput({ name, required, placeholder, value, onChange }: Pho
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       setCoords({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
+        top: rect.bottom + 4,
+        left: rect.left,
         width: rect.width,
       });
     }
@@ -637,10 +655,10 @@ export function PhoneInput({ name, required, placeholder, value, onChange }: Pho
     if (!isOpen) return;
 
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
+      const target = event.target as Node;
       const clickedOnButton = buttonRef.current?.contains(target);
-      const clickedInDropdown = document.getElementById('phone-dropdown-portal')?.contains(target);
-      
+      const clickedInDropdown = dropdownRef.current?.contains(target);
+
       if (!clickedOnButton && !clickedInDropdown) {
         setIsOpen(false);
         setSearchQuery('');
@@ -648,9 +666,11 @@ export function PhoneInput({ name, required, placeholder, value, onChange }: Pho
     };
 
     window.addEventListener('resize', updateCoords);
+    window.addEventListener('scroll', updateCoords, true);
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       window.removeEventListener('resize', updateCoords);
+      window.removeEventListener('scroll', updateCoords, true);
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen]);
@@ -770,7 +790,7 @@ export function PhoneInput({ name, required, placeholder, value, onChange }: Pho
         }
         
         .phone-dropdown-menu {
-          position: absolute;
+          position: fixed;
           background-color: var(--form-bg);
           border: 1px solid var(--form-border);
           border-radius: 0.75rem;
@@ -782,6 +802,7 @@ export function PhoneInput({ name, required, placeholder, value, onChange }: Pho
           display: flex;
           flex-direction: column;
           box-sizing: border-box;
+          pointer-events: auto;
         }
         .phone-dropdown-search-container {
           padding: 8px;
@@ -824,6 +845,7 @@ export function PhoneInput({ name, required, placeholder, value, onChange }: Pho
           border-radius: 0.5rem;
           text-align: left;
           transition: background-color 0.15s;
+          pointer-events: auto;
         }
         .phone-dropdown-item:hover {
           background-color: var(--form-hover);
@@ -855,6 +877,7 @@ export function PhoneInput({ name, required, placeholder, value, onChange }: Pho
         </button>
         <input
           ref={visibleInputRef}
+          id={id}
           type="tel"
           required={required}
           value={phoneNumber}
@@ -871,11 +894,13 @@ export function PhoneInput({ name, required, placeholder, value, onChange }: Pho
       )}
 
       {isOpen && portalNode && coords && createPortal(
-        <div 
+        <div
+          ref={dropdownRef}
           className="phone-dropdown-menu"
           style={{
-            top: `${coords.top + 4}px`,
+            top: `${coords.top}px`,
             left: `${coords.left}px`,
+            pointerEvents: 'auto',
           }}
         >
           <div className="phone-dropdown-search-container">
@@ -894,7 +919,9 @@ export function PhoneInput({ name, required, placeholder, value, onChange }: Pho
                 <button
                   key={c.iso2}
                   type="button"
-                  onClick={() => {
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     setPrefixError(null);
                     applyPhoneUpdate(c, phoneNumber);
                     setIsOpen(false);

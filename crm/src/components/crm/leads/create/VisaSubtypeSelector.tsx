@@ -14,8 +14,9 @@ export function VisaSubtypeSelector({ onSelect }: VisaSubtypeSelectorProps) {
       <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
         Select Visa Type
       </p>
-      {VISA_SUBTYPE_OPTIONS.map((visaOpt) => (
+      {VISA_SUBTYPE_OPTIONS.map((visaOpt, index) => (
         <button
+          id={index === 0 ? "create-lead-visa-subtype" : undefined}
           key={visaOpt}
           type="button"
           onClick={() => onSelect(`${visaOpt} Visa`)}

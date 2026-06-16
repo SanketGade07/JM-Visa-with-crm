@@ -13,11 +13,9 @@ import { DropLeadsTab } from "./tabs/DropLeadsTab";
 import { StaffTab } from "./tabs/StaffTab";
 import { DriveTab } from "./tabs/DriveTab";
 import { LeadDetailPage } from "./leads/LeadDetailPage";
-import { CreateLeadWizardPage } from "./leads/create/CreateLeadWizardPage";
 
 export function CrmTabViews() {
-  const { currentTab, isLeadNewRoute, isLeadDetailRoute, canViewLeads, canModifyLeads } =
-    useCrmLayoutContext();
+  const { currentTab, isLeadDetailRoute, canViewLeads } = useCrmLayoutContext();
 
   return (
     <div
@@ -25,9 +23,8 @@ export function CrmTabViews() {
       className="flex-1 overflow-y-auto p-4 md:p-8 [scrollbar-gutter:stable]"
     >
       {currentTab === "Dashboard" && <DashboardTab />}
-      {currentTab === "Leads" && isLeadNewRoute && canModifyLeads && <CreateLeadWizardPage />}
       {currentTab === "Leads" && isLeadDetailRoute && canViewLeads && <LeadDetailPage />}
-      {currentTab === "Leads" && !isLeadNewRoute && !isLeadDetailRoute && <LeadsTab />}
+      {currentTab === "Leads" && !isLeadDetailRoute && <LeadsTab />}
       {currentTab === "FollowUps" && <FollowUpsTab />}
       {currentTab === "Countries" && <CountriesTab />}
       {currentTab === "USASlots" && <USASlotsTab />}

@@ -12,6 +12,8 @@ type CompactRadioGroupProps<T extends string> = {
   value: T | "";
   options: CompactRadioOption<T>[];
   onChange: (value: T) => void;
+  firstOptionId?: string;
+  error?: string;
 };
 
 export function CompactRadioGroup<T extends string>({
@@ -19,22 +21,26 @@ export function CompactRadioGroup<T extends string>({
   value,
   options,
   onChange,
+  firstOptionId,
+  error,
 }: CompactRadioGroupProps<T>) {
   return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((opt) => {
-        const selected = value === opt.value;
-        return (
-          <label
-            key={opt.value}
-            className={`relative inline-flex h-10 items-center gap-2 px-3 rounded-xl border cursor-pointer transition-colors ${
-              selected
-                ? "border-violet-600 bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300"
-                : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700"
-            }`}
-          >
-            <input
-              type="radio"
+    <div className="space-y-1">
+      <div className="flex flex-wrap gap-2">
+        {options.map((opt, index) => {
+          const selected = value === opt.value;
+          return (
+            <label
+              key={opt.value}
+              className={`relative inline-flex h-10 items-center gap-2 px-3 rounded-xl border cursor-pointer transition-colors ${
+                selected
+                  ? "border-violet-600 bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300"
+                  : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700"
+              }${error ? " border-red-500 dark:border-red-500" : ""}`}
+            >
+              <input
+                id={index === 0 ? firstOptionId : undefined}
+                type="radio"
               name={name}
               value={opt.value}
               checked={selected}
@@ -51,6 +57,10 @@ export function CompactRadioGroup<T extends string>({
           </label>
         );
       })}
+      </div>
+      {error ? (
+        <p className="text-red-500 dark:text-red-400 text-[10px] font-medium">{error}</p>
+      ) : null}
     </div>
   );
 }

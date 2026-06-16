@@ -12,7 +12,12 @@ type LeadTypeSelectorProps = {
 export function LeadTypeSelector({ onSelectStudyAbroad, onSelectVisa }: LeadTypeSelectorProps) {
   return (
     <div className="flex flex-col space-y-4 py-4">
-      <button type="button" onClick={onSelectStudyAbroad} className={SELECTION_CARD_CLASS}>
+      <button
+        id="create-lead-lead-type"
+        type="button"
+        onClick={onSelectStudyAbroad}
+        className={SELECTION_CARD_CLASS}
+      >
         <span className="text-sm font-bold text-slate-800 dark:text-white">Study Abroad</span>
         <FaChevronRight className={SELECTION_CHEVRON_CLASS} />
       </button>

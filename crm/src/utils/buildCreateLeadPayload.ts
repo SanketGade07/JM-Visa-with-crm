@@ -65,6 +65,10 @@ export function buildCreateLeadPayload(state: CreateLeadFormState): CreateLeadPa
         slotPortalUsername: slotPortalLoginId,
         slotPortalPassword: slotPortalPassword,
       }),
+      trackingMobile: state.usaTrackingMobile.trim(),
+      securityCar: state.usaSecurityCar.trim(),
+      securityFood: state.usaSecurityFood.trim(),
+      securityCity: state.usaSecurityCity.trim(),
     };
   }
 

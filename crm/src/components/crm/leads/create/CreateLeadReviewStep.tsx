@@ -114,6 +114,13 @@ export function CreateLeadReviewStep({ state, onEditStep }: CreateLeadReviewStep
                 label="Slot portal password"
                 value={summaryMaskPassword(state.slotPortalPassword)}
               />
+              <SummaryRow
+                label="Mobile number"
+                value={summaryText(state.usaTrackingMobile)}
+              />
+              <SummaryRow label="Car" value={summaryText(state.usaSecurityCar)} />
+              <SummaryRow label="Food" value={summaryText(state.usaSecurityFood)} />
+              <SummaryRow label="City" value={summaryText(state.usaSecurityCity)} />
             </>
           )}
         </SummaryCard>

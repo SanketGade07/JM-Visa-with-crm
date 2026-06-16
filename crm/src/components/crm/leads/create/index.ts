@@ -7,6 +7,7 @@ export {
   FormSectionGrid,
   FORM_FIELD_CLASS,
   FORM_INPUT_CLASS,
+  FORM_FIELD_ERROR_CLASS,
   FORM_SELECT_CLASS,
   FORM_TEXTAREA_CLASS,
 } from "./FormSection";

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { useRouter } from "next/navigation";
 import type { IconType } from "react-icons";
 import { FaChevronLeft, FaPlus, FaSun, FaMoon } from "react-icons/fa";
 import {
@@ -31,11 +30,11 @@ const QUICK_TAB_ICONS: Record<string, IconType> = {
 };
 
 export function CrmHeader() {
-  const router = useRouter();
   const {
     currentTab,
     isLeadDetailRoute,
-    isLeadNewRoute,
+    isCreateLeadOpen,
+    openCreateLead,
     setIsMobileSidebarOpen,
     theme,
     toggleTheme,
@@ -78,7 +77,7 @@ export function CrmHeader() {
         <FiMenu className="text-lg" />
       </button>
 
-      {currentTab === "Leads" && !isLeadDetailRoute && !isLeadNewRoute && (
+      {currentTab === "Leads" && !isLeadDetailRoute && (
         <div className="crm-header__tabs crm-header__tabs--list min-w-0 flex-1">
           <QuickStatusTabs
             variant="header"
@@ -130,23 +129,20 @@ export function CrmHeader() {
           )}
         </button>
 
-        {!isLeadNewRoute && (
-          <button
-            onClick={() => {
-              if (!canModifyLeads) return;
-              router.push("/leads/new");
-            }}
-            disabled={!canModifyLeads}
-            className={`flex items-center gap-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs py-1.5 px-2 rounded-xl transition-all shadow-md shadow-violet-500/10 ${
-              !canModifyLeads ? "opacity-40 cursor-not-allowed" : ""
-            }`}
-          >
-            <FaPlus className="text-[10px]" />
-            <span>New</span>
-          </button>
-        )}
+        <button
+          onClick={openCreateLead}
+          disabled={!canModifyLeads || isCreateLeadOpen}
+          className={`flex items-center gap-1 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-xs py-1.5 px-2 rounded-xl transition-all shadow-md shadow-violet-500/10 ${
+            !canModifyLeads || isCreateLeadOpen
+              ? "opacity-40 cursor-not-allowed"
+              : "hover:from-violet-500 hover:to-indigo-500"
+          }`}
+        >
+          <FaPlus className="text-[10px]" />
+          <span>New</span>
+        </button>
 
-        {currentTab === "Leads" && !isLeadDetailRoute && !isLeadNewRoute && (
+        {currentTab === "Leads" && !isLeadDetailRoute && (
           <button
             type="button"
             onClick={exportLeadsCsv}

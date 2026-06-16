@@ -10,6 +10,8 @@ type CountrySelectorProps = {
   onChange?: (value: string) => void;
   required?: boolean;
   label?: string;
+  inputId?: string;
+  error?: string;
 };
 
 export function CountrySelector({
@@ -18,10 +20,18 @@ export function CountrySelector({
   onChange,
   required,
   label = "Immigration Country",
+  inputId,
+  error,
 }: CountrySelectorProps) {
   return (
-    <FormSection label={label}>
-      <SearchableCountrySelect name={name} value={value} onChange={onChange} required={required} />
+    <FormSection label={label} htmlFor={inputId} error={error}>
+      <SearchableCountrySelect
+        name={name}
+        value={value}
+        onChange={onChange}
+        required={required}
+        inputId={inputId}
+      />
     </FormSection>
   );
 }

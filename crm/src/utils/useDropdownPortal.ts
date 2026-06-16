@@ -20,6 +20,8 @@ export function useDropdownPortal(id: string, removeOnUnmount = false) {
       el.style.overflow = "visible";
       el.style.pointerEvents = "none";
       document.body.appendChild(el);
+    } else {
+      el.style.pointerEvents = "none";
     }
     setPortalNode(el);
 

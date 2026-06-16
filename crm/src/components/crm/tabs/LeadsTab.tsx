@@ -17,6 +17,8 @@ import {
 } from "react-icons/fa";
 import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiCheckCircle, FiEye, FiSettings, FiGlobe, FiMenu, FiUser, FiLock } from "react-icons/fi";
 import DataTable, { exportRowsToCsv, StatusPill, getPillClasses, ProgressBar } from "@/components/ui/DataTable";
+import { CollapsiblePanel } from "@/components/ui/CollapsiblePanel";
+import { CreateLeadWizardPage } from "@/components/crm/leads/create/CreateLeadWizardPage";
 import { StatusSelectPill } from "@/components/ui/StatusSelectPill";
 import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
 import {
@@ -84,6 +86,9 @@ export function LeadsTab() {
     handlePeriodChange, handleCalendarDateClick, getDaysInMonth, monthNames,
     leadsMgmtData, topCountryStats, pipelineStats, cardMap, modalMap,
     registerLeadsExport,
+    isCreateLeadOpen,
+    createLeadSession,
+    closeCreateLead,
   } = useCrmLayoutContext();
 
   const columnSearch = useColumnSearch();
@@ -317,8 +322,17 @@ export function LeadsTab() {
               </div>
               )}
 
-              {/* Lead detail split-screen */}
-              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-stretch h-auto xl:h-[600px]">
+              <div className="flex flex-col">
+                <CollapsiblePanel open={isCreateLeadOpen && canModifyLeads}>
+                  <CreateLeadWizardPage
+                    key={createLeadSession}
+                    variant="inline"
+                    onClose={closeCreateLead}
+                  />
+                </CollapsiblePanel>
+
+                {/* Lead detail split-screen */}
+                <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-stretch h-auto xl:h-[600px]">
                 
                 {/* Leads list (reusable DataTable) */}
                 <div className="xl:col-span-4 flex flex-col h-full">
@@ -649,6 +663,7 @@ export function LeadsTab() {
                   </div>
                 )}
 
+              </div>
               </div>
 
             </div>

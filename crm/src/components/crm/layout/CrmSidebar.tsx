@@ -27,7 +27,7 @@ export function CrmSidebar() {
     pastedInvoiceUrl, setPastedInvoiceUrl, uploadInvoiceError, setUploadInvoiceError,
     uploadingInvoiceKey, setUploadingInvoiceKey, statusFilter, setStatusFilter,
     kpiFilter, setKpiFilter, countryFilter, setCountryFilter,
-    selectedLeadId, setSelectedLeadId, navigateToTab, isLeadDetailRoute, isLeadChecklistRoute, isLeadNewRoute, isLeadsListRoute,
+    selectedLeadId, setSelectedLeadId, navigateToTab, isLeadDetailRoute, isLeadChecklistRoute, isLeadsListRoute,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
     selectedMeeting, setSelectedMeeting, isEditMeetingOpen, setIsEditMeetingOpen,
     isAddStaffOpen, setIsAddStaffOpen, isEditStaffOpen, setIsEditStaffOpen,
@@ -98,7 +98,7 @@ export function CrmSidebar() {
               const Icon = tab.icon;
               const isActive =
                 currentTab === tab.id ||
-                (tab.id === "Leads" && (isLeadDetailRoute || isLeadChecklistRoute || isLeadNewRoute || isLeadsListRoute));
+                (tab.id === "Leads" && (isLeadDetailRoute || isLeadChecklistRoute || isLeadsListRoute));
               return (
                 <button
                   key={tab.id}

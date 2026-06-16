@@ -235,6 +235,20 @@ export function useCrmLayoutState() {
     closeLeadDetail();
   }, [closeLeadDetail]);
 
+  const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
+  const [createLeadSession, setCreateLeadSession] = useState(0);
+
+  const openCreateLead = useCallback(() => {
+    if (!canModifyLeads) return;
+    setCurrentTab("Leads");
+    setCreateLeadSession((session) => session + 1);
+    setIsCreateLeadOpen(true);
+  }, [canModifyLeads, setCurrentTab]);
+
+  const closeCreateLead = useCallback(() => {
+    setIsCreateLeadOpen(false);
+  }, []);
+
   const setLeadDetailTab = useCallback(
     (tab: LeadDetailTab) => {
       const resolvedTab = resolveLeadDetailTab(tab);
@@ -263,10 +277,10 @@ export function useCrmLayoutState() {
   }, [pathname, setCurrentTab]);
 
   useEffect(() => {
-    if (isLeadNewRoute && !canModifyLeads) {
+    if (pathname === "/leads/new") {
       router.replace("/leads");
     }
-  }, [isLeadNewRoute, canModifyLeads, router]);
+  }, [pathname, router]);
 
   useEffect(() => {
     const leadId = getLeadIdFromPathname(pathname);
@@ -922,6 +936,7 @@ export function useCrmLayoutState() {
     selectedLeadId, setSelectedLeadId,
     openLeadDetail, closeLeadDetail, leadDetailTab, setLeadDetailTab,
     openLeadChecklist, closeLeadChecklist, navigateToTab,
+    isCreateLeadOpen, createLeadSession, openCreateLead, closeCreateLead,
     isLeadsListRoute, isLeadNewRoute, isLeadDetailRoute, isLeadChecklistRoute,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
     selectedMeeting, setSelectedMeeting, isEditMeetingOpen, setIsEditMeetingOpen,

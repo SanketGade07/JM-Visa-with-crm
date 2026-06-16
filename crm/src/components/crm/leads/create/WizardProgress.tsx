@@ -17,26 +17,25 @@ type WizardProgressProps = {
   currentStep: WizardStepId;
   onStepClick?: (step: WizardStepId) => void;
   allowFullNavigation?: boolean;
+  completedSteps?: ReadonlySet<WizardStepId>;
   className?: string;
 };
 
 function getStepState(
   stepId: WizardStepId,
   currentStep: WizardStepId,
-  allowFullNavigation: boolean
+  allowFullNavigation: boolean,
+  completedSteps: ReadonlySet<WizardStepId>
 ) {
-  if (allowFullNavigation) {
-    return {
-      isComplete: stepId !== currentStep,
-      isCurrent: stepId === currentStep,
-      isFuture: false,
-    };
-  }
+  const isComplete =
+    stepId !== currentStep &&
+    stepId !== 5 &&
+    (completedSteps.has(stepId) || (!allowFullNavigation && stepId < currentStep));
 
   return {
-    isComplete: stepId < currentStep,
+    isComplete,
     isCurrent: stepId === currentStep,
-    isFuture: stepId > currentStep,
+    isFuture: !allowFullNavigation && stepId > currentStep,
   };
 }
 
@@ -44,6 +43,7 @@ export function WizardProgress({
   currentStep,
   onStepClick,
   allowFullNavigation = false,
+  completedSteps = new Set(),
   className = "",
 }: WizardProgressProps) {
   const handleStepClick = (stepId: WizardStepId) => {
@@ -66,10 +66,13 @@ export function WizardProgress({
           const { isComplete, isCurrent } = getStepState(
             step.id,
             currentStep,
-            allowFullNavigation
+            allowFullNavigation,
+            completedSteps
           );
           const isClickable =
-            step.id !== currentStep && Boolean(onStepClick) && (allowFullNavigation || isComplete);
+            step.id !== currentStep &&
+            Boolean(onStepClick) &&
+            (allowFullNavigation || step.id < currentStep);
           const isLast = index === WIZARD_STEPS.length - 1;
 
           const circleClassName = `flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0 transition-colors ${
@@ -156,19 +159,22 @@ export function WizardProgress({
             const { isComplete, isCurrent } = getStepState(
               step.id,
               currentStep,
-              allowFullNavigation
+              allowFullNavigation,
+              completedSteps
             );
             const isClickable =
               step.id !== currentStep &&
               Boolean(onStepClick) &&
-              (allowFullNavigation || isComplete);
+              (allowFullNavigation || step.id < currentStep);
 
             const labelClassName = `flex-1 text-center text-[9px] font-bold truncate transition-colors ${
               isCurrent
                 ? "text-violet-700 dark:text-violet-400 cursor-default"
-                : isComplete
+                : isClickable
                   ? "text-slate-600 dark:text-slate-400 cursor-pointer hover:text-violet-700 dark:hover:text-violet-400"
-                  : "text-slate-500 dark:text-slate-600 cursor-not-allowed"
+                  : isComplete
+                    ? "text-slate-600 dark:text-slate-400"
+                    : "text-slate-500 dark:text-slate-600 cursor-not-allowed"
             }`;
 
             if (isClickable) {
