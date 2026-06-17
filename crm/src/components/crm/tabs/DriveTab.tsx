@@ -10,12 +10,12 @@ import {
   DriveModal,
   DrivePreviewModal,
 } from "../drive/DriveModals";
-import { DriveToolbar } from "../drive/DriveToolbar";
+import type { DriveToolbarProps } from "../drive/DriveToolbar";
+import { useMainDriveToolbar } from "../drive/MainDriveToolbarContext";
 import {
   DRIVE_ACCENT_TEXT,
   DRIVE_BTN_PRIMARY,
   DRIVE_BTN_SECONDARY,
-  DRIVE_BORDER,
   DRIVE_CONTENT_BG,
   DRIVE_INPUT,
   DRIVE_TEXT_SECONDARY,
@@ -35,6 +35,7 @@ import {
 
 export function DriveTab() {
   const { currentRole, showToast } = useCrmLayoutContext();
+  const { setToolbarProps } = useMainDriveToolbar();
   const isAdmin = currentRole === "ADMIN";
 
   const [rootFolderId, setRootFolderId] = useState<string | null>(null);
@@ -588,6 +589,50 @@ export function DriveTab() {
 
   const showDriveCard = !!rootFolderId || isAdmin;
 
+  const mainDriveToolbarProps = useMemo<DriveToolbarProps | null>(() => {
+    if (!showDriveCard) return null;
+    return {
+      breadcrumbs,
+      onNavigate: navigateToBreadcrumb,
+      search,
+      onSearchChange: setSearch,
+      viewMode,
+      onViewModeChange: setViewMode,
+      onRefresh: refreshCurrent,
+      onCopyFolderLink: currentFolderId ? handleCopyFolderLink : undefined,
+      typeFilter,
+      onTypeFilterChange: setTypeFilter,
+      isAdmin,
+      isUploading,
+      onUploadClick: () => fileInputRef.current?.click(),
+      onFolderUploadClick: () => folderInputRef.current?.click(),
+      onNewFolder: () => setShowNewFolderModal(true),
+      onNewFile: () => setShowNewFileModal(true),
+      onCreateGoogleFile: handleCreateGoogleFile,
+      onOpenLinkSettings: isAdmin ? () => setShowLinkSettingsModal(true) : undefined,
+      refreshing: isRefreshing,
+    };
+  }, [
+    showDriveCard,
+    breadcrumbs,
+    navigateToBreadcrumb,
+    search,
+    viewMode,
+    refreshCurrent,
+    currentFolderId,
+    handleCopyFolderLink,
+    typeFilter,
+    isAdmin,
+    isUploading,
+    handleCreateGoogleFile,
+    isRefreshing,
+  ]);
+
+  useEffect(() => {
+    setToolbarProps(mainDriveToolbarProps);
+    return () => setToolbarProps(null);
+  }, [mainDriveToolbarProps, setToolbarProps]);
+
   return (
     <div className="w-full max-w-full min-w-0 space-y-6">
       {isAccessDenied && (
@@ -598,33 +643,7 @@ export function DriveTab() {
       )}
 
       {showDriveCard && (
-        <div className={`w-full max-w-full shrink-0 rounded-[14px] border ${DRIVE_BORDER} overflow-hidden`}>
-          <DriveToolbar
-            breadcrumbs={breadcrumbs}
-            onNavigate={navigateToBreadcrumb}
-            search={search}
-            onSearchChange={setSearch}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-            onRefresh={refreshCurrent}
-            onCopyFolderLink={
-              currentFolderId ? handleCopyFolderLink : undefined
-            }
-            typeFilter={typeFilter}
-            onTypeFilterChange={setTypeFilter}
-            isAdmin={isAdmin}
-            isUploading={isUploading}
-            onUploadClick={() => fileInputRef.current?.click()}
-            onFolderUploadClick={() => folderInputRef.current?.click()}
-            onNewFolder={() => setShowNewFolderModal(true)}
-            onNewFile={() => setShowNewFileModal(true)}
-            onCreateGoogleFile={handleCreateGoogleFile}
-            onOpenLinkSettings={
-              isAdmin ? () => setShowLinkSettingsModal(true) : undefined
-            }
-            refreshing={isRefreshing}
-          />
-
+        <div className="w-full max-w-full shrink-0">
           <div className={DRIVE_CONTENT_BG}>
             {rootFolderId ? (
               <DriveBrowser

@@ -1,0 +1,85 @@
+/* Loaded after globals.css — mirrors crm-dropdown-scroll width pattern */
+
+.crm-slim-scrollbar {
+  overflow-x: hidden !important;
+  scrollbar-width: thin !important;
+  scrollbar-gutter: auto !important;
+}
+
+html.dark .crm-slim-scrollbar {
+  scrollbar-color: rgba(100, 116, 139, 0.55) transparent !important;
+}
+
+html.light .crm-slim-scrollbar {
+  scrollbar-color: rgba(148, 163, 184, 0.65) transparent !important;
+}
+
+/* Same width pattern as .crm-dropdown-scroll (height: 0 is required for thin vertical bar) */
+html.dark .crm-slim-scrollbar::-webkit-scrollbar,
+html.light .crm-slim-scrollbar::-webkit-scrollbar,
+html.dark #lead-details-scroll.crm-slim-scrollbar::-webkit-scrollbar,
+html.light #lead-details-scroll.crm-slim-scrollbar::-webkit-scrollbar,
+html.dark #crm-main-scroll.crm-slim-scrollbar::-webkit-scrollbar,
+html.light #crm-main-scroll.crm-slim-scrollbar::-webkit-scrollbar,
+html.dark .discussion-rich-editor.crm-slim-scrollbar::-webkit-scrollbar,
+html.light .discussion-rich-editor.crm-slim-scrollbar::-webkit-scrollbar {
+  width: 2px !important;
+  height: 0 !important;
+}
+
+html.dark .crm-slim-scrollbar::-webkit-scrollbar-track,
+html.light .crm-slim-scrollbar::-webkit-scrollbar-track,
+html.dark #lead-details-scroll.crm-slim-scrollbar::-webkit-scrollbar-track,
+html.light #lead-details-scroll.crm-slim-scrollbar::-webkit-scrollbar-track,
+html.dark #crm-main-scroll.crm-slim-scrollbar::-webkit-scrollbar-track,
+html.light #crm-main-scroll.crm-slim-scrollbar::-webkit-scrollbar-track,
+html.dark .discussion-rich-editor.crm-slim-scrollbar::-webkit-scrollbar-track,
+html.light .discussion-rich-editor.crm-slim-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+/* Thumb color — same technique as dropdown (background-color, no border) */
+html.dark .crm-slim-scrollbar::-webkit-scrollbar-thumb,
+html.dark #lead-details-scroll.crm-slim-scrollbar::-webkit-scrollbar-thumb,
+html.dark #crm-main-scroll.crm-slim-scrollbar::-webkit-scrollbar-thumb,
+html.dark .discussion-rich-editor.crm-slim-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.5) !important;
+  border-radius: 999px !important;
+  border: none !important;
+}
+
+html.light .crm-slim-scrollbar::-webkit-scrollbar-thumb,
+html.light #lead-details-scroll.crm-slim-scrollbar::-webkit-scrollbar-thumb,
+html.light #crm-main-scroll.crm-slim-scrollbar::-webkit-scrollbar-thumb,
+html.light .discussion-rich-editor.crm-slim-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.55) !important;
+  border-radius: 999px !important;
+  border: none !important;
+}
+
+html.dark .crm-slim-scrollbar::-webkit-scrollbar-thumb:hover,
+html.dark #lead-details-scroll.crm-slim-scrollbar::-webkit-scrollbar-thumb:hover,
+html.dark #crm-main-scroll.crm-slim-scrollbar::-webkit-scrollbar-thumb:hover,
+html.dark .discussion-rich-editor.crm-slim-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(148, 163, 184, 0.65) !important;
+}
+
+html.light .crm-slim-scrollbar::-webkit-scrollbar-thumb:hover,
+html.light #lead-details-scroll.crm-slim-scrollbar::-webkit-scrollbar-thumb:hover,
+html.light #crm-main-scroll.crm-slim-scrollbar::-webkit-scrollbar-thumb:hover,
+html.light .discussion-rich-editor.crm-slim-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.65) !important;
+}
+
+.crm-slim-scrollbar::-webkit-scrollbar-button,
+.crm-slim-scrollbar::-webkit-scrollbar-corner,
+#lead-details-scroll.crm-slim-scrollbar::-webkit-scrollbar-button,
+#lead-details-scroll.crm-slim-scrollbar::-webkit-scrollbar-corner,
+#crm-main-scroll.crm-slim-scrollbar::-webkit-scrollbar-button,
+#crm-main-scroll.crm-slim-scrollbar::-webkit-scrollbar-corner,
+.discussion-rich-editor.crm-slim-scrollbar::-webkit-scrollbar-button,
+.discussion-rich-editor.crm-slim-scrollbar::-webkit-scrollbar-corner {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}

@@ -81,7 +81,7 @@ export function LeadDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={leadDetailTab === "details" ? "h-full min-h-0 flex flex-col" : "space-y-6"}>
       {showCreatedBanner && (
         <div
           role="status"
@@ -106,9 +106,11 @@ export function LeadDetailPage() {
         </div>
       )}
 
-      <div role="tabpanel" aria-label={leadDetailTab}>
+      <div role="tabpanel" aria-label={leadDetailTab} className={leadDetailTab === "details" ? "flex-1 min-h-0" : undefined}>
         {leadDetailTab === "details" && (
-          <LeadDetailsSection lead={lead} highlighted={highlightSummary} />
+          <div className="-m-4 md:-m-8 px-4 md:px-6 pt-4 md:pt-6 pb-2 md:pb-3 h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
+            <LeadDetailsSection lead={lead} highlighted={highlightSummary} />
+          </div>
         )}
         {leadDetailTab === "checklist" && canAccessLeadChecklist && (
           <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start">

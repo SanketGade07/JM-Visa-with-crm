@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { createPortal } from "react-dom";
 import DataTable, { type Column } from "@/components/ui/DataTable";
 import { TableViewToggle } from "@/components/crm/ui/TableViewToggle";
 import {
@@ -16,6 +17,10 @@ import {
 import { FiGrid, FiList } from "react-icons/fi";
 import { DriveItemIcon } from "./DriveItemIcon";
 import type { Breadcrumb, DriveItem, DriveTypeFilter } from "./driveUtils";
+import {
+  getDrivePortalMenuPosition,
+  type DrivePortalMenuPosition,
+} from "./driveUtils";
 import {
   DRIVE_ACCENT_TEXT,
   DRIVE_BORDER,
@@ -226,6 +231,29 @@ export function DriveBrowser(props: DriveBrowserProps) {
   const onCreateGoogleFile = !embedded ? props.onCreateGoogleFile : () => {};
 
   const [googleMenuOpen, setGoogleMenuOpen] = React.useState(false);
+  const [googleMenuPos, setGoogleMenuPos] = React.useState<DrivePortalMenuPosition>({
+    top: 0,
+    right: 8,
+    minWidth: 176,
+  });
+  const googleMenuTriggerRef = React.useRef<HTMLButtonElement>(null);
+
+  const updateGoogleMenuPosition = React.useCallback(() => {
+    if (!googleMenuTriggerRef.current) return;
+    setGoogleMenuPos(getDrivePortalMenuPosition(googleMenuTriggerRef.current, 176));
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (!googleMenuOpen) return;
+    updateGoogleMenuPosition();
+    const onReposition = () => updateGoogleMenuPosition();
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [googleMenuOpen, updateGoogleMenuPosition]);
 
   const folderColorById = React.useMemo(() => {
     const map = new Map<string, number>();
@@ -303,6 +331,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
       </button>
       <div className="relative">
         <button
+          ref={googleMenuTriggerRef}
           type="button"
           onClick={() => setGoogleMenuOpen((v) => !v)}
           className={DRIVE_BTN_SECONDARY}
@@ -310,36 +339,46 @@ export function DriveBrowser(props: DriveBrowserProps) {
           <FaGoogle />
           New
         </button>
-        {googleMenuOpen && (
-          <>
-            <div
-              className="fixed inset-0 z-10"
-              onClick={() => setGoogleMenuOpen(false)}
-              aria-hidden
-            />
-            <div className={`absolute right-0 top-full mt-1.5 w-44 py-1 z-20 ${DRIVE_DROPDOWN}`}>
-              {(
-                [
-                  ["document", "Google Doc"],
-                  ["spreadsheet", "Google Sheet"],
-                  ["presentation", "Google Slides"],
-                ] as const
-              ).map(([type, label]) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => {
-                    onCreateGoogleFile(type);
-                    setGoogleMenuOpen(false);
+        {googleMenuOpen && typeof document !== "undefined"
+          ? createPortal(
+              <>
+                <div
+                  className="fixed inset-0 z-[140]"
+                  onClick={() => setGoogleMenuOpen(false)}
+                  aria-hidden
+                />
+                <div
+                  className={`fixed z-[150] w-44 py-1 ${DRIVE_DROPDOWN}`}
+                  style={{
+                    top: googleMenuPos.top,
+                    right: googleMenuPos.right,
+                    minWidth: googleMenuPos.minWidth,
                   }}
-                  className={`w-full text-left px-3.5 py-2 text-xs ${DRIVE_TEXT_PRIMARY} ${DRIVE_ROW_HOVER} transition-colors`}
                 >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+                  {(
+                    [
+                      ["document", "Google Doc"],
+                      ["spreadsheet", "Google Sheet"],
+                      ["presentation", "Google Slides"],
+                    ] as const
+                  ).map(([type, label]) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => {
+                        onCreateGoogleFile(type);
+                        setGoogleMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-3.5 py-2 text-xs ${DRIVE_TEXT_PRIMARY} ${DRIVE_ROW_HOVER} transition-colors`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </>,
+              document.body
+            )
+          : null}
       </div>
     </div>
   ) : null;

@@ -20,7 +20,8 @@ export function CrmTabViews() {
   return (
     <div
       data-crm-scroll-container
-      className="flex-1 overflow-y-auto p-4 md:p-8 [scrollbar-gutter:stable]"
+      id="crm-main-scroll"
+      className="crm-slim-scrollbar flex-1 overflow-y-auto p-4 md:p-8"
     >
       {currentTab === "Dashboard" && <DashboardTab />}
       {currentTab === "Leads" && isLeadDetailRoute && canViewLeads && <LeadDetailPage />}

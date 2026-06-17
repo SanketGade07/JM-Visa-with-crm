@@ -257,7 +257,7 @@ html.light select option {
 
 html.light select:focus,
 html.light input:focus:not([type="checkbox"]):not([type="radio"]):not(.filter-select__input):not(.react-select__input):not(.column-search__input):not(.country-select__input),
-html.light textarea:focus {
+html.light textarea:focus:not(.lead-description-input) {
   border-color: #3b82f6 !important;
   box-shadow: 0 0 0 1px #3b82f6 !important;
 }
@@ -301,16 +301,16 @@ html.light [class*="bg-gradient-to-r"].from-violet-600\/25 {
 }
 
 /* Checkboxes */
-html.light input[type="checkbox"] {
+html.light input[type="checkbox"]:not(.checklist-item-checkbox) {
   accent-color: #3b82f6 !important;
   border-color: #e5e7eb !important; /* gray-200 — very subtle */
 }
 
-html.dark input[type="checkbox"] {
+html.dark input[type="checkbox"]:not(.checklist-item-checkbox) {
   border-color: rgba(100, 116, 139, 0.35) !important; /* slate-500 at 35% — barely visible */
 }
 
-input[type="checkbox"] {
+input[type="checkbox"]:not(.checklist-item-checkbox) {
   -webkit-appearance: none;
   appearance: none;
   width: 14px;
@@ -323,22 +323,22 @@ input[type="checkbox"] {
   transition: all 0.15s ease;
 }
 
-html.light input[type="checkbox"] {
+html.light input[type="checkbox"]:not(.checklist-item-checkbox) {
   background-color: #fff;
   border-color: #e2e5e9 !important;
 }
 
-html.dark input[type="checkbox"] {
+html.dark input[type="checkbox"]:not(.checklist-item-checkbox) {
   background-color: rgba(15, 23, 42, 0.3);
   border-color: rgba(100, 116, 139, 0.3) !important;
 }
 
-input[type="checkbox"]:checked {
+input[type="checkbox"]:not(.checklist-item-checkbox):checked {
   background-color: #3b82f6 !important;
   border-color: #3b82f6 !important;
 }
 
-input[type="checkbox"]:checked::after {
+input[type="checkbox"]:not(.checklist-item-checkbox):checked::after {
   content: '';
   position: absolute;
   left: 3.5px;
@@ -348,6 +348,53 @@ input[type="checkbox"]:checked::after {
   border: solid white;
   border-width: 0 1.5px 1.5px 0;
   transform: rotate(45deg);
+}
+
+/* Document checklist — custom checkbox tuned for light/dark */
+input[type="checkbox"].checklist-item-checkbox {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 3px;
+  background-color: #fff;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+html.dark input[type="checkbox"].checklist-item-checkbox {
+  border-color: #475569 !important;
+  background-color: #1e293b !important;
+}
+
+input[type="checkbox"].checklist-item-checkbox:checked {
+  background-color: #10b981 !important;
+  border-color: #10b981 !important;
+}
+
+html.dark input[type="checkbox"].checklist-item-checkbox:checked {
+  background-color: #059669 !important;
+  border-color: #059669 !important;
+}
+
+input[type="checkbox"].checklist-item-checkbox:checked::after {
+  content: "";
+  position: absolute;
+  left: 3.5px;
+  top: 1px;
+  width: 4.5px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+input[type="checkbox"].checklist-item-checkbox:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* Radio buttons — custom dot (native ::after on inputs is unreliable) */
@@ -837,48 +884,48 @@ html.dark .status-select-pill[data-status="Dropped"] {
    PREMIUM CUSTOM SCROLLBARS (Theme-Aware)
    ========================================== */
 
-/* Width and height of scrollbar */
-::-webkit-scrollbar {
+/* Width and height of scrollbar — exclude slim-scrollbar targets */
+:not(.crm-slim-scrollbar)::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 /* Scrollbar Track */
-html.dark ::-webkit-scrollbar-track {
+html.dark :not(.crm-slim-scrollbar)::-webkit-scrollbar-track {
   background: rgba(10, 10, 20, 0.2);
 }
 
-html.light ::-webkit-scrollbar-track {
+html.light :not(.crm-slim-scrollbar)::-webkit-scrollbar-track {
   background: rgba(248, 250, 252, 0.5);
 }
 
 /* Scrollbar Thumb */
-html.dark ::-webkit-scrollbar-thumb {
+html.dark :not(.crm-slim-scrollbar)::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, 0.25) !important;
   border-radius: 9999px;
 }
 
-html.dark ::-webkit-scrollbar-thumb:hover {
+html.dark :not(.crm-slim-scrollbar)::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.45) !important;
 }
 
-html.light ::-webkit-scrollbar-thumb {
+html.light :not(.crm-slim-scrollbar)::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, 0.4) !important;
   border-radius: 9999px;
 }
 
-html.light ::-webkit-scrollbar-thumb:hover {
+html.light :not(.crm-slim-scrollbar)::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.6) !important;
 }
 
 /* Firefox scrollbar support */
-* {
+*:not(.crm-slim-scrollbar) {
   scrollbar-width: thin;
 }
-html.dark * {
+html.dark *:not(.crm-slim-scrollbar) {
   scrollbar-color: rgba(148, 163, 184, 0.25) rgba(10, 10, 20, 0.2);
 }
-html.light * {
+html.light *:not(.crm-slim-scrollbar) {
   scrollbar-color: rgba(148, 163, 184, 0.4) rgba(248, 250, 252, 0.5);
 }
 
@@ -1900,6 +1947,14 @@ html.dark .lead-mgmt-toolbar__tabs-panel {
   scrollbar-width: thin;
 }
 
+.crm-header__drive-toolbar {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: thin;
+}
+
 /* ── Lead detail vertical tab rail ───────────────────────────────────────── */
 .lead-detail-vertical-tabs {
   scrollbar-width: thin;
@@ -2008,4 +2063,113 @@ html.dark .quick-status-tabs .quick-status-tab--active {
   color: #60a5fa;
   background: #151c28;
   border-color: #1e293b;
+}
+
+/* Lead description — no hover background shift */
+html.light .lead-description-input:hover,
+html.dark .lead-description-input:hover {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(226, 232, 240, 0.8) !important;
+}
+
+html.dark .lead-description-input:hover {
+  background-color: rgba(15, 23, 42, 0.4) !important;
+  border-color: rgba(51, 65, 85, 0.6) !important;
+}
+
+/* Message composer — match description field border/focus/hover */
+html.light .discussion-message-input:hover,
+html.dark .discussion-message-input:hover {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(226, 232, 240, 0.8) !important;
+}
+
+html.dark .discussion-message-input:hover {
+  background-color: rgba(15, 23, 42, 0.4) !important;
+  border-color: rgba(51, 65, 85, 0.6) !important;
+}
+
+/* Description + message composer — shared focus ring (solid, not dim) */
+html.light .lead-description-input:focus,
+html.light .discussion-message-input:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 1px #3b82f6 !important;
+  outline: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
+html.dark .lead-description-input:focus,
+html.dark .discussion-message-input:focus {
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18) !important;
+  outline: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
+/* Lead discussion rich-text composer */
+.discussion-rich-editor::selection {
+  background: rgba(124, 58, 237, 0.38);
+  color: inherit;
+}
+
+html.dark .discussion-rich-editor::selection {
+  background: rgba(167, 139, 250, 0.45);
+  color: inherit;
+}
+
+.discussion-format-btn--active,
+.discussion-format-btn--active * {
+  color: #ffffff !important;
+}
+
+.discussion-rich-editor.is-empty::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+html.dark .discussion-rich-editor.is-empty::before {
+  color: #64748b;
+}
+
+.discussion-rich-editor ul {
+  list-style-type: disc;
+  margin: 0.25rem 0 0.25rem 1.25rem;
+  padding: 0;
+}
+
+.discussion-rich-editor li {
+  margin: 0.125rem 0;
+}
+
+.discussion-rich-editor a {
+  color: #7c3aed;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+html.dark .discussion-rich-editor a {
+  color: #a78bfa;
+}
+
+.discussion-message-content ul {
+  list-style-type: disc;
+  margin: 0.25rem 0 0.25rem 1.25rem;
+  padding: 0;
+}
+
+.discussion-message-content li {
+  margin: 0.125rem 0;
+}
+
+.discussion-message-content a {
+  color: #7c3aed;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+html.dark .discussion-message-content a {
+  color: #a78bfa;
 }

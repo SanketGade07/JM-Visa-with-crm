@@ -68,8 +68,8 @@ export function LeadChecklistSection({
   };
 
   return (
-    <div className="p-6 bg-white dark:bg-slate-900/60 border border-gray-200 dark:border-slate-800/80 rounded-2xl flex flex-col min-h-[calc(100vh-220px)] space-y-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none">
-      <div className="flex flex-col space-y-4 border-b border-gray-100 dark:border-slate-800 pb-4">
+    <div className="flex flex-col min-h-[calc(100vh-220px)] space-y-6 p-6">
+      <div className="flex flex-col space-y-4 pb-4">
         {showLeadHeader && (
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -133,10 +133,10 @@ export function LeadChecklistSection({
       <div className="space-y-8 overflow-y-auto flex-1 min-w-0 pb-2">
         {sections.map((section) => (
           <section key={section.title} className="space-y-3">
-            <h5 className="text-xs font-bold uppercase tracking-wider text-violet-700 dark:text-violet-400 border-b border-violet-100 dark:border-violet-500/20 pb-2">
+            <h5 className="text-xs font-bold uppercase tracking-wider text-violet-700 dark:text-violet-400">
               {section.title}
             </h5>
-            <div className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="w-full space-y-1">
               {section.items.map((item) => (
                 <DocumentChecklistItemRow
                   key={item.key}

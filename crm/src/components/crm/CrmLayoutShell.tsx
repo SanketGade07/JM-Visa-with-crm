@@ -2,6 +2,7 @@
 
 import React, { Suspense } from "react";
 import { CrmLayoutProvider, useCrmLayoutContext } from "./context/CrmLayoutContext";
+import { MainDriveToolbarProvider } from "./drive/MainDriveToolbarContext";
 import { CrmSidebar } from "./layout/CrmSidebar";
 import { CrmHeader } from "./layout/CrmHeader";
 import { CrmToast } from "./layout/CrmToast";
@@ -41,7 +42,9 @@ export default function CrmLayout() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-background" />}>
       <CrmLayoutProvider>
-        <CrmLayoutContent />
+        <MainDriveToolbarProvider>
+          <CrmLayoutContent />
+        </MainDriveToolbarProvider>
       </CrmLayoutProvider>
     </Suspense>
   );

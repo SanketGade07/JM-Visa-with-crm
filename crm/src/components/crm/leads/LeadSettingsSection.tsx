@@ -12,6 +12,8 @@ import {
 } from "@/utils/leadFilterOptions";
 import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
 import { SearchableFilterSelect } from "@/components/ui/FormInputs";
+import { CompactRadioGroup } from "@/components/crm/leads/create/CompactRadioGroup";
+import { isUsaCountry } from "@/utils/countryUtils";
 import {
   FiCalendar,
   FiCopy,
@@ -42,6 +44,19 @@ import {
 } from "../drive/driveTheme";
 import { extractFolderId, parseApiError } from "../drive/driveUtils";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
+
+type SlotStatus = "available" | "paid";
+
+const SLOT_STATUS_OPTIONS: { value: SlotStatus; label: string }[] = [
+  { value: "available", label: "Available" },
+  { value: "paid", label: "Paid" },
+];
+
+function deriveSlotStatus(lead: Lead): SlotStatus | "" {
+  if (lead.usaSlots?.slotsPaid) return "paid";
+  if (lead.usaSlots?.slotsAvailable) return "available";
+  return "";
+}
 
 type LeadSettingsSectionProps = {
   lead: Lead;
@@ -300,8 +315,11 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
     canModifyLeads,
     updateLeadProfile,
     assignCounselor,
+    updateUsaSlots,
     currentRole,
   } = useCrmLayoutContext();
+
+  const isUsa = isUsaCountry(lead.country);
 
   const isAdmin = currentRole === "ADMIN";
   const canManageDrive = isAdmin;
@@ -328,11 +346,76 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
   const [credPortalUrl, setCredPortalUrl] = useState(lead.visaCredentials?.portalUrl ?? "");
   const [savingCreds, setSavingCreds] = useState(false);
 
+  const [slotPortalUsername, setSlotPortalUsername] = useState(
+    lead.usaSlots?.slotPortalUsername ?? ""
+  );
+  const [slotPortalPassword, setSlotPortalPassword] = useState(
+    lead.usaSlots?.slotPortalPassword ?? ""
+  );
+  const [savingSlotPortal, setSavingSlotPortal] = useState(false);
+
+  const [trackingMobile, setTrackingMobile] = useState(lead.usaSlots?.trackingMobile ?? "");
+  const [securityCar, setSecurityCar] = useState(lead.usaSlots?.securityCar ?? "");
+  const [securityFood, setSecurityFood] = useState(lead.usaSlots?.securityFood ?? "");
+  const [securityCity, setSecurityCity] = useState(lead.usaSlots?.securityCity ?? "");
+  const [savingUsaTracking, setSavingUsaTracking] = useState(false);
+
   useEffect(() => {
     setCredUsername(lead.visaCredentials?.username ?? "");
     setCredPassword(lead.visaCredentials?.password ?? "");
     setCredPortalUrl(lead.visaCredentials?.portalUrl ?? "");
   }, [lead.id, lead.visaCredentials]);
+
+  useEffect(() => {
+    setSlotPortalUsername(lead.usaSlots?.slotPortalUsername ?? "");
+    setSlotPortalPassword(lead.usaSlots?.slotPortalPassword ?? "");
+  }, [lead.id, lead.usaSlots?.slotPortalUsername, lead.usaSlots?.slotPortalPassword]);
+
+  useEffect(() => {
+    setTrackingMobile(lead.usaSlots?.trackingMobile ?? "");
+    setSecurityCar(lead.usaSlots?.securityCar ?? "");
+    setSecurityFood(lead.usaSlots?.securityFood ?? "");
+    setSecurityCity(lead.usaSlots?.securityCity ?? "");
+  }, [
+    lead.id,
+    lead.usaSlots?.trackingMobile,
+    lead.usaSlots?.securityCar,
+    lead.usaSlots?.securityFood,
+    lead.usaSlots?.securityCity,
+  ]);
+
+  const handleSlotStatusChange = (value: SlotStatus) => {
+    if (!canModifyLeads) return;
+    updateUsaSlots(lead.id, {
+      slotsAvailable: value === "available",
+      slotsPaid: value === "paid",
+    });
+    showToast("Slot status updated", "success");
+  };
+
+  const handleSaveSlotPortal = () => {
+    if (!canModifyLeads) return;
+    setSavingSlotPortal(true);
+    updateUsaSlots(lead.id, {
+      slotPortalUsername: slotPortalUsername.trim(),
+      slotPortalPassword: slotPortalPassword.trim(),
+    });
+    setSavingSlotPortal(false);
+    showToast("Slot portal credentials saved", "success");
+  };
+
+  const handleSaveUsaTracking = () => {
+    if (!canModifyLeads) return;
+    setSavingUsaTracking(true);
+    updateUsaSlots(lead.id, {
+      trackingMobile: trackingMobile.trim(),
+      securityCar: securityCar.trim(),
+      securityFood: securityFood.trim(),
+      securityCity: securityCity.trim(),
+    });
+    setSavingUsaTracking(false);
+    showToast("USA tracking details saved", "success");
+  };
 
   const handleSaveCredentials = async () => {
     setSavingCreds(true);
@@ -578,6 +661,141 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
           accentClass="border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
         />
       </div>
+
+      {isUsa ? (
+        <SettingsCard title="USA Slot Portal">
+          <div className="space-y-4">
+            <fieldset disabled={!canModifyLeads} className="space-y-1.5 border-0 p-0 m-0 min-w-0">
+              <legend className={`${fieldLabelCls} float-left mb-1.5`}>US Slot Tracking</legend>
+              <div className="clear-both">
+                <CompactRadioGroup
+                  name={`settings-slot-status-${lead.id}`}
+                  value={deriveSlotStatus(lead)}
+                  options={SLOT_STATUS_OPTIONS}
+                  onChange={handleSlotStatusChange}
+                  firstOptionId={`settings-slot-status-available-${lead.id}`}
+                />
+              </div>
+            </fieldset>
+
+            <div className="space-y-3 border-t border-gray-200 dark:border-slate-800/80 pt-4">
+              <span className={fieldLabelCls}>Slot Portal</span>
+              <div className="space-y-1.5">
+                <label className={fieldLabelCls} htmlFor={`settings-slot-portal-user-${lead.id}`}>
+                  User ID
+                </label>
+                <input
+                  id={`settings-slot-portal-user-${lead.id}`}
+                  type="text"
+                  value={slotPortalUsername}
+                  onChange={(e) => setSlotPortalUsername(e.target.value)}
+                  disabled={!canModifyLeads}
+                  placeholder="Slot portal username"
+                  className={fieldInputCls}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className={fieldLabelCls} htmlFor={`settings-slot-portal-password-${lead.id}`}>
+                  Password
+                </label>
+                <input
+                  id={`settings-slot-portal-password-${lead.id}`}
+                  type="text"
+                  value={slotPortalPassword}
+                  onChange={(e) => setSlotPortalPassword(e.target.value)}
+                  disabled={!canModifyLeads}
+                  placeholder="Slot portal password"
+                  className={fieldInputCls}
+                  autoComplete="new-password"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={!canModifyLeads || savingSlotPortal}
+                onClick={handleSaveSlotPortal}
+                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-50 font-bold text-white text-xs rounded-xl cursor-pointer transition-colors"
+              >
+                {savingSlotPortal ? "Saving…" : "Save Slot Portal"}
+              </button>
+            </div>
+
+            <div className="space-y-3 border-t border-gray-200 dark:border-slate-800/80 pt-4">
+              <span className={fieldLabelCls}>USA Slot Tracking</span>
+              <div className="space-y-1.5">
+                <label className={fieldLabelCls} htmlFor={`settings-usa-mobile-${lead.id}`}>
+                  Mobile Number
+                </label>
+                <input
+                  id={`settings-usa-mobile-${lead.id}`}
+                  type="text"
+                  value={trackingMobile}
+                  onChange={(e) => setTrackingMobile(e.target.value)}
+                  disabled={!canModifyLeads}
+                  placeholder="Tracking mobile number"
+                  className={fieldInputCls}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <label className={fieldLabelCls} htmlFor={`settings-usa-car-${lead.id}`}>
+                    Car
+                  </label>
+                  <input
+                    id={`settings-usa-car-${lead.id}`}
+                    type="text"
+                    value={securityCar}
+                    onChange={(e) => setSecurityCar(e.target.value)}
+                    disabled={!canModifyLeads}
+                    placeholder="e.g. BMW"
+                    className={fieldInputCls}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={fieldLabelCls} htmlFor={`settings-usa-food-${lead.id}`}>
+                    Food
+                  </label>
+                  <input
+                    id={`settings-usa-food-${lead.id}`}
+                    type="text"
+                    value={securityFood}
+                    onChange={(e) => setSecurityFood(e.target.value)}
+                    disabled={!canModifyLeads}
+                    placeholder="e.g. FISH"
+                    className={fieldInputCls}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={fieldLabelCls} htmlFor={`settings-usa-city-${lead.id}`}>
+                    City
+                  </label>
+                  <input
+                    id={`settings-usa-city-${lead.id}`}
+                    type="text"
+                    value={securityCity}
+                    onChange={(e) => setSecurityCity(e.target.value)}
+                    disabled={!canModifyLeads}
+                    placeholder="e.g. MUMBAI"
+                    className={fieldInputCls}
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={!canModifyLeads || savingUsaTracking}
+                onClick={handleSaveUsaTracking}
+                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-50 font-bold text-white text-xs rounded-xl cursor-pointer transition-colors"
+              >
+                {savingUsaTracking ? "Saving…" : "Save Tracking Details"}
+              </button>
+            </div>
+          </div>
+        </SettingsCard>
+      ) : null}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <SettingsCard title="Visa Portal Credentials">

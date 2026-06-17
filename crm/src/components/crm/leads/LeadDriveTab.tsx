@@ -12,7 +12,6 @@ import {
 } from "../drive/DriveModals";
 import { DriveToolbar } from "../drive/DriveToolbar";
 import {
-  DRIVE_BORDER,
   DRIVE_BTN_PRIMARY,
   DRIVE_BTN_SECONDARY,
   DRIVE_CONTENT_BG,
@@ -649,7 +648,7 @@ export function LeadDriveTab({ lead }: LeadDriveTabProps) {
         </div>
       )}
 
-      <div className={`w-full max-w-full shrink-0 rounded-[14px] border ${DRIVE_BORDER} overflow-hidden`}>
+      <div className="w-full max-w-full shrink-0">
         {showDriveBrowser ? (
           <>
             <DriveToolbar

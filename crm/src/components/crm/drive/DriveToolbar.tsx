@@ -35,6 +35,8 @@ export type DriveToolbarProps = {
   onNewFile: () => void;
   onCreateGoogleFile: (type: "document" | "spreadsheet" | "presentation") => void;
   onOpenLinkSettings?: () => void;
+  /** Compact layout for CRM header (main Drive tab only). */
+  variant?: "header" | "inline";
 };
 
 export function DriveToolbar({
@@ -57,12 +59,28 @@ export function DriveToolbar({
   onNewFile,
   onCreateGoogleFile,
   onOpenLinkSettings,
+  variant = "inline",
 }: DriveToolbarProps) {
+  const isHeader = variant === "header";
+  const wrapperClass = isHeader
+    ? "flex w-full min-w-0 items-center"
+    : DRIVE_TOOLBAR;
+
+  const gridClass = isHeader
+    ? "grid w-full min-w-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(140px,320px)_auto] items-center gap-2 md:gap-3"
+    : "grid w-full min-w-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 lg:gap-4";
+
   return (
-    <div className={DRIVE_TOOLBAR}>
-      <div className="grid w-full min-w-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 lg:gap-4">
+    <div className={wrapperClass}>
+      <div className={gridClass}>
         {/* Left: breadcrumbs */}
-        <div className="min-w-0 order-1 lg:order-none">
+        <div
+          className={
+            isHeader
+              ? "min-w-0 justify-self-start text-left order-1 md:order-none md:col-start-1"
+              : "min-w-0 order-1 lg:order-none"
+          }
+        >
           <DriveBreadcrumbs
             breadcrumbs={breadcrumbs}
             onNavigate={onNavigate}
@@ -75,12 +93,24 @@ export function DriveToolbar({
         </div>
 
         {/* Center: search */}
-        <div className="flex justify-center order-3 lg:order-none w-full lg:w-auto">
-          <DriveSearchBar value={search} onChange={onSearchChange} />
+        <div
+          className={
+            isHeader
+              ? "flex min-w-0 w-full justify-center order-3 md:order-none md:col-start-2"
+              : "flex justify-center order-3 lg:order-none w-full lg:w-auto"
+          }
+        >
+          <DriveSearchBar value={search} onChange={onSearchChange} compact={isHeader} />
         </div>
 
         {/* Right: actions */}
-        <div className="flex flex-wrap items-center gap-2 justify-end order-2 lg:order-none">
+        <div
+          className={
+            isHeader
+              ? "flex shrink-0 flex-wrap items-center gap-1.5 justify-end justify-self-end order-2 md:order-none md:col-start-3"
+              : "flex flex-wrap items-center gap-2 justify-end order-2 lg:order-none"
+          }
+        >
           {isAdmin ? (
             <DriveNewMenu
               isUploading={isUploading}

@@ -662,7 +662,7 @@ export function CreateLeadWizardPage({
                 />
               </FormSection>
             </FormSectionGrid>
-            <FormSection label="Initial File Notes">
+            <FormSection label="Description">
               <textarea
                 rows={2}
                 value={state.notes}

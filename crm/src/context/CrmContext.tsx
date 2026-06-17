@@ -168,6 +168,7 @@ interface CrmContextType {
   toggleChecklistItem: (leadId: string, item: string) => void;
   updateUsaSlots: (leadId: string, slots: Partial<UsaSlotTracking>) => void;
   addPayment: (leadId: string, payment: Omit<PaymentDetails, "invoiceNumber" | "date">) => void;
+  setLeadPackage: (leadId: string, totalPackage: number) => void;
   addMeeting: (meeting: Omit<Meeting, "id">) => void;
   updateMeeting: (meeting: Meeting) => void;
   deleteLead: (leadId: string) => void;
@@ -600,6 +601,55 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const setLeadPackage = (leadId: string, totalPackage: number) => {
+    if (totalPackage <= 0) return;
+    const today = new Date().toISOString().split("T")[0];
+    const updated = leads.map((lead) => {
+      if (lead.id !== leadId) return lead;
+      const payments = lead.payments || [];
+      const currentPackage = payments[0]?.totalPackage || 0;
+      if (currentPackage > 0) return lead;
+
+      const received = payments.reduce((acc, p) => acc + p.amountPaid, 0);
+      const pendingAmount = Math.max(0, totalPackage - received);
+
+      if (payments.length === 0) {
+        const invoiceNum = `INV-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+        return {
+          ...lead,
+          payments: [
+            {
+              totalPackage,
+              amountPaid: 0,
+              pendingAmount: totalPackage,
+              paymentMethod: "Pending",
+              invoiceNumber: invoiceNum,
+              date: today,
+            },
+          ],
+          lastUpdated: today,
+        };
+      }
+
+      return {
+        ...lead,
+        payments: payments.map((payment, index) =>
+          index === 0
+            ? { ...payment, totalPackage, pendingAmount }
+            : { ...payment, totalPackage }
+        ),
+        lastUpdated: today,
+      };
+    });
+    syncLeads(updated);
+    logActivity({
+      leadId,
+      type: "payment",
+      content: `Package amount set to ₹${totalPackage.toLocaleString()}`,
+      createdBy: currentRole,
+    });
+  };
+
   const addMeeting = (meetingData: Omit<Meeting, "id">) => {
     const newMeeting: Meeting = { ...meetingData, id: `meet-${Date.now()}` };
     syncMeetings([...meetings, newMeeting]);
@@ -1014,6 +1064,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleChecklistItem,
         updateUsaSlots,
         addPayment,
+        setLeadPackage,
         addMeeting,
         updateMeeting,
         deleteLead,

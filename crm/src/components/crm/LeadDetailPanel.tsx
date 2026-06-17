@@ -3,6 +3,7 @@
 import React from "react";
 import type { Lead, VisaStatus } from "@/context/CrmContext";
 import { StatusPill } from "@/components/ui/DataTable";
+import { StatusSelectPill } from "@/components/ui/StatusSelectPill";
 import {
   DEFAULT_EMPLOYMENT_CATEGORY,
   getChecklistKeysForLead,
@@ -46,27 +47,15 @@ export function LeadDetailPanel({
         <div className="space-y-4 border-t border-gray-100 dark:border-slate-800/80 pt-4">
           <div className="space-y-1.5">
             <label className="text-gray-400 dark:text-slate-500 font-bold uppercase text-[10px] tracking-wider block">
-              Transition Status
+              Status
             </label>
-            <select
+            <StatusSelectPill
+              variant="field"
               value={lead.status}
-              onChange={(e) => onStatusChange(lead.id, e.target.value as VisaStatus)}
               disabled={!canModifyLeads}
-              className="w-full bg-white dark:bg-slate-800/40 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <option value="New Lead">New Lead</option>
-              <option value="Lead Assigned">Lead Assigned</option>
-              <option value="Contacted">Contacted</option>
-              <option value="Follow-Up">Follow-Up</option>
-              <option value="Interested">Interested</option>
-              <option value="Documents Pending">Documents Pending</option>
-              <option value="Documents Received">Documents Received</option>
-              <option value="Under Verification">Under Verification</option>
-              <option value="Ready For Submission">Ready For Submission</option>
-              <option value="Visa Submitted">Visa Submitted</option>
-              <option value="Approved / Rejected">Approved / Rejected</option>
-              <option value="Closed">Closed</option>
-            </select>
+              portalId={`panel-status-${lead.id}`}
+              onChange={(status) => onStatusChange(lead.id, status)}
+            />
           </div>
 
           <div className="space-y-1.5">

@@ -586,3 +586,22 @@ export function getDriveItemMenuPosition(
   x = Math.max(8, Math.min(x, window.innerWidth - menuWidth - 8));
   return { x, y };
 }
+
+export type DrivePortalMenuPosition = {
+  top: number;
+  right: number;
+  minWidth: number;
+};
+
+/** Position a toolbar dropdown menu via portal (right-aligned to trigger). */
+export function getDrivePortalMenuPosition(
+  trigger: HTMLElement,
+  minWidth = 200
+): DrivePortalMenuPosition {
+  const rect = trigger.getBoundingClientRect();
+  return {
+    top: rect.bottom + 6,
+    right: Math.max(8, window.innerWidth - rect.right),
+    minWidth: Math.max(rect.width, minWidth),
+  };
+}

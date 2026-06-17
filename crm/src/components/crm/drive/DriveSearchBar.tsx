@@ -13,9 +13,10 @@ import {
 type DriveSearchBarProps = {
   value: string;
   onChange: (value: string) => void;
+  compact?: boolean;
 };
 
-export function DriveSearchBar({ value, onChange }: DriveSearchBarProps) {
+export function DriveSearchBar({ value, onChange, compact = false }: DriveSearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export function DriveSearchBar({ value, onChange }: DriveSearchBarProps) {
   }, []);
 
   return (
-    <div className="relative w-full max-w-[480px] mx-auto">
+    <div className={`relative w-full ${compact ? "max-w-[min(100%,320px)]" : "max-w-[480px] mx-auto"}`}>
       <FiSearch
         className={`absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] pointer-events-none ${DRIVE_TEXT_MUTED}`}
         aria-hidden

@@ -99,7 +99,7 @@ export const DRIVE_TITLE =
 export const DRIVE_SUBTITLE = "text-[11px] text-gray-600 dark:text-[#A0A6B0]";
 
 export const DRIVE_TOOLBAR =
-  `min-h-[52px] w-full min-w-full shrink-0 px-5 py-3 ${DRIVE_TOOLBAR_BG} border-b border-gray-200 dark:border-slate-700/50`;
+  `relative z-30 min-h-[52px] w-full min-w-full shrink-0 px-5 py-3 ${DRIVE_TOOLBAR_BG}`;
 
 /** Main content padding (grid + list bodies) */
 export const DRIVE_CONTENT_PADDING = "px-5 pt-4 pb-0";

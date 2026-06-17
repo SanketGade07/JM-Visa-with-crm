@@ -15,6 +15,8 @@ import {
 } from "react-icons/fi";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { LeadDetailTabBar } from "../leads/LeadDetailTabBar";
+import { DriveToolbar } from "../drive/DriveToolbar";
+import { useMainDriveToolbar } from "../drive/MainDriveToolbarContext";
 import { QuickStatusTabs } from "@/components/ui/QuickStatusTabs";
 import { useLeadQuickStatusTabs } from "@/hooks/useLeadQuickStatusTabs";
 import { DEFAULT_EMPLOYMENT_CATEGORY } from "@/utils/documentChecklistConfig";
@@ -49,6 +51,8 @@ export function CrmHeader() {
     setLeadDetailTab,
   } = useCrmLayoutContext();
 
+  const { toolbarProps: mainDriveToolbarProps } = useMainDriveToolbar();
+
   const { quickStatusTabs } = useLeadQuickStatusTabs();
 
   const tabsWithIcons = useMemo(
@@ -76,6 +80,12 @@ export function CrmHeader() {
       >
         <FiMenu className="text-lg" />
       </button>
+
+      {currentTab === "Drive" && mainDriveToolbarProps ? (
+        <div className="crm-header__drive-toolbar min-w-0 flex-1 overflow-visible z-10 flex justify-start">
+          <DriveToolbar variant="header" {...mainDriveToolbarProps} />
+        </div>
+      ) : null}
 
       {currentTab === "Leads" && !isLeadDetailRoute && (
         <div className="crm-header__tabs crm-header__tabs--list min-w-0 flex-1">
@@ -109,8 +119,8 @@ export function CrmHeader() {
             </div>
           </div>
           <div className="pointer-events-none absolute left-1/2 top-1/2 z-0 w-full max-w-[min(100%,calc(100%-9rem))] -translate-x-1/2 -translate-y-1/2 px-2 text-center">
-            <p className="truncate text-xs font-bold leading-tight text-white">{lead.name}</p>
-            <p className="truncate text-[10px] leading-tight text-slate-400">
+            <p className="truncate text-base font-bold leading-tight text-white">{lead.name}</p>
+            <p className="truncate text-sm leading-tight text-slate-400">
               {lead.country} · {lead.visaType}
             </p>
           </div>
@@ -129,18 +139,20 @@ export function CrmHeader() {
           )}
         </button>
 
-        <button
-          onClick={openCreateLead}
-          disabled={!canModifyLeads || isCreateLeadOpen}
-          className={`flex items-center gap-1 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-xs py-1.5 px-2 rounded-xl transition-all shadow-md shadow-violet-500/10 ${
-            !canModifyLeads || isCreateLeadOpen
-              ? "opacity-40 cursor-not-allowed"
-              : "hover:from-violet-500 hover:to-indigo-500"
-          }`}
-        >
-          <FaPlus className="text-[10px]" />
-          <span>New</span>
-        </button>
+        {currentTab !== "Drive" ? (
+          <button
+            onClick={openCreateLead}
+            disabled={!canModifyLeads || isCreateLeadOpen}
+            className={`flex items-center gap-1 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-xs py-1.5 px-2 rounded-xl transition-all shadow-md shadow-violet-500/10 ${
+              !canModifyLeads || isCreateLeadOpen
+                ? "opacity-40 cursor-not-allowed"
+                : "hover:from-violet-500 hover:to-indigo-500"
+            }`}
+          >
+            <FaPlus className="text-[10px]" />
+            <span>New</span>
+          </button>
+        ) : null}
 
         {currentTab === "Leads" && !isLeadDetailRoute && (
           <button

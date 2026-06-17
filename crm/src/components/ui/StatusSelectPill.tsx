@@ -20,6 +20,7 @@ type StatusSelectPillProps = {
   disabled?: boolean;
   onChange: (value: VisaStatus) => void;
   portalId?: string;
+  variant?: "pill" | "field";
 };
 
 export function StatusSelectPill({
@@ -27,6 +28,7 @@ export function StatusSelectPill({
   disabled,
   onChange,
   portalId = "status-pill-select",
+  variant = "pill",
 }: StatusSelectPillProps) {
   return (
     <TablePillSelect
@@ -35,6 +37,7 @@ export function StatusSelectPill({
       onChange={(v) => onChange(v as VisaStatus)}
       disabled={disabled}
       portalId={portalId}
+      variant={variant}
       getPillStyle={getStatusPillStyle}
       ariaLabel={`Status: ${getStatusLabel(value)}`}
       searchPlaceholder="Search status..."
