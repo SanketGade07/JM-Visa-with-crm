@@ -43,7 +43,7 @@ export function CrmSidebar() {
     hoveredCountry, setHoveredCountry, tooltipRef, tooltipPosRef, isMounted,
     handleCountryMouseEnter, handleCountryMouseMove, handleCountryMouseLeave,
     handleCountryClick, resetMap, startDate, setStartDate, endDate, setEndDate,
-    depositLeadId, setDepositLeadId, tempInvoiceFile, setTempInvoiceFile,
+    tempInvoiceFile, setTempInvoiceFile,
     tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
     allowedTabs, userAllowedTabs, canModifyLeads, canVerifyDocs, canSubmitVisa, canManagePayments,
     openSignedUrl, selectedLead, activeLeads, monthlyChart, chartMax, countryColors,

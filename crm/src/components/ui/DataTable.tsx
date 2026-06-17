@@ -16,7 +16,7 @@ import {
   type PageSizeOption,
 } from "@/components/crm/ui/Pagination";
 import { RiWhatsappLine } from "react-icons/ri";
-import { getStatusLabel, getStatusPillStyle } from "@/utils/leadStatusConfig";
+import { getStatusLabel, getStatusPillStyle, type StatusPillStyle } from "@/utils/leadStatusConfig";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Pixel-faithful "Lead Management" table — theme-aware (light + dark).
@@ -45,6 +45,8 @@ export type Column<T> = {
   filterSelectPlaceholder?: string;
   filterSelectPortalId?: string;
   filterSelectClearValue?: string;
+  filterSelectGetOptionStyle?: (value: string) => StatusPillStyle | undefined;
+  filterSelectShowSearch?: boolean;
 };
 
 export type RowAction<T> = {
@@ -365,6 +367,8 @@ export default function DataTable<T>({
                           if (val === clearValue) columnSearch.clearFilter(searchKey);
                           else columnSearch.setFilter(searchKey, val);
                         }}
+                        getOptionStyle={col.filterSelectGetOptionStyle}
+                        showSearch={col.filterSelectShowSearch ?? true}
                       />
                     ) : canSearch && searchKey && columnSearch ? (
                       <InlineColumnSearch

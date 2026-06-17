@@ -32,6 +32,7 @@ export function useColumnSearch(options: UseColumnSearchOptions = {}): ColumnSea
 
   const clearFilter = useCallback((key: string) => {
     setFilters((prev) => {
+      if (!(key in prev)) return prev;
       const next = { ...prev };
       delete next[key];
       return next;

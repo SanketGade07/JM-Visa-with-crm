@@ -2,7 +2,7 @@
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { FiChevronDown, FiSearch } from "react-icons/fi";
+import { FiCheck, FiChevronDown, FiSearch } from "react-icons/fi";
 import { TABLE_PILL_DROPDOWN_MAX_HEIGHT } from "@/utils/dropdownConstants";
 import { CRM_DROPDOWN_SCROLL_CLASS } from "@/utils/dropdownScrollStyles";
 import type { StatusPillStyle } from "@/utils/leadStatusConfig";
@@ -21,6 +21,8 @@ type TablePillSelectProps = {
   getPillStyle?: (value: string) => StatusPillStyle;
   ariaLabel?: string;
   searchPlaceholder?: string;
+  /** When false, dropdown shows options only (no in-menu search). Defaults to true. */
+  showSearch?: boolean;
   /** Override list max-height (e.g. status pill uses full height for all options). */
   maxMenuHeight?: number;
   /** Compact pill for table rows; full-width field for settings forms. */
@@ -89,6 +91,7 @@ export function TablePillSelect({
   getPillStyle,
   ariaLabel,
   searchPlaceholder = "Search...",
+  showSearch = true,
   maxMenuHeight = TABLE_PILL_DROPDOWN_MAX_HEIGHT,
   variant = "pill",
 }: TablePillSelectProps) {
@@ -102,12 +105,14 @@ export function TablePillSelect({
   const selected = options.find((o) => o.value === value) ?? { value, label: value };
   const pillClass = getPillClassName?.(value) ?? "";
   const pillStyle = getPillStyle?.(value);
+  const isColoredPillMenu = Boolean(getPillStyle);
 
   const filteredOptions = useMemo(() => {
+    if (!showSearch) return options;
     const q = menuSearch.trim().toLowerCase();
     if (!q) return options;
     return options.filter((o) => o.label.toLowerCase().includes(q));
-  }, [options, menuSearch]);
+  }, [options, menuSearch, showSearch]);
 
   const updateMenuPosition = () => {
     if (!triggerRef.current) return;
@@ -128,8 +133,8 @@ export function TablePillSelect({
   useLayoutEffect(() => {
     if (!open) return;
     updateMenuPosition();
-    searchRef.current?.focus();
-  }, [open]);
+    if (showSearch) searchRef.current?.focus();
+  }, [open, showSearch]);
 
   useEffect(() => {
     if (!open) return;
@@ -178,24 +183,30 @@ export function TablePillSelect({
       onClick={(e) => e.stopPropagation()}
     >
       <div
-        className="rounded-lg border border-[var(--form-border)] bg-[var(--form-bg)] overflow-hidden overflow-x-hidden shadow-lg max-w-[280px]"
+        className={`rounded-lg overflow-hidden overflow-x-hidden shadow-lg max-w-[280px] bg-[var(--form-bg)] ${
+          isColoredPillMenu ? "border-0" : "border border-[var(--form-border)]"
+        }`}
         style={{ boxShadow: "0 8px 24px rgba(15, 23, 42, 0.12)" }}
       >
-        <div className="px-2 pt-2 pb-1.5 border-b border-[var(--form-border)]">
-          <div className="relative">
-            <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 dark:text-slate-500 pointer-events-none" />
-            <input
-              ref={searchRef}
-              type="text"
-              value={menuSearch}
-              onChange={(e) => setMenuSearch(e.target.value)}
-              placeholder={searchPlaceholder}
-              className="w-full pl-7 pr-2 py-1.5 text-[11px] rounded-md border border-[var(--form-border)] bg-[var(--form-bg)] text-[var(--form-text)] placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[var(--form-focus)]"
-            />
+        {showSearch ? (
+          <div className="px-2 pt-2 pb-1.5 border-b border-[var(--form-border)]">
+            <div className="relative">
+              <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 dark:text-slate-500 pointer-events-none" />
+              <input
+                ref={searchRef}
+                type="text"
+                value={menuSearch}
+                onChange={(e) => setMenuSearch(e.target.value)}
+                placeholder={searchPlaceholder}
+                className="w-full pl-7 pr-2 py-1.5 text-[11px] rounded-md border border-[var(--form-border)] bg-[var(--form-bg)] text-[var(--form-text)] placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[var(--form-focus)]"
+              />
+            </div>
           </div>
-        </div>
+        ) : null}
         <ul
-          className={`table-pill__menu-list ${CRM_DROPDOWN_SCROLL_CLASS} overflow-y-auto overflow-x-hidden p-1`}
+          className={`table-pill__menu-list ${CRM_DROPDOWN_SCROLL_CLASS} overflow-y-auto overflow-x-hidden ${
+            isColoredPillMenu ? "p-0" : "p-1"
+          }`}
           style={{ maxHeight: maxMenuHeight }}
         >
           {filteredOptions.length === 0 ? (
@@ -203,6 +214,34 @@ export function TablePillSelect({
           ) : (
             filteredOptions.map((opt) => {
               const isSelected = opt.value === value;
+              const optStyle = getPillStyle?.(opt.value);
+
+              if (optStyle) {
+                return (
+                  <li key={opt.value}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={isSelected}
+                      onClick={() => {
+                        onChange(opt.value);
+                        closeMenu();
+                      }}
+                      className="w-full max-w-full flex items-center justify-between gap-2 text-left border-0 rounded-none px-3 py-2 text-[11px] font-semibold leading-snug whitespace-nowrap overflow-hidden text-ellipsis transition-opacity cursor-pointer hover:opacity-90"
+                      style={{
+                        backgroundColor: optStyle.backgroundColor,
+                        color: optStyle.color,
+                      }}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {isSelected ? (
+                        <FiCheck className="shrink-0 text-[10px] opacity-80" aria-hidden />
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              }
+
               return (
                 <li key={opt.value}>
                   <button

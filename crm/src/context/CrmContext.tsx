@@ -584,6 +584,14 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addPayment = (leadId: string, paymentData: Omit<PaymentDetails, "invoiceNumber" | "date">) => {
+    const lead = leads.find((item) => item.id === leadId);
+    if (!lead) return;
+
+    const total = lead.payments[0]?.totalPackage || 0;
+    const currentPaid = lead.payments.reduce((acc, payment) => acc + payment.amountPaid, 0);
+    const outstanding = Math.max(0, total - currentPaid);
+    if (paymentData.amountPaid <= 0 || paymentData.amountPaid > outstanding) return;
+
     const today = new Date().toISOString().split("T")[0];
     const invoiceNum = `INV-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
     const newPayment: PaymentDetails = { ...paymentData, invoiceNumber: invoiceNum, date: today };
@@ -604,14 +612,18 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setLeadPackage = (leadId: string, totalPackage: number) => {
     if (totalPackage <= 0) return;
     const today = new Date().toISOString().split("T")[0];
+    let previousPackage = 0;
+    let didUpdate = false;
+
     const updated = leads.map((lead) => {
       if (lead.id !== leadId) return lead;
       const payments = lead.payments || [];
-      const currentPackage = payments[0]?.totalPackage || 0;
-      if (currentPackage > 0) return lead;
-
+      previousPackage = payments[0]?.totalPackage || 0;
       const received = payments.reduce((acc, p) => acc + p.amountPaid, 0);
+      if (totalPackage < received) return lead;
+
       const pendingAmount = Math.max(0, totalPackage - received);
+      didUpdate = true;
 
       if (payments.length === 0) {
         const invoiceNum = `INV-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
@@ -641,11 +653,17 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         lastUpdated: today,
       };
     });
+
+    if (!didUpdate) return;
+
     syncLeads(updated);
     logActivity({
       leadId,
       type: "payment",
-      content: `Package amount set to ₹${totalPackage.toLocaleString()}`,
+      content:
+        previousPackage > 0
+          ? `Package amount updated from ₹${previousPackage.toLocaleString()} to ₹${totalPackage.toLocaleString()}`
+          : `Package amount set to ₹${totalPackage.toLocaleString()}`,
       createdBy: currentRole,
     });
   };

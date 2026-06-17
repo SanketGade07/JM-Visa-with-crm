@@ -223,11 +223,14 @@ export function DriveTab() {
     browseFolder(folder.id, newCrumbs);
   };
 
-  const navigateToBreadcrumb = (index: number) => {
-    const crumb = breadcrumbs[index];
-    const newCrumbs = breadcrumbs.slice(0, index + 1);
-    browseFolder(crumb.id, newCrumbs);
-  };
+  const navigateToBreadcrumb = useCallback(
+    (index: number) => {
+      const crumb = breadcrumbs[index];
+      const newCrumbs = breadcrumbs.slice(0, index + 1);
+      browseFolder(crumb.id, newCrumbs);
+    },
+    [browseFolder, breadcrumbs]
+  );
 
   const handleValidateAndSave = async () => {
     if (!folderInput.trim()) {
@@ -434,32 +437,33 @@ export function DriveTab() {
     }
   };
 
-  const handleCreateGoogleFile = async (
-    type: "document" | "spreadsheet" | "presentation"
-  ) => {
-    if (!currentFolderId) return;
-    const name = prompt(`Name for new ${type}:`);
-    if (!name?.trim()) return;
-    try {
-      const res = await fetch("/api/drive/browse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          parentId: currentFolderId,
-          folderName: name.trim(),
-          type,
-        }),
-      });
-      if (!res.ok) {
-        showToast(await parseApiError(res), "error");
-        return;
+  const handleCreateGoogleFile = useCallback(
+    async (type: "document" | "spreadsheet" | "presentation") => {
+      if (!currentFolderId) return;
+      const name = prompt(`Name for new ${type}:`);
+      if (!name?.trim()) return;
+      try {
+        const res = await fetch("/api/drive/browse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            parentId: currentFolderId,
+            folderName: name.trim(),
+            type,
+          }),
+        });
+        if (!res.ok) {
+          showToast(await parseApiError(res), "error");
+          return;
+        }
+        showToast("Google file created");
+        refreshCurrent();
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : "Failed to create file", "error");
       }
-      showToast("Google file created");
-      refreshCurrent();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create file", "error");
-    }
-  };
+    },
+    [currentFolderId, refreshCurrent, showToast]
+  );
 
   const handleRename = async () => {
     if (!renameItem || !renameValue.trim()) return;
@@ -556,7 +560,7 @@ export function DriveTab() {
     }
   };
 
-  const handleCopyFolderLink = async () => {
+  const handleCopyFolderLink = useCallback(async () => {
     if (!currentFolderId) return;
     const url = `https://drive.google.com/drive/folders/${currentFolderId}`;
     try {
@@ -565,7 +569,7 @@ export function DriveTab() {
     } catch {
       window.open(url, "_blank", "noopener,noreferrer");
     }
-  };
+  }, [currentFolderId, showToast]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -589,6 +593,26 @@ export function DriveTab() {
 
   const showDriveCard = !!rootFolderId || isAdmin;
 
+  const handleUploadClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFolderUploadClick = useCallback(() => {
+    folderInputRef.current?.click();
+  }, []);
+
+  const handleNewFolderClick = useCallback(() => {
+    setShowNewFolderModal(true);
+  }, []);
+
+  const handleNewFileClick = useCallback(() => {
+    setShowNewFileModal(true);
+  }, []);
+
+  const handleOpenLinkSettings = useCallback(() => {
+    setShowLinkSettingsModal(true);
+  }, []);
+
   const mainDriveToolbarProps = useMemo<DriveToolbarProps | null>(() => {
     if (!showDriveCard) return null;
     return {
@@ -604,12 +628,12 @@ export function DriveTab() {
       onTypeFilterChange: setTypeFilter,
       isAdmin,
       isUploading,
-      onUploadClick: () => fileInputRef.current?.click(),
-      onFolderUploadClick: () => folderInputRef.current?.click(),
-      onNewFolder: () => setShowNewFolderModal(true),
-      onNewFile: () => setShowNewFileModal(true),
+      onUploadClick: handleUploadClick,
+      onFolderUploadClick: handleFolderUploadClick,
+      onNewFolder: handleNewFolderClick,
+      onNewFile: handleNewFileClick,
       onCreateGoogleFile: handleCreateGoogleFile,
-      onOpenLinkSettings: isAdmin ? () => setShowLinkSettingsModal(true) : undefined,
+      onOpenLinkSettings: isAdmin ? handleOpenLinkSettings : undefined,
       refreshing: isRefreshing,
     };
   }, [
@@ -624,7 +648,12 @@ export function DriveTab() {
     typeFilter,
     isAdmin,
     isUploading,
+    handleUploadClick,
+    handleFolderUploadClick,
+    handleNewFolderClick,
+    handleNewFileClick,
     handleCreateGoogleFile,
+    handleOpenLinkSettings,
     isRefreshing,
   ]);
 

@@ -31,6 +31,7 @@ import {
   getCounselorFilterOptions,
   getVisaServiceFilterOptions,
 } from "@/utils/leadFilterOptions";
+import { getStatusPillStyle } from "@/utils/leadStatusConfig";
 // @ts-ignore
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
 import { getLeadAvatar, getLeadDescription, getLeadCompany } from "../helpers/leadDisplayHelpers";
@@ -77,7 +78,7 @@ export function LeadsTab() {
     hoveredCountry, setHoveredCountry, tooltipRef, tooltipPosRef, isMounted,
     handleCountryMouseEnter, handleCountryMouseMove, handleCountryMouseLeave,
     handleCountryClick, resetMap, startDate, setStartDate, endDate, setEndDate,
-    depositLeadId, setDepositLeadId, tempInvoiceFile, setTempInvoiceFile,
+    tempInvoiceFile, setTempInvoiceFile,
     tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
     allowedTabs, userAllowedTabs, canModifyLeads, canVerifyDocs, canSubmitVisa, canManagePayments,
     openSignedUrl, selectedLead, activeLeads, monthlyChart, chartMax, countryColors,
@@ -92,6 +93,17 @@ export function LeadsTab() {
   } = useCrmLayoutContext();
 
   const columnSearch = useColumnSearch();
+  const { clearFilter, setActiveColumn, activeColumn } = columnSearch;
+  const isAllQuickTab = statusFilter === "All";
+
+  useEffect(() => {
+    if (!isAllQuickTab) {
+      clearFilter("status");
+      if (activeColumn === "status") {
+        setActiveColumn(null);
+      }
+    }
+  }, [isAllQuickTab, clearFilter, setActiveColumn, activeColumn]);
 
   const scopedLeads = useMemo(
     () => filterScopedLeads(leads, kpiFilter, "All", ""),
@@ -139,11 +151,11 @@ export function LeadsTab() {
       Object.entries(leadSearchGetters).map(([searchKey, getSearchValue]) => ({
         searchKey,
         getSearchValue,
-        ...(searchKey === "lead"
+        ...(searchKey === "lead" || (searchKey === "status" && !isAllQuickTab)
           ? {}
           : { filterMode: "exact" as const, filterClearValue: "All" }),
       })),
-    [leadSearchGetters]
+    [leadSearchGetters, isAllQuickTab]
   );
 
   const tableRows = useMemo(
@@ -155,14 +167,14 @@ export function LeadsTab() {
     registerLeadsExport(() =>
       exportRowsToCsv(
         "leads",
-        ["#", "Lead", "Service", "Country", "Status", "Assign to", "Doc %"],
+        ["#", "Lead", "Service", "Country", "Assign to", "Status", "Doc %"],
         tableRows.map((l, i) => [
           i + 1,
           l.name,
           l.visaType,
           l.country,
-          l.status,
           l.counselor,
+          l.status,
           `${Math.round(docProgress(l.checklist, l.employmentCategory))}%`,
         ])
       )
@@ -344,7 +356,6 @@ export function LeadsTab() {
                     rows={tableRows}
                     columnSearch={columnSearch}
                     getRowId={(l) => l.id}
-                    onRowClick={(l) => openLeadDetail(l.id)}
                     selectedRowId={selectedLeadId}
                     columns={[
                       {
@@ -398,30 +409,13 @@ export function LeadsTab() {
                         ),
                       },
                       {
-                        header: "Status",
-                        searchKey: "status",
-                        searchLabel: "Status",
-                        filterSelectOptions: leadStatusFilterOptions,
-                        filterSelectPlaceholder: "All Statuses",
-                        filterSelectPortalId: "lead-status-column-filter-portal",
-                        filterSelectClearValue: "All",
-                        getSearchValue: leadSearchGetters.status,
-                        render: (lead) => (
-                          <StatusSelectPill
-                            value={lead.status}
-                            disabled={!canModifyLeads}
-                            portalId={`status-select-${lead.id}`}
-                            onChange={(status) => updateLeadStatus(lead.id, status)}
-                          />
-                        ),
-                      },
-                      {
                         header: "Assign to",
                         searchKey: "counselor",
                         searchLabel: "Assign to",
                         filterSelectOptions: counselorFilterOptions,
                         filterSelectPlaceholder: "All Counselors",
                         filterSelectClearValue: "All",
+                        filterSelectShowSearch: false,
                         getSearchValue: leadSearchGetters.counselor,
                         render: (lead) => (
                           <CounselorSelectPill
@@ -429,6 +423,30 @@ export function LeadsTab() {
                             disabled={!canModifyLeads}
                             portalId={`counselor-select-${lead.id}`}
                             onChange={(counselor) => assignCounselor(lead.id, counselor)}
+                          />
+                        ),
+                      },
+                      {
+                        header: "Status",
+                        ...(isAllQuickTab
+                          ? {
+                              searchKey: "status",
+                              searchLabel: "Status",
+                              filterSelectOptions: leadStatusFilterOptions,
+                              filterSelectPlaceholder: "All Statuses",
+                              filterSelectPortalId: "lead-status-column-filter-portal",
+                              filterSelectClearValue: "All",
+                              filterSelectGetOptionStyle: getStatusPillStyle,
+                              filterSelectShowSearch: false,
+                              getSearchValue: leadSearchGetters.status,
+                            }
+                          : {}),
+                        render: (lead) => (
+                          <StatusSelectPill
+                            value={lead.status}
+                            disabled={!canModifyLeads}
+                            portalId={`status-select-${lead.id}`}
+                            onChange={(status) => updateLeadStatus(lead.id, status)}
                           />
                         ),
                       },

@@ -2,13 +2,15 @@
 
 import React, { useMemo, useState } from "react";
 import type { Lead, PaymentDetails } from "@/context/CrmContext";
-import { FaEnvelope, FaFileInvoiceDollar } from "react-icons/fa";
+import { FaEnvelope, FaFileInvoiceDollar, FaTag } from "react-icons/fa";
 import { FiFileText, FiGlobe } from "react-icons/fi";
 import DataTable, { type Column } from "@/components/ui/DataTable";
 import { TableViewToggle } from "@/components/crm/ui/TableViewToggle";
 import { DateRangeCalendarPopover } from "@/components/crm/ui/DateRangeCalendarPopover";
+import { UpdatePackageModal } from "@/components/crm/modals/UpdatePackageModal";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { getDeskCountriesFromLeads } from "@/utils/leadHelpers";
+import { getDepositPickerLeads } from "@/utils/leadPaymentUtils";
 
 function isDateRangeActive(startDate: string, endDate: string): boolean {
   return !!(startDate && endDate);
@@ -48,12 +50,20 @@ export function PaymentsTab() {
     setStartDate,
     endDate,
     setEndDate,
-    setIsAddPaymentOpen,
+    openPickerDepositModal,
     setInvoiceLeadId,
+    setLeadPackage,
     canManagePayments,
+    showToast,
   } = useCrmLayoutContext();
 
   const [paymentsView, setPaymentsView] = useState<PaymentsView>("ledger");
+  const [packageLeadId, setPackageLeadId] = useState<string | null>(null);
+
+  const packageLead = useMemo(
+    () => (packageLeadId ? leads.find((l) => l.id === packageLeadId) ?? null : null),
+    [leads, packageLeadId]
+  );
 
   const dateFilterActive = isDateRangeActive(startDate, endDate);
 
@@ -147,9 +157,23 @@ export function PaymentsTab() {
         render: (lead) => {
           const total = lead.payments[0]?.totalPackage || 0;
           return (
-            <span className="font-semibold text-gray-700 dark:text-slate-200">
+            <button
+              type="button"
+              disabled={!canManagePayments}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!canManagePayments) return;
+                setPackageLeadId(lead.id);
+              }}
+              className={`font-semibold text-left transition-colors ${
+                canManagePayments
+                  ? "text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:underline cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  : "text-gray-700 dark:text-slate-200 cursor-default"
+              }`}
+              title={canManagePayments ? "Set or update package" : undefined}
+            >
               {total > 0 ? `₹${total.toLocaleString()}` : "Not Decided"}
-            </span>
+            </button>
           );
         },
       },
@@ -186,7 +210,7 @@ export function PaymentsTab() {
         },
       },
     ],
-    [startDate, endDate]
+    [startDate, endDate, canManagePayments]
   );
 
   const dateRangeCalendar = (
@@ -206,7 +230,11 @@ export function PaymentsTab() {
     <button
       onClick={() => {
         if (!canManagePayments) return;
-        setIsAddPaymentOpen(true);
+        if (getDepositPickerLeads(leads).length === 0) {
+          showToast("No active clients to record a deposit", "error");
+          return;
+        }
+        openPickerDepositModal();
       }}
       disabled={!canManagePayments}
       className="py-2 px-3.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold text-[11px] rounded-full transition-all disabled:opacity-40"
@@ -331,6 +359,12 @@ export function PaymentsTab() {
           columns={ledgerColumns}
           actions={(lead) => [
             {
+              icon: FaTag,
+              title: "Edit package",
+              hidden: () => !canManagePayments,
+              onClick: (l) => setPackageLeadId(l.id),
+            },
+            {
               icon: FaFileInvoiceDollar,
               title: "View invoices",
               onClick: (l) => setInvoiceLeadId(l.id),
@@ -341,7 +375,7 @@ export function PaymentsTab() {
               onClick: (l) => window.open(`mailto:${l.email}`),
             },
           ]}
-          actionsHeader="Receipts"
+          actionsHeader="Actions"
           emptyText="No active client accounts."
         />
       ) : (
@@ -360,6 +394,14 @@ export function PaymentsTab() {
           emptyText="No desk revenue data available."
         />
       )}
+      {packageLead ? (
+        <UpdatePackageModal
+          lead={packageLead}
+          onClose={() => setPackageLeadId(null)}
+          onSave={setLeadPackage}
+          showToast={showToast}
+        />
+      ) : null}
     </div>
   );
 }

@@ -8,6 +8,10 @@ import {
   FaGlobe, FaTrash, FaInfoCircle, FaCheckCircle
 } from "react-icons/fa";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
+import {
+  DepositLeadSearchSelect,
+} from "./DepositLeadSearchSelect";
+import { getDepositLeadSummary, validateDepositAmount } from "@/utils/leadPaymentUtils";
 
 
 export function CrmModals() {
@@ -42,7 +46,12 @@ export function CrmModals() {
     hoveredCountry, setHoveredCountry, tooltipRef, tooltipPosRef, isMounted,
     handleCountryMouseEnter, handleCountryMouseMove, handleCountryMouseLeave,
     handleCountryClick, resetMap, startDate, setStartDate, endDate, setEndDate,
-    depositLeadId, setDepositLeadId, tempInvoiceFile, setTempInvoiceFile,
+    profileDepositLeadId,
+    pickerDepositLeadId,
+    setPickerDepositLeadId,
+    depositModalMode,
+    closeDepositModal,
+    tempInvoiceFile, setTempInvoiceFile,
     tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
     allowedTabs, userAllowedTabs, canModifyLeads, canVerifyDocs, canSubmitVisa, canManagePayments,
     openSignedUrl, selectedLead, activeLeads, monthlyChart, chartMax, countryColors,
@@ -52,6 +61,14 @@ export function CrmModals() {
     leadsMgmtData, topCountryStats, pipelineStats, cardMap, modalMap,
   } = useCrmLayoutContext();
 
+  const activeDepositLeadId =
+    depositModalMode === "profile" ? profileDepositLeadId : pickerDepositLeadId;
+
+  const depositLead = activeDepositLeadId
+    ? leads.find((lead) => lead.id === activeDepositLeadId) ?? null
+    : null;
+  const depositLeadSummary = depositLead ? getDepositLeadSummary(depositLead) : null;
+
   return (
     <>
       {/* B. RECORD PAYMENT DEPOSIT MODAL */}
@@ -59,7 +76,7 @@ export function CrmModals() {
         <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-[#0a0a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto">
             <button 
-              onClick={() => setIsAddPaymentOpen(false)}
+              onClick={closeDepositModal}
               className="absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-200 rounded-lg"
             >
               <FaTimes />
@@ -71,59 +88,84 @@ export function CrmModals() {
               onSubmit={(e) => {
                 e.preventDefault();
                 const fd = new FormData(e.currentTarget);
-                const leadId = depositLeadId;
+                const leadId = activeDepositLeadId;
                 const amountPaid = parseFloat(fd.get("amountPaid") as string) || 0;
                 const paymentMethod = fd.get("paymentMethod") as string;
 
-                const lead = leads.find((l) => l.id === leadId);
-                if (lead) {
-                  const total = lead.payments[0]?.totalPackage || 0;
-                  const currentPaid = lead.payments.reduce((a, p) => a + p.amountPaid, 0);
-                  const newPending = Math.max(0, total - (currentPaid + amountPaid));
-
-                  addPayment(leadId, {
-                    totalPackage: total,
-                    amountPaid,
-                    pendingAmount: newPending,
-                    paymentMethod,
-                    invoiceFile: tempInvoiceFile || undefined,
-                    invoiceUrl: tempInvoiceUrl || undefined,
-                  });
-                  showToast("Payment recorded successfully!");
+                if (!leadId) {
+                  showToast("Please select a client file", "error");
+                  return;
                 }
 
-                setIsAddPaymentOpen(false);
+                const lead = leads.find((l) => l.id === leadId);
+                if (!lead) {
+                  showToast("Client not found", "error");
+                  return;
+                }
+
+                const validation = validateDepositAmount(lead, amountPaid);
+                if (!validation.ok) {
+                  showToast(validation.message, "error");
+                  return;
+                }
+
+                const total = lead.payments[0]?.totalPackage || 0;
+                const currentPaid = lead.payments.reduce((a, p) => a + p.amountPaid, 0);
+                const newPending = Math.max(0, total - (currentPaid + amountPaid));
+
+                addPayment(leadId, {
+                  totalPackage: total,
+                  amountPaid,
+                  pendingAmount: newPending,
+                  paymentMethod,
+                  invoiceFile: tempInvoiceFile || undefined,
+                  invoiceUrl: tempInvoiceUrl || undefined,
+                });
+                showToast("Payment recorded successfully!");
+                closeDepositModal();
               }}
               className="space-y-4 text-xs"
             >
-              <div className="space-y-1">
-                <label className="text-slate-400 font-bold block">Select Client File</label>
-                <select 
-                  name="leadId" 
-                  value={depositLeadId}
-                  onChange={(e) => setDepositLeadId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none"
-                >
-                  {leads.filter(l => l.status !== "DROPPED" && (l.payments[0]?.totalPackage || 0) > 0).map(l => {
-                    const total = l.payments[0]?.totalPackage || 0;
-                    const paid = l.payments.reduce((a, p) => a + p.amountPaid, 0);
-                    const outstanding = total > 0 ? Math.max(0, total - paid) : 0;
-                    const labelSuffix = total > 0 
-                      ? `₹${outstanding.toLocaleString()} outstanding` 
-                      : "package not decided";
-                    return (
-                      <option key={l.id} value={l.id}>
-                        {l.name} ({l.country} - {labelSuffix})
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
+              {depositModalMode === "profile" && depositLead && depositLeadSummary ? (
+                <div className="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-3 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                    Client
+                  </span>
+                  <p className="text-sm font-semibold text-white">{depositLead.name}</p>
+                  <p className="text-[11px] text-slate-400">
+                    {depositLead.country} · ₹{depositLeadSummary.pending.toLocaleString("en-IN")} outstanding
+                  </p>
+                </div>
+              ) : (
+                <DepositLeadSearchSelect
+                  leads={leads}
+                  value={pickerDepositLeadId}
+                  onChange={setPickerDepositLeadId}
+                />
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-slate-400 font-bold block">Deposit Amount (INR)</label>
-                  <input required name="amountPaid" type="number" placeholder="10000" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none" />
+                  <input
+                    required
+                    name="amountPaid"
+                    type="number"
+                    min={1}
+                    max={depositLeadSummary?.pending || undefined}
+                    step={1}
+                    placeholder={
+                      depositLeadSummary
+                        ? `Max ₹${depositLeadSummary.pending.toLocaleString("en-IN")}`
+                        : "10000"
+                    }
+                    className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none"
+                  />
+                  {depositLeadSummary && depositLeadSummary.pending > 0 ? (
+                    <p className="text-[10px] text-slate-500">
+                      Maximum deposit: ₹{depositLeadSummary.pending.toLocaleString("en-IN")} outstanding
+                    </p>
+                  ) : null}
                 </div>
                 <div className="space-y-1">
                   <label className="text-slate-400 font-bold block">Payment Method</label>
@@ -170,14 +212,14 @@ export function CrmModals() {
                             const file = e.target.files?.[0];
                             if (!file) return;
                             
-                            if (!depositLeadId) {
+                            if (!activeDepositLeadId) {
                               showToast("Please select a client file first", "error");
                               return;
                             }
                             
                             setIsUploadingTempInvoice(true);
                             const form = new FormData();
-                            form.append("leadId", depositLeadId);
+                            form.append("leadId", activeDepositLeadId);
                             form.append("docType", "invoice-deposit");
                             form.append("uploadedBy", currentRole);
                             form.append("file", file);

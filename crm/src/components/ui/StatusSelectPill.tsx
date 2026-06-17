@@ -40,7 +40,7 @@ export function StatusSelectPill({
       variant={variant}
       getPillStyle={getStatusPillStyle}
       ariaLabel={`Status: ${getStatusLabel(value)}`}
-      searchPlaceholder="Search status..."
+      showSearch={false}
       maxMenuHeight={STATUS_PILL_DROPDOWN_MAX_HEIGHT}
     />
   );

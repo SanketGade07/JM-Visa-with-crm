@@ -2,9 +2,10 @@
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { FiFilter, FiSearch } from "react-icons/fi";
+import { FiCheck, FiFilter, FiSearch } from "react-icons/fi";
 import { FILTER_DROPDOWN_MAX_HEIGHT } from "@/utils/dropdownConstants";
 import { CRM_DROPDOWN_SCROLL_CLASS } from "@/utils/dropdownScrollStyles";
+import type { StatusPillStyle } from "@/utils/leadStatusConfig";
 
 export type InlineColumnFilterSelectProps = {
   label: string;
@@ -18,6 +19,10 @@ export type InlineColumnFilterSelectProps = {
   onActivate: () => void;
   onDeactivate: () => void;
   onChange: (value: string) => void;
+  /** Status-colored rows (full-width background, not pill shape). Skipped for clearValue. */
+  getOptionStyle?: (value: string) => StatusPillStyle | undefined;
+  /** When false, dropdown shows options only (no in-menu search). Defaults to true. */
+  showSearch?: boolean;
 };
 
 const headerIdle =
@@ -67,6 +72,8 @@ export function InlineColumnFilterSelect({
   onActivate,
   onDeactivate,
   onChange,
+  getOptionStyle,
+  showSearch = true,
 }: InlineColumnFilterSelectProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuSearch, setMenuSearch] = useState("");
@@ -76,10 +83,13 @@ export function InlineColumnFilterSelect({
   const searchRef = useRef<HTMLInputElement>(null);
 
   const filteredOptions = useMemo(() => {
+    if (!showSearch) return options;
     const q = menuSearch.trim().toLowerCase();
     if (!q) return options;
     return options.filter((o) => o.label.toLowerCase().includes(q));
-  }, [options, menuSearch]);
+  }, [options, menuSearch, showSearch]);
+
+  const isColoredOptionMenu = Boolean(getOptionStyle);
 
   const updateMenuPosition = () => {
     if (!anchorRef.current) return;
@@ -108,8 +118,8 @@ export function InlineColumnFilterSelect({
   useLayoutEffect(() => {
     if (!menuOpen) return;
     updateMenuPosition();
-    focusSearchAtStart();
-  }, [menuOpen]);
+    if (showSearch) focusSearchAtStart();
+  }, [menuOpen, showSearch]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -162,26 +172,65 @@ export function InlineColumnFilterSelect({
       }}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      <div className="rounded-lg border border-[var(--form-border)] bg-[var(--form-bg)] overflow-hidden overflow-x-hidden shadow-lg max-w-[280px]">
-        <div className="px-2 pt-2 pb-1.5 border-b border-[var(--form-border)]">
-          <div className="relative">
-            <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 dark:text-slate-500 pointer-events-none" />
-            <input
-              ref={searchRef}
-              type="text"
-              value={menuSearch}
-              onChange={(e) => setMenuSearch(e.target.value)}
-              placeholder={placeholder}
-              className="w-full pl-7 pr-2 py-1.5 text-[11px] rounded-md border border-[var(--form-border)] bg-[var(--form-bg)] text-[var(--form-text)] placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[var(--form-focus)] !cursor-text"
-            />
+      <div
+        className={`rounded-lg overflow-hidden overflow-x-hidden shadow-lg max-w-[280px] bg-[var(--form-bg)] ${
+          isColoredOptionMenu ? "border-0" : "border border-[var(--form-border)]"
+        }`}
+      >
+        {showSearch ? (
+          <div className="px-2 pt-2 pb-1.5 border-b border-[var(--form-border)]">
+            <div className="relative">
+              <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 dark:text-slate-500 pointer-events-none" />
+              <input
+                ref={searchRef}
+                type="text"
+                value={menuSearch}
+                onChange={(e) => setMenuSearch(e.target.value)}
+                placeholder={placeholder}
+                className="w-full pl-7 pr-2 py-1.5 text-[11px] rounded-md border border-[var(--form-border)] bg-[var(--form-bg)] text-[var(--form-text)] placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[var(--form-focus)] !cursor-text"
+              />
+            </div>
           </div>
-        </div>
+        ) : null}
         <ul
-          className={`inline-column-filter__menu-list ${CRM_DROPDOWN_SCROLL_CLASS} overflow-y-auto overflow-x-hidden p-1`}
+          className={`inline-column-filter__menu-list ${CRM_DROPDOWN_SCROLL_CLASS} overflow-y-auto overflow-x-hidden ${
+            isColoredOptionMenu ? "p-0" : "p-1"
+          }`}
           style={{ maxHeight: FILTER_DROPDOWN_MAX_HEIGHT }}
         >
           {filteredOptions.map((opt) => {
             const isSelected = opt.value === value;
+            const optStyle =
+              opt.value !== clearValue ? getOptionStyle?.(opt.value) : undefined;
+
+            if (optStyle) {
+              return (
+                <li key={opt.value}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      onChange(opt.value);
+                      setMenuOpen(false);
+                      setMenuSearch("");
+                      onDeactivate();
+                    }}
+                    className="w-full max-w-full flex items-center justify-between gap-2 text-left border-0 rounded-none px-3 py-2 text-[11px] font-semibold leading-snug transition-opacity cursor-pointer hover:opacity-90"
+                    style={{
+                      backgroundColor: optStyle.backgroundColor,
+                      color: optStyle.color,
+                    }}
+                  >
+                    <span className="truncate">{opt.label}</span>
+                    {isSelected ? (
+                      <FiCheck className="shrink-0 text-[10px] opacity-80" aria-hidden />
+                    ) : null}
+                  </button>
+                </li>
+              );
+            }
+
             return (
               <li key={opt.value}>
                 <button
@@ -194,7 +243,7 @@ export function InlineColumnFilterSelect({
                     setMenuSearch("");
                     onDeactivate();
                   }}
-                    className={`w-full max-w-full text-left rounded-md px-2.5 py-2 text-[11px] leading-snug whitespace-nowrap overflow-hidden text-ellipsis transition-colors cursor-pointer ${
+                  className={`w-full max-w-full text-left rounded-md px-2.5 py-2 text-[11px] leading-snug whitespace-nowrap overflow-hidden text-ellipsis transition-colors cursor-pointer ${
                     isSelected
                       ? "bg-[var(--form-selected-bg)] text-[var(--form-selected-text)]"
                       : "text-[var(--form-text)] hover:bg-[var(--form-selected-bg)]"

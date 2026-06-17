@@ -6,6 +6,7 @@ import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { StatusSelectPill } from "@/components/ui/StatusSelectPill";
 import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
 import { isUsaCountry } from "@/utils/countryUtils";
+import { canRecordLeadDeposit, getLeadPaymentSummary } from "@/utils/leadPaymentUtils";
 
 type LeadManagementCardProps = {
   lead: Lead;
@@ -45,16 +46,6 @@ function formatInr(amount: number): string {
   return `₹${amount.toLocaleString("en-IN")}`;
 }
 
-function derivePaymentSummary(lead: Lead) {
-  const totalPackage = lead.payments[0]?.totalPackage || 0;
-  const received = lead.payments.reduce((acc, payment) => acc + payment.amountPaid, 0);
-  const pending = totalPackage > 0 ? Math.max(0, totalPackage - received) : 0;
-  const status =
-    totalPackage <= 0 ? null : pending > 0 ? ("pending" as const) : ("received" as const);
-
-  return { totalPackage, received, pending, status };
-}
-
 export function LeadManagementCard({
   lead,
   className = "",
@@ -66,13 +57,12 @@ export function LeadManagementCard({
     canModifyLeads,
     canManagePayments,
     setLeadPackage,
-    setDepositLeadId,
-    setIsAddPaymentOpen,
+    openProfileDepositModal,
     showToast,
   } = useCrmLayoutContext();
 
   const isUsa = isUsaCountry(lead.country);
-  const paymentSummary = useMemo(() => derivePaymentSummary(lead), [lead.payments]);
+  const paymentSummary = useMemo(() => getLeadPaymentSummary(lead), [lead.payments]);
   const [packageDraft, setPackageDraft] = useState("");
 
   const handleSetPackage = () => {
@@ -88,9 +78,8 @@ export function LeadManagementCard({
   };
 
   const handleRecordDeposit = () => {
-    if (!canManagePayments || paymentSummary.totalPackage <= 0) return;
-    setDepositLeadId(lead.id);
-    setIsAddPaymentOpen(true);
+    if (!canManagePayments || !canRecordLeadDeposit(lead)) return;
+    openProfileDepositModal(lead.id);
   };
 
   const fields = (
@@ -234,14 +223,15 @@ export function LeadManagementCard({
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            disabled={!canManagePayments || paymentSummary.totalPackage <= 0}
-            onClick={handleRecordDeposit}
-            className="w-full py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 font-bold text-white text-xs rounded-xl cursor-pointer transition-colors"
-          >
-            Record deposit
-          </button>
+          {canManagePayments && canRecordLeadDeposit(lead) ? (
+            <button
+              type="button"
+              onClick={handleRecordDeposit}
+              className="w-full py-2.5 bg-violet-600 hover:bg-violet-500 font-bold text-white text-xs rounded-xl cursor-pointer transition-colors"
+            >
+              Record deposit
+            </button>
+          ) : null}
         </div>
     </div>
   );

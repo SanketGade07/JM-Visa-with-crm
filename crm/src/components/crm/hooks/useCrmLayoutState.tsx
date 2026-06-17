@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCrm, VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Meeting } from "@/context/CrmContext";
 import { ROLE_TABS } from "@/utils/crmConstants";
 import { LEAD_STATUS_ORDER, getStatusLabel } from "@/utils/leadStatusConfig";
+import { getDepositPickerLeads, getEligibleDepositLeads } from "@/utils/leadPaymentUtils";
 // @ts-ignore
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
 
@@ -178,7 +179,7 @@ export function useCrmLayoutState() {
   const [uploadInvoiceError, setUploadInvoiceError] = useState<string>("");
   const [uploadingInvoiceKey, setUploadingInvoiceKey] = useState<string | null>(null);
 
-  const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [statusFilter, setStatusFilter] = useState<string>("NEW_LEAD");
   const [kpiFilter, setKpiFilter] = useState<string>("Total");
   const [countryFilter, setCountryFilter] = useState<string>("All");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -394,24 +395,52 @@ export function useCrmLayoutState() {
   const [endDate, setEndDate] = useState("");
 
   // Deposit Upload State
-  const [depositLeadId, setDepositLeadId] = useState("");
+  const [profileDepositLeadId, setProfileDepositLeadId] = useState("");
+  const [pickerDepositLeadId, setPickerDepositLeadId] = useState("");
+  const [depositModalMode, setDepositModalMode] = useState<"profile" | "picker">("picker");
   const [tempInvoiceFile, setTempInvoiceFile] = useState("");
   const [tempInvoiceUrl, setTempInvoiceUrl] = useState("");
   const [isUploadingTempInvoice, setIsUploadingTempInvoice] = useState(false);
 
+  const openProfileDepositModal = useCallback((leadId: string) => {
+    setProfileDepositLeadId(leadId);
+    setDepositModalMode("profile");
+    setTempInvoiceFile("");
+    setTempInvoiceUrl("");
+    setIsAddPaymentOpen(true);
+  }, []);
+
+  const openPickerDepositModal = useCallback(() => {
+    setPickerDepositLeadId("");
+    setDepositModalMode("picker");
+    setTempInvoiceFile("");
+    setTempInvoiceUrl("");
+    setIsAddPaymentOpen(true);
+  }, []);
+
+  const closeDepositModal = useCallback(() => {
+    setIsAddPaymentOpen(false);
+    setProfileDepositLeadId("");
+    setPickerDepositLeadId("");
+    setDepositModalMode("picker");
+    setTempInvoiceFile("");
+    setTempInvoiceUrl("");
+  }, []);
+
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (isAddPaymentOpen) {
-      const filtered = leads.filter(l => l.status !== "DROPPED" && (l.payments[0]?.totalPackage || 0) > 0);
-      if (filtered.length > 0) {
-        setDepositLeadId(filtered[0].id);
-      } else {
-        setDepositLeadId("");
+    if (!isAddPaymentOpen || depositModalMode !== "picker") return;
+
+    const pickerLeads = getDepositPickerLeads(leads);
+    const eligible = getEligibleDepositLeads(leads);
+
+    setPickerDepositLeadId((current) => {
+      if (current && pickerLeads.some((l) => l.id === current)) {
+        return current;
       }
-      setTempInvoiceFile("");
-      setTempInvoiceUrl("");
-    }
-  }, [isAddPaymentOpen, leads]);
+      return eligible.length > 0 ? eligible[0].id : pickerLeads[0]?.id ?? "";
+    });
+  }, [isAddPaymentOpen, leads, depositModalMode]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Helper: open a document URL. If it's a Supabase storage path, fetch a signed URL first.
@@ -954,7 +983,10 @@ export function useCrmLayoutState() {
     hoveredCountry, setHoveredCountry, tooltipRef, tooltipPosRef, isMounted,
     handleCountryMouseEnter, handleCountryMouseMove, handleCountryMouseLeave,
     handleCountryClick, resetMap, startDate, setStartDate, endDate, setEndDate,
-    depositLeadId, setDepositLeadId, tempInvoiceFile, setTempInvoiceFile,
+    profileDepositLeadId, pickerDepositLeadId, setPickerDepositLeadId,
+    depositModalMode, setDepositModalMode,
+    openProfileDepositModal, openPickerDepositModal, closeDepositModal,
+    tempInvoiceFile, setTempInvoiceFile,
     tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
     allowedTabs, userAllowedTabs, canViewLeads, canModifyLeads, canVerifyDocs, canAccessLeadChecklist,
     canEditCredentials, canSubmitVisa, canManagePayments,
