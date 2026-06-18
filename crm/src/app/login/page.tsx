@@ -145,7 +145,6 @@ export default function LoginPage() {
             <div className="border-t border-slate-800/60 pt-4 space-y-1 text-[10px] text-slate-600">
               <p className="font-bold text-slate-500">Dev credentials:</p>
               <p>admin@jmvisa.com / admin123</p>
-              <p>manager@jmvisa.com / manager123</p>
               <p>counselor@jmvisa.com / counselor123</p>
             </div>
           )}

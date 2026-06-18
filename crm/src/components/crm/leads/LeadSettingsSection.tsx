@@ -313,6 +313,7 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
     showToast,
     canEditCredentials,
     canModifyLeads,
+    canAssignLeads,
     updateLeadProfile,
     assignCounselor,
     updateUsaSlots,
@@ -634,7 +635,7 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
               <CounselorSelectPill
                 variant="field"
                 value={lead.counselor}
-                disabled={!canModifyLeads}
+                disabled={!canModifyLeads || !canAssignLeads}
                 portalId={`settings-counselor-${lead.id}`}
                 onChange={(counselor) => {
                   if (counselor === lead.counselor) return;

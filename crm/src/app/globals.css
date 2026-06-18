@@ -525,6 +525,27 @@ html.light button[type="submit"] * {
   color: #ffffff !important;
 }
 
+/* Notification bell + Lead Management count badges — readable in light theme */
+html.light .crm-notification-count {
+  color: #ffffff !important;
+}
+
+html.light .crm-sidebar-assigned-count {
+  color: #1d4ed8 !important;
+  background-color: rgba(37, 99, 235, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+html.light .crm-header__tabs .crm-header-tab-count--active {
+  color: #1d4ed8 !important;
+  background-color: #dbeafe !important;
+}
+
+html.light .crm-header__tabs .crm-header-tab-count--inactive {
+  color: #475569 !important;
+  background-color: #e2e8f0 !important;
+}
+
 html.light span.absolute.-top-7 {
   background-color: #f1f5f9 !important;
   border-color: #cbd5e1 !important;

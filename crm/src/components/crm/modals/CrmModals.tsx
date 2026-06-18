@@ -2,7 +2,7 @@
 
 import React from "react";
 import { StaffRole, CountryType, LeadSource } from "@/context/CrmContext";
-import { AVAILABLE_TABS } from "@/utils/crmConstants";
+import { AVAILABLE_TABS, AVAILABLE_PERMISSIONS } from "@/utils/crmConstants";
 import {
   FaTimes, FaFileUpload, FaFileDownload,
   FaGlobe, FaTrash, FaInfoCircle, FaCheckCircle
@@ -12,6 +12,7 @@ import {
   DepositLeadSearchSelect,
 } from "./DepositLeadSearchSelect";
 import { getDepositLeadSummary, validateDepositAmount } from "@/utils/leadPaymentUtils";
+import { CounselorFormSelect } from "@/components/ui/CounselorNativeSelect";
 
 
 export function CrmModals() {
@@ -53,7 +54,7 @@ export function CrmModals() {
     closeDepositModal,
     tempInvoiceFile, setTempInvoiceFile,
     tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
-    allowedTabs, userAllowedTabs, canModifyLeads, canVerifyDocs, canSubmitVisa, canManagePayments,
+    allowedTabs, userAllowedTabs, canModifyLeads, canAssignLeads, canVerifyDocs, canSubmitVisa, canManagePayments,
     openSignedUrl, selectedLead, activeLeads, monthlyChart, chartMax, countryColors,
     countryStats, countryTotal, donutSegments, calendarData, filteredLeads,
     countryBarChartData, maxLeadsCount, yLabels, getCountryAbbreviation,
@@ -329,11 +330,10 @@ export function CrmModals() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-slate-400 font-bold block">Consultant</label>
-                  <select name="counselorAssigned" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none">
-                    <option value="Priya Mehta">Priya Mehta</option>
-                    <option value="Rohit Verma">Rohit Verma</option>
-                    <option value="Simran Kaur">Simran Kaur</option>
-                  </select>
+                  <CounselorFormSelect
+                    name="counselorAssigned"
+                    className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none"
+                  />
                 </div>
               </div>
 
@@ -424,15 +424,11 @@ export function CrmModals() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-slate-400 font-bold block">Consultant</label>
-                  <select 
-                    name="counselorAssigned" 
-                    defaultValue={selectedMeeting.counselorAssigned} 
+                  <CounselorFormSelect
+                    name="counselorAssigned"
+                    defaultValue={selectedMeeting.counselorAssigned}
                     className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none"
-                  >
-                    <option value="Priya Mehta">Priya Mehta</option>
-                    <option value="Rohit Verma">Rohit Verma</option>
-                    <option value="Simran Kaur">Simran Kaur</option>
-                  </select>
+                  />
                 </div>
               </div>
 
@@ -774,7 +770,14 @@ export function CrmModals() {
                   }
                 });
 
-                const res = await addUser({ name, email, password, role, allowedTabs });
+                const permissions: string[] = [];
+                AVAILABLE_PERMISSIONS.forEach((p) => {
+                  if (fd.get(`perm-${p.id}`)) {
+                    permissions.push(p.id);
+                  }
+                });
+
+                const res = await addUser({ name, email, password, role, allowedTabs, permissions });
                 if (res.ok) {
                   showToast("Staff account created successfully!");
                   setIsAddStaffOpen(false);
@@ -832,7 +835,6 @@ export function CrmModals() {
                   >
                     <option value="COUNSELOR">COUNSELOR</option>
                     <option value="ADMIN">ADMINISTRATOR</option>
-                    <option value="MANAGER">GENERAL MANAGER</option>
                     <option value="DOCUMENT TEAM">DOCUMENT TEAM</option>
                     <option value="VISA TEAM">VISA TEAM</option>
                     <option value="ACCOUNT TEAM">ACCOUNT TEAM</option>
@@ -865,6 +867,29 @@ export function CrmModals() {
                         className="rounded border-slate-800 bg-slate-950 text-violet-600 focus:ring-violet-500 cursor-pointer"
                       />
                       <span className="font-semibold">{t.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2 text-left">
+                <label className="text-slate-400 font-bold block border-b border-slate-900 pb-1.5">
+                  Action Permissions
+                </label>
+                <div className="grid grid-cols-1 gap-2 p-2 bg-slate-950/50 rounded-xl border border-slate-900">
+                  {AVAILABLE_PERMISSIONS.map((p) => (
+                    <label
+                      key={p.id}
+                      className="flex items-center space-x-2 p-1.5 hover:bg-slate-900/50 rounded-lg cursor-pointer text-slate-300 hover:text-white transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        name={`perm-${p.id}`}
+                        defaultChecked={p.id === "assignLeads" && addStaffRole === "ADMIN"}
+                        disabled={addStaffRole === "COUNSELOR"}
+                        className="rounded border-slate-800 bg-slate-950 text-violet-600 focus:ring-violet-500 cursor-pointer disabled:opacity-50"
+                      />
+                      <span className="font-semibold">{p.label}</span>
                     </label>
                   ))}
                 </div>
@@ -914,6 +939,13 @@ export function CrmModals() {
                   }
                 });
 
+                const permissions: string[] = [];
+                AVAILABLE_PERMISSIONS.forEach((p) => {
+                  if (fd.get(`perm-${p.id}`)) {
+                    permissions.push(p.id);
+                  }
+                });
+
                 const res = await addUser({
                   id: editingStaff.id,
                   name,
@@ -921,6 +953,7 @@ export function CrmModals() {
                   password: password || editingStaff.password,
                   role,
                   allowedTabs,
+                  permissions,
                   createdAt: editingStaff.createdAt
                 });
 
@@ -983,7 +1016,6 @@ export function CrmModals() {
                   >
                     <option value="COUNSELOR">COUNSELOR</option>
                     <option value="ADMIN">ADMINISTRATOR</option>
-                    <option value="MANAGER">GENERAL MANAGER</option>
                     <option value="DOCUMENT TEAM">DOCUMENT TEAM</option>
                     <option value="VISA TEAM">VISA TEAM</option>
                     <option value="ACCOUNT TEAM">ACCOUNT TEAM</option>
@@ -1016,6 +1048,33 @@ export function CrmModals() {
                         className="rounded border-slate-800 bg-slate-950 text-violet-600 focus:ring-violet-500 cursor-pointer"
                       />
                       <span className="font-semibold">{t.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2 text-left">
+                <label className="text-slate-400 font-bold block border-b border-slate-900 pb-1.5">
+                  Action Permissions
+                </label>
+                <div className="grid grid-cols-1 gap-2 p-2 bg-slate-950/50 rounded-xl border border-slate-900">
+                  {AVAILABLE_PERMISSIONS.map((p) => (
+                    <label
+                      key={p.id}
+                      className="flex items-center space-x-2 p-1.5 hover:bg-slate-900/50 rounded-lg cursor-pointer text-slate-300 hover:text-white transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        name={`perm-${p.id}`}
+                        defaultChecked={
+                          editingStaff.permissions
+                            ? editingStaff.permissions.includes(p.id)
+                            : p.id === "assignLeads" && editingStaff.role === "ADMIN"
+                        }
+                        disabled={editStaffRole === "COUNSELOR"}
+                        className="rounded border-slate-800 bg-slate-950 text-violet-600 focus:ring-violet-500 cursor-pointer disabled:opacity-50"
+                      />
+                      <span className="font-semibold">{p.label}</span>
                     </label>
                   ))}
                 </div>

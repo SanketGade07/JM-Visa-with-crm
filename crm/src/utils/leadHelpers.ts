@@ -1,9 +1,22 @@
-import type { DocumentChecklist, Lead, VisaStatus } from "@/context/CrmContext";
+import type { CrmUser, DocumentChecklist, Lead, VisaStatus } from "@/context/CrmContext";
 import {
   DEFAULT_EMPLOYMENT_CATEGORY,
   getChecklistKeysForLead,
   type EmploymentCategory,
 } from "@/utils/documentChecklistConfig";
+
+export function isLeadAssignedToCounselor(lead: Lead, counselorName: string): boolean {
+  const assigned = lead.counselor?.trim().toLowerCase() ?? "";
+  const counselor = counselorName.trim().toLowerCase();
+  return assigned !== "" && assigned !== "unassigned" && assigned === counselor;
+}
+
+export function scopeLeadsForUser(leads: Lead[], user: CrmUser | null): Lead[] {
+  if (!user || user.role !== "COUNSELOR") {
+    return leads;
+  }
+  return leads.filter((lead) => isLeadAssignedToCounselor(lead, user.name));
+}
 
 export function getDeskCountriesFromLeads(leads: Lead[]): string[] {
   const set = new Set<string>();

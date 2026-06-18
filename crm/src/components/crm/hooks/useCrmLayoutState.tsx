@@ -3,14 +3,63 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCrm, VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Meeting } from "@/context/CrmContext";
-import { ROLE_TABS } from "@/utils/crmConstants";
+import { ROLE_TABS, userHasPermission } from "@/utils/crmConstants";
 import { LEAD_STATUS_ORDER, getStatusLabel } from "@/utils/leadStatusConfig";
 import { getDepositPickerLeads, getEligibleDepositLeads } from "@/utils/leadPaymentUtils";
+import { getAssignableCounselorNames, UNASSIGNED_COUNSELOR } from "@/utils/counselorOptions";
+import { isLeadAssignedToCounselor } from "@/utils/leadHelpers";
 // @ts-ignore
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
 
 const LEAD_ID_PATTERN = /^\/leads\/([^/]+)$/;
 const RESERVED_LEAD_SEGMENTS = new Set(["new"]);
+
+export type AssignmentNotification = {
+  leadId: string;
+  leadName: string;
+  assignedAt: string;
+};
+
+const ASSIGNMENT_NOTIFICATIONS_KEY = "crm-assignment-notifications";
+
+function readStoredNotifications(userId: string): AssignmentNotification[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(ASSIGNMENT_NOTIFICATIONS_KEY);
+    if (!raw) return [];
+    const data = JSON.parse(raw) as Record<string, AssignmentNotification[]>;
+    return Array.isArray(data[userId]) ? data[userId] : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredNotifications(userId: string, items: AssignmentNotification[]) {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(ASSIGNMENT_NOTIFICATIONS_KEY);
+    const data = raw ? JSON.parse(raw) : {};
+    data[userId] = items;
+    localStorage.setItem(ASSIGNMENT_NOTIFICATIONS_KEY, JSON.stringify(data));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function appendStoredNotification(
+  userId: string,
+  entry: AssignmentNotification
+): AssignmentNotification[] {
+  const prev = readStoredNotifications(userId);
+  const withoutDup = prev.filter((n) => n.leadId !== entry.leadId);
+  return [entry, ...withoutDup].slice(0, 50);
+}
+
+function findCounselorUser(users: CrmUser[], counselorName: string): CrmUser | undefined {
+  const normalized = counselorName.trim().toLowerCase();
+  if (!normalized || normalized === UNASSIGNED_COUNSELOR.toLowerCase()) return undefined;
+  return users.find((user) => user.name.trim().toLowerCase() === normalized);
+}
 
 function getLeadIdFromPathname(pathname: string | null | undefined): string | null {
   const match = pathname?.match(LEAD_ID_PATTERN);
@@ -33,6 +82,7 @@ export function useCrmLayoutState() {
     setCurrentUser,
     addUser,
     deleteUser,
+    resetUserPassword,
     addLead,
     updateLeadStatus,
     updateUsaSlots,
@@ -76,12 +126,13 @@ export function useCrmLayoutState() {
 
   // Role-based permission checks
   const canViewLeads = userAllowedTabs.includes("Leads");
-  const canModifyLeads = ["ADMIN", "COUNSELOR", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Leads");
-  const canVerifyDocs = ["ADMIN", "DOCUMENT TEAM", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Checklist");
+  const canModifyLeads = ["ADMIN", "COUNSELOR"].includes(currentRole) || userAllowedTabs.includes("Leads");
+  const canVerifyDocs = ["ADMIN", "DOCUMENT TEAM"].includes(currentRole) || userAllowedTabs.includes("Checklist");
   const canAccessLeadChecklist = canVerifyDocs;
   const canEditCredentials = userAllowedTabs.includes("USASlots");
-  const canSubmitVisa = ["ADMIN", "VISA TEAM", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Submissions");
-  const canManagePayments = ["ADMIN", "ACCOUNT TEAM", "MANAGER"].includes(currentRole) || userAllowedTabs.includes("Payments");
+  const canSubmitVisa = ["ADMIN", "VISA TEAM"].includes(currentRole) || userAllowedTabs.includes("Submissions");
+  const canManagePayments = ["ADMIN", "ACCOUNT TEAM"].includes(currentRole) || userAllowedTabs.includes("Payments");
+  const canAssignLeads = userHasPermission(currentUser, "assignLeads");
 
   const resolveLeadDetailTab = useCallback(
     (tab: LeadDetailTab): LeadDetailTab => {
@@ -183,6 +234,93 @@ export function useCrmLayoutState() {
   const [kpiFilter, setKpiFilter] = useState<string>("Total");
   const [countryFilter, setCountryFilter] = useState<string>("All");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+
+  const [assignmentNotifications, setAssignmentNotifications] = useState<AssignmentNotification[]>([]);
+
+  useEffect(() => {
+    if (!currentUser?.id) {
+      setAssignmentNotifications([]);
+      return;
+    }
+    setAssignmentNotifications(readStoredNotifications(currentUser.id));
+  }, [currentUser?.id]);
+
+  const pushAssignmentNotificationForCounselor = useCallback(
+    (counselorName: string, leadId: string, leadName?: string) => {
+      const counselorUser = findCounselorUser(users, counselorName);
+      if (!counselorUser) return;
+
+      const name = leadName ?? leads.find((l) => l.id === leadId)?.name ?? "Lead";
+      const entry: AssignmentNotification = {
+        leadId,
+        leadName: name,
+        assignedAt: new Date().toISOString(),
+      };
+
+      const next = appendStoredNotification(counselorUser.id, entry);
+      writeStoredNotifications(counselorUser.id, next);
+
+      if (currentUser?.id === counselorUser.id) {
+        setAssignmentNotifications(next);
+      }
+    },
+    [users, leads, currentUser?.id]
+  );
+
+  const dismissAssignmentNotification = useCallback(
+    (leadId: string) => {
+      if (!currentUser?.id) return;
+      setAssignmentNotifications((prev) => {
+        const next = prev.filter((n) => n.leadId !== leadId);
+        writeStoredNotifications(currentUser.id, next);
+        return next;
+      });
+    },
+    [currentUser?.id]
+  );
+
+  const clearAssignmentNotifications = useCallback(() => {
+    if (!currentUser?.id) return;
+    setAssignmentNotifications([]);
+    writeStoredNotifications(currentUser.id, []);
+  }, [currentUser?.id]);
+
+  const wrappedAssignCounselor = useCallback(
+    (leadId: string, counselor: string) => {
+      if (!canAssignLeads) return;
+      const prev = leads.find((l) => l.id === leadId);
+      assignCounselor(leadId, counselor);
+      if (prev && prev.counselor !== counselor) {
+        pushAssignmentNotificationForCounselor(counselor, leadId, prev.name);
+      }
+    },
+    [assignCounselor, leads, canAssignLeads, pushAssignmentNotificationForCounselor]
+  );
+
+  const wrappedAddLead = useCallback(
+    (newLeadData: Parameters<typeof addLead>[0]): string => {
+      const newId = addLead(newLeadData);
+      if (newLeadData.counselor?.trim()) {
+        pushAssignmentNotificationForCounselor(
+          newLeadData.counselor,
+          newId,
+          newLeadData.name
+        );
+      }
+      return newId;
+    },
+    [addLead, pushAssignmentNotificationForCounselor]
+  );
+
+  const assignedLeadCount = useMemo(() => {
+    if (!currentUser || currentUser.role !== "COUNSELOR") return 0;
+    return leads.filter(
+      (lead) =>
+        !lead.isDeleted &&
+        lead.status !== "DROPPED" &&
+        isLeadAssignedToCounselor(lead, currentUser.name)
+    ).length;
+  }, [leads, currentUser]);
 
   const [leadDetailTab, setLeadDetailTabState] = useState<LeadDetailTab>("details");
 
@@ -715,7 +853,7 @@ export function useCrmLayoutState() {
         return { label: labelMap[source] || source, count, pct };
       });
     } else {
-      const counselors = ["Priya Mehta", "Rohit Verma", "Simran Kaur"];
+      const counselors = getAssignableCounselorNames(users);
       return counselors.map(c => {
         const count = leads.filter(l => l.counselor === c).length;
         const pct = leads.length > 0 ? (count / leads.length) * 100 : 20 + (c.length * 13) % 45;
@@ -950,9 +1088,10 @@ export function useCrmLayoutState() {
 
   return {
     leads, meetings, users, currentUser, currentRole, currentTab, setCurrentTab,
-    setCurrentRole, setCurrentUser, addUser, deleteUser, addLead, updateLeadStatus,
+    setCurrentRole, setCurrentUser, addUser, deleteUser, resetUserPassword, addLead: wrappedAddLead, updateLeadStatus,
     updateUsaSlots, addPayment, setLeadPackage, addMeeting, updateMeeting, restoreLead, updateLeadNotes,
-    updateLeadProfile, assignCounselor, updateEmploymentCategory, setLeadCredentials, setLeadDriveFolder, patchLeadDriveFolder, uploadDocument, uploadInvoice, getLeadDocuments, getLeadActivities, postLeadDiscussionMessage, toggleChecklistItem,
+    updateLeadProfile, assignCounselor: wrappedAssignCounselor, updateEmploymentCategory, setLeadCredentials, setLeadDriveFolder, patchLeadDriveFolder, uploadDocument, uploadInvoice, getLeadDocuments, getLeadActivities, postLeadDiscussionMessage, toggleChecklistItem,
+    assignmentNotifications, dismissAssignmentNotification, clearAssignmentNotifications, assignedLeadCount,
     handleLogout, searchTerm, setSearchTerm, checklistSearch, setChecklistSearch,
     isMobileSidebarOpen, setIsMobileSidebarOpen, isMobileDetailOpen, setIsMobileDetailOpen,
     isMobileSlotSettingsOpen, setIsMobileSlotSettingsOpen, isMobileChecklistOpen, setIsMobileChecklistOpen,
@@ -988,7 +1127,7 @@ export function useCrmLayoutState() {
     openProfileDepositModal, openPickerDepositModal, closeDepositModal,
     tempInvoiceFile, setTempInvoiceFile,
     tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
-    allowedTabs, userAllowedTabs, canViewLeads, canModifyLeads, canVerifyDocs, canAccessLeadChecklist,
+    allowedTabs, userAllowedTabs, canViewLeads, canModifyLeads, canAssignLeads, canVerifyDocs, canAccessLeadChecklist,
     canEditCredentials, canSubmitVisa, canManagePayments,
     openSignedUrl, selectedLead, activeLeads, monthlyChart, chartMax, countryColors,
     countryStats, countryTotal, donutSegments, calendarData, filteredLeads,

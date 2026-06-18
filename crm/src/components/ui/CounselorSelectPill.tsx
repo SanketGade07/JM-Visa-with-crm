@@ -2,13 +2,7 @@
 
 import React from "react";
 import { TablePillSelect } from "@/components/ui/TablePillSelect";
-
-export const COUNSELOR_OPTIONS = [
-  { value: "Unassigned", label: "Unassigned" },
-  { value: "Priya Mehta", label: "Priya Mehta" },
-  { value: "Rohit Verma", label: "Rohit Verma" },
-  { value: "Simran Kaur", label: "Simran Kaur" },
-];
+import { useCounselorSelectOptions } from "@/hooks/useCounselorOptions";
 
 const getCounselorPillClass = () =>
   "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 font-medium";
@@ -28,10 +22,12 @@ export function CounselorSelectPill({
   portalId,
   variant = "pill",
 }: CounselorSelectPillProps) {
+  const options = useCounselorSelectOptions(value);
+
   return (
     <TablePillSelect
       value={value}
-      options={COUNSELOR_OPTIONS}
+      options={options}
       onChange={onChange}
       disabled={disabled}
       portalId={portalId}

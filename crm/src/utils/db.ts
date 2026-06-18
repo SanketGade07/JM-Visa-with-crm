@@ -1,23 +1,52 @@
 import { getSupabase } from "@/utils/supabase";
 import { Lead, Meeting, Activity, Expense, Document, CrmUser, type StaffRole } from "@/context/CrmContext";
 import { normalizeLead } from "@/utils/normalizeLead";
-import { ROLE_TABS } from "@/utils/crmConstants";
+import { ROLE_TABS, normalizePermissions } from "@/utils/crmConstants";
 
-/** Backfill role-default tabs missing from stored user grants (e.g. Drive for ADMIN). */
-function migrateUserAllowedTabs(users: CrmUser[]): { users: CrmUser[]; changed: boolean } {
+/** Drop deprecated manager accounts and reassign MANAGER role users to COUNSELOR. */
+function migrateUsers(users: CrmUser[]): { users: CrmUser[]; changed: boolean } {
   let changed = false;
-  const migrated = users.map((user) => {
+  const migrated = users
+    .filter((user) => {
+      if (user.id === "user-manager") {
+        changed = true;
+        return false;
+      }
+      return true;
+    })
+    .map((user) => {
+      if (user.role === "MANAGER") {
+        changed = true;
+        return { ...user, role: "COUNSELOR" as StaffRole };
+      }
+      return user;
+    });
+
+  const withTabs = migrated.map((user) => {
     const roleTabs = ROLE_TABS[user.role as StaffRole];
-    if (!roleTabs?.length) return user;
+    let next = user;
 
     const allowed = user.allowedTabs ?? [];
-    const toAdd = roleTabs.filter((tab) => !allowed.includes(tab));
-    if (toAdd.length === 0) return user;
+    const toAdd = roleTabs?.filter((tab) => !allowed.includes(tab)) ?? [];
+    if (toAdd.length > 0) {
+      changed = true;
+      next = { ...next, allowedTabs: [...allowed, ...toAdd] };
+    }
 
-    changed = true;
-    return { ...user, allowedTabs: [...allowed, ...toAdd] };
+    const normalizedPermissions = normalizePermissions(user.permissions, user.role);
+    const existingPermissions = Array.isArray(user.permissions) ? user.permissions : [];
+    if (
+      normalizedPermissions.length !== existingPermissions.length ||
+      normalizedPermissions.some((perm, index) => perm !== existingPermissions[index])
+    ) {
+      changed = true;
+      next = { ...next, permissions: normalizedPermissions };
+    }
+
+    return next;
   });
-  return { users: migrated, changed };
+
+  return { users: withTabs, changed };
 }
 
 // ── Leads ────────────────────────────────────────────────────────────────────
@@ -207,16 +236,8 @@ export const getSeedUsers = (): CrmUser[] => [
     email: "admin@jmvisa.com",
     password: "admin123",
     role: "ADMIN",
-    allowedTabs: ["Dashboard", "Leads", "FollowUps", "Countries", "USASlots", "Checklist", "Submissions", "Payments", "Meetings", "DropLeads", "Staff", "Drive"],
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "user-manager",
-    name: "Manager User",
-    email: "manager@jmvisa.com",
-    password: "manager123",
-    role: "MANAGER",
-    allowedTabs: ["Dashboard", "Leads", "FollowUps", "Countries", "USASlots", "Checklist", "Submissions", "Payments", "Meetings", "DropLeads", "Staff"],
+    allowedTabs: ["Dashboard", "Leads", "USASlots", "Submissions", "Payments", "DropLeads", "Staff", "Drive"],
+    permissions: ["assignLeads"],
     createdAt: new Date().toISOString()
   },
   {
@@ -225,7 +246,8 @@ export const getSeedUsers = (): CrmUser[] => [
     email: "counselor@jmvisa.com",
     password: "counselor123",
     role: "COUNSELOR",
-    allowedTabs: ["Dashboard", "Leads", "FollowUps", "Countries", "Meetings", "DropLeads"],
+    allowedTabs: ["Dashboard", "Leads", "DropLeads"],
+    permissions: [],
     createdAt: new Date().toISOString()
   }
 ];
@@ -249,7 +271,7 @@ export const readUsers = async (): Promise<CrmUser[]> => {
     
     const text = await data.text();
     const parsed = JSON.parse(text) as CrmUser[];
-    const { users: migrated, changed } = migrateUserAllowedTabs(parsed);
+    const { users: migrated, changed } = migrateUsers(parsed);
     if (changed) {
       await writeUsers(migrated);
     }

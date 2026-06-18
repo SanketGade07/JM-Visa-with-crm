@@ -29,8 +29,7 @@ import {
 } from "@/components/crm/leads/create";
 import { isUsaCountry } from "@/utils/countryUtils";
 import { CreateLeadReviewStep } from "./CreateLeadReviewStep";
-
-const CASE_OFFICERS = ["Priya Mehta", "Rohit Verma", "Simran Kaur"] as const;
+import { useCounselorSelectOptions } from "@/hooks/useCounselorOptions";
 
 const SLOT_STATUS_OPTIONS: { value: CreateLeadSlotStatus; label: string }[] = [
   { value: "available", label: "Available" },
@@ -48,7 +47,7 @@ export function CreateLeadWizardPage({
 }: CreateLeadWizardPageProps = {}) {
   const router = useRouter();
   const isInline = variant === "inline";
-  const { addLead, showToast, canModifyLeads, openLeadDetail } = useCrmLayoutContext();
+  const { addLead, showToast, canModifyLeads, canAssignLeads, openLeadDetail, currentUser } = useCrmLayoutContext();
   const {
     state,
     currentStep,
@@ -66,6 +65,9 @@ export function CreateLeadWizardPage({
     clearFocusFieldId,
     completedSteps,
   } = useCreateLeadForm();
+  const caseOfficerOptions = useCounselorSelectOptions(state.caseOfficer, {
+    includeUnassigned: false,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -77,6 +79,12 @@ export function CreateLeadWizardPage({
       }
     }
   }, [canModifyLeads, isInline, onClose, router]);
+
+  useEffect(() => {
+    if (!canAssignLeads && currentUser?.name && state.caseOfficer !== currentUser.name) {
+      updateField("caseOfficer", currentUser.name);
+    }
+  }, [canAssignLeads, currentUser?.name, state.caseOfficer, updateField]);
 
   useEffect(() => {
     if (!focusFieldId) return;
@@ -580,14 +588,15 @@ export function CreateLeadWizardPage({
                   value={state.caseOfficer}
                   onChange={(e) => updateField("caseOfficer", e.target.value)}
                   onBlur={() => markFieldTouched("caseOfficer")}
+                  disabled={!canAssignLeads}
                   className={`${FORM_SELECT_CLASS}${
                     caseOfficerError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
-                  }`}
+                  } disabled:opacity-60 disabled:cursor-not-allowed`}
                 >
                   <option value="">Select officer</option>
-                  {CASE_OFFICERS.map((officer) => (
-                    <option key={officer} value={officer}>
-                      {officer}
+                  {caseOfficerOptions.map((officer) => (
+                    <option key={officer.value} value={officer.value}>
+                      {officer.label}
                     </option>
                   ))}
                 </select>

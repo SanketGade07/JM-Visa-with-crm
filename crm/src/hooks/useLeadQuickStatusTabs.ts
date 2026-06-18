@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useCrmLayoutContext } from "@/components/crm/context/CrmLayoutContext";
+import { scopeLeadsForUser } from "@/utils/leadHelpers";
 import {
   QUICK_TAB_FILTERS,
   filterScopedLeads,
@@ -9,11 +10,16 @@ import {
 } from "@/utils/leadQuickFilters";
 
 export function useLeadQuickStatusTabs() {
-  const { leads, kpiFilter, countryFilter, searchTerm } = useCrmLayoutContext();
+  const { leads, kpiFilter, countryFilter, searchTerm, currentUser } = useCrmLayoutContext();
+
+  const counselorScopedLeads = useMemo(
+    () => scopeLeadsForUser(leads, currentUser),
+    [leads, currentUser]
+  );
 
   const scopedLeads = useMemo(
-    () => filterScopedLeads(leads, kpiFilter, countryFilter, searchTerm),
-    [leads, kpiFilter, countryFilter, searchTerm]
+    () => filterScopedLeads(counselorScopedLeads, kpiFilter, countryFilter, searchTerm),
+    [counselorScopedLeads, kpiFilter, countryFilter, searchTerm]
   );
 
   const quickStatusTabs = useMemo(

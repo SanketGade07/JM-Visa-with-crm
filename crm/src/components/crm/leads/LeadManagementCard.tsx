@@ -55,6 +55,7 @@ export function LeadManagementCard({
     updateLeadStatus,
     assignCounselor,
     canModifyLeads,
+    canAssignLeads,
     canManagePayments,
     setLeadPackage,
     openProfileDepositModal,
@@ -104,7 +105,7 @@ export function LeadManagementCard({
           <CounselorSelectPill
             variant="field"
             value={lead.counselor}
-            disabled={!canModifyLeads}
+            disabled={!canModifyLeads || !canAssignLeads}
             portalId={`mgmt-counselor-${lead.id}`}
             onChange={(counselor) => assignCounselor(lead.id, counselor)}
           />
@@ -112,7 +113,7 @@ export function LeadManagementCard({
 
         <div className={sectionDividerCls}>
           <h3 className={sectionTitleCls}>Visa Portal</h3>
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-3">
             <InfoField
               label="Username"
               value={lead.visaCredentials?.username?.trim() ?? ""}
@@ -135,14 +136,16 @@ export function LeadManagementCard({
 
               <div className="space-y-3">
                 <span className={fieldLabelCls}>Slot Portal</span>
-                <InfoField
-                  label="User ID"
-                  value={lead.usaSlots?.slotPortalUsername?.trim() ?? ""}
-                />
-                <InfoField
-                  label="Password"
-                  value={lead.usaSlots?.slotPortalPassword?.trim() ?? ""}
-                />
+                <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+                  <InfoField
+                    label="User ID"
+                    value={lead.usaSlots?.slotPortalUsername?.trim() ?? ""}
+                  />
+                  <InfoField
+                    label="Password"
+                    value={lead.usaSlots?.slotPortalPassword?.trim() ?? ""}
+                  />
+                </div>
               </div>
 
               <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-relaxed">
@@ -238,7 +241,7 @@ export function LeadManagementCard({
 
   return (
     <section
-      className={`h-fit self-start w-full rounded-2xl border border-gray-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none transition-shadow duration-300 ${
+      className={`w-full rounded-2xl border border-gray-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/60 p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(148,163,184,0.08)] transition-shadow duration-300 ${
         highlighted
           ? "ring-2 ring-violet-500/70 ring-offset-2 ring-offset-white dark:ring-offset-slate-950 animate-lead-created-highlight"
           : ""

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { createPortal } from "react-dom";
 import { VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Meeting, Lead } from "@/context/CrmContext";
 import { ROLE_TABS, AVAILABLE_TABS } from "@/utils/crmConstants";
-import { docProgress, getStatusColor } from "@/utils/leadHelpers";
+import { docProgress, getStatusColor, scopeLeadsForUser } from "@/utils/leadHelpers";
 import { AustraliaFlag, MalaysiaFlag, IndonesiaFlag, SingaporeFlag } from "@/components/CountryFlags";
 import {
   FaUserFriends, FaGlobe, FaCheckSquare, FaCalendarAlt, FaHistory,
@@ -21,6 +21,7 @@ import { CollapsiblePanel } from "@/components/ui/CollapsiblePanel";
 import { CreateLeadWizardPage } from "@/components/crm/leads/create/CreateLeadWizardPage";
 import { StatusSelectPill } from "@/components/ui/StatusSelectPill";
 import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
+import { CounselorNativeSelect } from "@/components/ui/CounselorNativeSelect";
 import {
   SearchableCountrySelect,
   PhoneInput,
@@ -80,7 +81,7 @@ export function LeadsTab() {
     handleCountryClick, resetMap, startDate, setStartDate, endDate, setEndDate,
     tempInvoiceFile, setTempInvoiceFile,
     tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
-    allowedTabs, userAllowedTabs, canModifyLeads, canVerifyDocs, canSubmitVisa, canManagePayments,
+    allowedTabs, userAllowedTabs, canModifyLeads, canAssignLeads, canVerifyDocs, canSubmitVisa, canManagePayments,
     openSignedUrl, selectedLead, activeLeads, monthlyChart, chartMax, countryColors,
     countryStats, countryTotal, donutSegments, calendarData, filteredLeads,
     countryBarChartData, maxLeadsCount, yLabels, getCountryAbbreviation,
@@ -95,6 +96,7 @@ export function LeadsTab() {
   const columnSearch = useColumnSearch();
   const { clearFilter, setActiveColumn, activeColumn } = columnSearch;
   const isAllQuickTab = statusFilter === "All";
+  const isCounselorView = currentUser?.role === "COUNSELOR";
 
   useEffect(() => {
     if (!isAllQuickTab) {
@@ -105,9 +107,22 @@ export function LeadsTab() {
     }
   }, [isAllQuickTab, clearFilter, setActiveColumn, activeColumn]);
 
+  useEffect(() => {
+    if (!isCounselorView) return;
+    clearFilter("counselor");
+    if (activeColumn === "counselor") {
+      setActiveColumn(null);
+    }
+  }, [isCounselorView, clearFilter, setActiveColumn, activeColumn]);
+
+  const counselorScopedLeads = useMemo(
+    () => scopeLeadsForUser(leads, currentUser),
+    [leads, currentUser]
+  );
+
   const scopedLeads = useMemo(
-    () => filterScopedLeads(leads, kpiFilter, "All", ""),
-    [leads, kpiFilter]
+    () => filterScopedLeads(counselorScopedLeads, kpiFilter, "All", ""),
+    [counselorScopedLeads, kpiFilter]
   );
 
   const serviceFilterOptions = useMemo(
@@ -115,7 +130,10 @@ export function LeadsTab() {
     [leads]
   );
 
-  const counselorFilterOptions = getCounselorFilterOptions();
+  const counselorFilterOptions = useMemo(
+    () => (isCounselorView ? [] : getCounselorFilterOptions(users)),
+    [users, isCounselorView]
+  );
   const countryFilterOptions = getCountryFilterOptions();
 
   const baseFilteredLeads = useMemo(() => {
@@ -148,14 +166,16 @@ export function LeadsTab() {
 
   const leadSearchColumns = useMemo(
     () =>
-      Object.entries(leadSearchGetters).map(([searchKey, getSearchValue]) => ({
-        searchKey,
-        getSearchValue,
-        ...(searchKey === "lead" || (searchKey === "status" && !isAllQuickTab)
-          ? {}
-          : { filterMode: "exact" as const, filterClearValue: "All" }),
-      })),
-    [leadSearchGetters, isAllQuickTab]
+      Object.entries(leadSearchGetters)
+        .filter(([searchKey]) => !(isCounselorView && searchKey === "counselor"))
+        .map(([searchKey, getSearchValue]) => ({
+          searchKey,
+          getSearchValue,
+          ...(searchKey === "lead" || (searchKey === "status" && !isAllQuickTab)
+            ? {}
+            : { filterMode: "exact" as const, filterClearValue: "All" }),
+        })),
+    [leadSearchGetters, isAllQuickTab, isCounselorView]
   );
 
   const tableRows = useMemo(
@@ -410,21 +430,30 @@ export function LeadsTab() {
                       },
                       {
                         header: "Assign to",
-                        searchKey: "counselor",
-                        searchLabel: "Assign to",
-                        filterSelectOptions: counselorFilterOptions,
-                        filterSelectPlaceholder: "All Counselors",
-                        filterSelectClearValue: "All",
-                        filterSelectShowSearch: false,
-                        getSearchValue: leadSearchGetters.counselor,
-                        render: (lead) => (
-                          <CounselorSelectPill
-                            value={lead.counselor}
-                            disabled={!canModifyLeads}
-                            portalId={`counselor-select-${lead.id}`}
-                            onChange={(counselor) => assignCounselor(lead.id, counselor)}
-                          />
-                        ),
+                        ...(isCounselorView
+                          ? {}
+                          : {
+                              searchKey: "counselor",
+                              searchLabel: "Assign to",
+                              filterSelectOptions: counselorFilterOptions,
+                              filterSelectPlaceholder: "All Counselors",
+                              filterSelectClearValue: "All",
+                              filterSelectShowSearch: false,
+                              getSearchValue: leadSearchGetters.counselor,
+                            }),
+                        render: (lead) =>
+                          canAssignLeads ? (
+                            <CounselorSelectPill
+                              value={lead.counselor}
+                              disabled={!canModifyLeads}
+                              portalId={`counselor-select-${lead.id}`}
+                              onChange={(counselor) => assignCounselor(lead.id, counselor)}
+                            />
+                          ) : (
+                            <span className="font-medium text-gray-600 dark:text-slate-300 text-[13px] whitespace-nowrap">
+                              {lead.counselor || "Unassigned"}
+                            </span>
+                          ),
                       },
                       {
                         header: "Status",
@@ -608,17 +637,12 @@ export function LeadsTab() {
                         {/* Assigned counselor */}
                         <div className="space-y-1.5">
                           <label className="text-gray-400 dark:text-slate-500 font-bold uppercase text-[10px] tracking-wider block">Assigned Counselor</label>
-                          <select
+                          <CounselorNativeSelect
                             value={selectedLead.counselor}
-                            onChange={(e) => assignCounselor(selectedLead.id, e.target.value)}
-                            disabled={!canModifyLeads}
-                            className="w-full bg-white dark:bg-slate-800/40 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-                          >
-                            <option value="Unassigned">Unassigned</option>
-                            <option value="Priya Mehta">Priya Mehta</option>
-                            <option value="Rohit Verma">Rohit Verma</option>
-                            <option value="Simran Kaur">Simran Kaur</option>
-                          </select>
+                            onChange={(counselor) => assignCounselor(selectedLead.id, counselor)}
+                            disabled={!canModifyLeads || !canAssignLeads}
+                            className="w-full bg-white dark:bg-slate-800/40 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                          />
                         </div>
 
                         {/* Contact details */}

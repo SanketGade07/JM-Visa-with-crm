@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Meeting } from "@/context/CrmContext";
-import { ROLE_TABS, AVAILABLE_TABS } from "@/utils/crmConstants";
+import { ROLE_TABS, AVAILABLE_TABS, normalizeAllowedTabs } from "@/utils/crmConstants";
 import { docProgress, timeAgo, getStatusColor } from "@/utils/leadHelpers";
 import { AustraliaFlag, MalaysiaFlag, IndonesiaFlag, SingaporeFlag } from "@/components/CountryFlags";
 import {
@@ -27,7 +27,7 @@ import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 export function StaffTab() {
   const {
     leads, meetings, users, currentUser, currentRole, currentTab, setCurrentTab,
-    setCurrentRole, setCurrentUser, addUser, deleteUser, addLead, updateLeadStatus,
+    setCurrentRole, setCurrentUser, addUser, deleteUser, resetUserPassword, addLead, updateLeadStatus,
     updateUsaSlots, addPayment, addMeeting, updateMeeting, restoreLead, updateLeadNotes,
     assignCounselor, uploadDocument, uploadInvoice, getLeadDocuments,
     handleLogout, searchTerm, setSearchTerm, checklistSearch, setChecklistSearch,
@@ -65,6 +65,32 @@ export function StaffTab() {
     handlePeriodChange, handleCalendarDateClick, getDaysInMonth, monthNames,
     leadsMgmtData, topCountryStats, pipelineStats, cardMap, modalMap,
   } = useCrmLayoutContext();
+
+  const copyToClipboard = useCallback(async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(`${label} copied to clipboard`);
+    } catch {
+      showToast(`Failed to copy ${label.toLowerCase()}`, "error");
+    }
+  }, [showToast]);
+
+  const handleResetPassword = useCallback(async (staff: CrmUser) => {
+    const enteredPassword = prompt(`Enter a new password for ${staff.name}:`, staff.password || "");
+    if (enteredPassword === null) return;
+    const nextPassword = enteredPassword.trim();
+    if (!nextPassword) {
+      showToast("Password cannot be empty", "error");
+      return;
+    }
+
+    const res = await resetUserPassword(staff.id, nextPassword);
+    if (res.ok && res.password) {
+      showToast(`Password reset for ${staff.name}`);
+    } else {
+      showToast(res.error || "Failed to reset password", "error");
+    }
+  }, [resetUserPassword, showToast]);
 
   return (
     <>
@@ -124,9 +150,54 @@ export function StaffTab() {
                           <span className="text-slate-500 font-semibold">Email Desk:</span>
                           <span className="text-slate-300 font-bold select-all">{staff.email}</span>
                         </div>
+                        {currentRole === "ADMIN" && (
+                          <>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-slate-500 font-semibold shrink-0">User ID:</span>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-slate-300 font-bold truncate select-all">{staff.email}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => copyToClipboard(staff.email, "User ID")}
+                                  className="p-1 text-slate-500 hover:text-violet-400 hover:bg-violet-500/10 rounded-md transition-colors shrink-0"
+                                  title="Copy User ID"
+                                >
+                                  <FaClipboard className="text-[10px]" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-slate-500 font-semibold shrink-0">Password:</span>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-slate-300 font-bold truncate select-all">
+                                  {staff.password || "—"}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => copyToClipboard(staff.password || "", "Password")}
+                                  disabled={!staff.password}
+                                  className="p-1 text-slate-500 hover:text-violet-400 hover:bg-violet-500/10 rounded-md transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                                  title="Copy password"
+                                >
+                                  <FaClipboard className="text-[10px]" />
+                                </button>
+                                {staff.id !== "user-admin" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleResetPassword(staff)}
+                                    className="p-1 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-md transition-colors shrink-0"
+                                    title="Reset password"
+                                  >
+                                    <FaKey className="text-[10px]" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </>
+                        )}
                         <div className="flex justify-between">
                           <span className="text-slate-500 font-semibold">Tab Access:</span>
-                          <span className="text-violet-400 font-extrabold">{staff.allowedTabs ? staff.allowedTabs.length : 0} / {AVAILABLE_TABS.length} Tabs</span>
+                          <span className="text-violet-400 font-extrabold">{normalizeAllowedTabs(staff.allowedTabs).length} / {AVAILABLE_TABS.length} Tabs</span>
                         </div>
                       </div>
                     </div>
@@ -135,7 +206,7 @@ export function StaffTab() {
                       <button
                         onClick={() => {
                           setEditingStaff(staff);
-                          const standardRoles = ["ADMIN", "COUNSELOR", "DOCUMENT TEAM", "VISA TEAM", "ACCOUNT TEAM", "MANAGER"];
+                          const standardRoles = ["ADMIN", "COUNSELOR", "DOCUMENT TEAM", "VISA TEAM", "ACCOUNT TEAM"];
                           if (standardRoles.includes(staff.role)) {
                             setEditStaffRole(staff.role);
                             setEditStaffCustomRole("");

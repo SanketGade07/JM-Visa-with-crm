@@ -195,19 +195,19 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
 
   useEffect(() => {
     const container = scrollContainerRef.current;
-    if (!container) return;
 
     if (previousLeadIdRef.current !== lead.id) {
       previousLeadIdRef.current = lead.id;
       previousMessageCountRef.current = discussionMessages.length;
-      container.scrollTo({ top: 0, behavior: "auto" });
+      document.getElementById("crm-main-scroll")?.scrollTo({ top: 0, behavior: "auto" });
+      container?.scrollTo({ top: 0, behavior: "auto" });
       return;
     }
 
     const prevCount = previousMessageCountRef.current;
     previousMessageCountRef.current = discussionMessages.length;
 
-    if (prevCount !== null && discussionMessages.length > prevCount) {
+    if (prevCount !== null && discussionMessages.length > prevCount && container) {
       container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
     }
   }, [lead.id, discussionMessages.length]);
@@ -299,13 +299,13 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
     employmentCategory;
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-stretch flex-1 min-h-0 h-full">
-      <div className="min-w-0 min-h-0 h-full flex flex-col">
-        <section className="flex flex-col h-full min-h-0 overflow-hidden">
+    <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start xl:items-stretch h-full min-h-0">
+      <div className="min-w-0 flex flex-col xl:h-full xl:min-h-0 xl:overflow-hidden">
+        <section className="flex flex-col xl:flex-1 xl:min-h-0 xl:h-full xl:overflow-hidden">
           <div
             id="lead-details-scroll"
             ref={scrollContainerRef}
-            className="crm-slim-scrollbar flex-1 min-h-0 overflow-y-auto px-5 pt-2 pb-4"
+            className="crm-slim-scrollbar xl:flex-1 xl:min-h-0 xl:overflow-y-auto pr-0.5"
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-3">
               <DetailField icon={FiUser} label="Name" value={lead.name} />
@@ -375,7 +375,7 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
 
             <DiscussionDivider />
 
-            <div className="space-y-3 pb-3">
+            <div className="space-y-3 pb-2">
               {discussionMessages.length === 0 ? (
                 <p className="text-center text-xs text-gray-400 dark:text-slate-500 py-8">
                   No messages yet
@@ -388,59 +388,61 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
             </div>
           </div>
 
-          <div
-            className="shrink-0 mx-5 mt-5 mb-0 rounded-2xl border border-gray-200/80 dark:border-slate-700/60 bg-white/90 dark:bg-[#0a0e1f]/80 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none px-4 py-4"
-          >
-            <DiscussionMessageComposer
-              ref={composerRef}
-              placeholder="Message team members about this lead..."
-              onEmptyChange={setMessageEmpty}
-              onSend={() => void handleSendMessage()}
-            />
+          <div className="shrink-0 z-10 pt-4 pb-1 border-t border-gray-200/60 dark:border-slate-800/80 bg-[#070712]/95 backdrop-blur-sm">
+            <div className="rounded-2xl border border-gray-200/80 dark:border-slate-700/60 bg-white/90 dark:bg-[#0a0e1f]/80 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none px-4 py-4">
+              <DiscussionMessageComposer
+                ref={composerRef}
+                placeholder="Message team members about this lead..."
+                onEmptyChange={setMessageEmpty}
+                onSend={() => void handleSendMessage()}
+              />
 
-            <div className="flex items-center justify-between gap-3 mt-3">
-              <div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  onChange={(e) => void handleAttachFile(e)}
-                  disabled={isAttaching}
-                />
+              <div className="flex items-center justify-between gap-3 mt-3">
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => void handleAttachFile(e)}
+                    disabled={isAttaching}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isAttaching}
+                    className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-600 dark:text-slate-300 border border-gray-200/80 dark:border-slate-600/80 rounded-xl disabled:opacity-50"
+                  >
+                    <FiPaperclip className="text-sm" />
+                    {isAttaching ? "Attaching…" : "Attach File"}
+                  </button>
+                </div>
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isAttaching}
-                  className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-600 dark:text-slate-300 border border-gray-200/80 dark:border-slate-600/80 rounded-xl disabled:opacity-50"
+                  onClick={() => void handleSendMessage()}
+                  disabled={messageEmpty || isSending}
+                  className={sendBtnClass}
                 >
-                  <FiPaperclip className="text-sm" />
-                  {isAttaching ? "Attaching…" : "Attach File"}
+                  <FiSend className="text-sm" />
+                  {isSending ? "Sending…" : "Send Message"}
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={() => void handleSendMessage()}
-                disabled={messageEmpty || isSending}
-                className={sendBtnClass}
-              >
-                <FiSend className="text-sm" />
-                {isSending ? "Sending…" : "Send Message"}
-              </button>
+              {currentUser?.name ? (
+                <p className="mt-2 text-[10px] text-gray-400 dark:text-slate-500">
+                  Posting as {currentUser.name}
+                </p>
+              ) : null}
             </div>
-            {currentUser?.name ? (
-              <p className="mt-2 text-[10px] text-gray-400 dark:text-slate-500">
-                Posting as {currentUser.name}
-              </p>
-            ) : null}
           </div>
         </section>
       </div>
 
-      <LeadManagementCard
-        lead={lead}
-        highlighted={highlighted}
-        className="xl:sticky xl:top-4 min-w-0 h-fit self-start w-full"
-      />
+      <div className="min-w-0 xl:min-h-0 xl:h-full xl:overflow-y-auto crm-slim-scrollbar pr-0.5 overscroll-y-contain">
+        <LeadManagementCard
+          lead={lead}
+          highlighted={highlighted}
+          className="min-w-0 w-full"
+        />
+      </div>
     </div>
   );
 }

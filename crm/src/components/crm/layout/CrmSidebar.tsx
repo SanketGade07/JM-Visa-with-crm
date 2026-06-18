@@ -46,6 +46,7 @@ export function CrmSidebar() {
     tempInvoiceFile, setTempInvoiceFile,
     tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
     allowedTabs, userAllowedTabs, canModifyLeads, canVerifyDocs, canSubmitVisa, canManagePayments,
+    assignmentNotifications,
     openSignedUrl, selectedLead, activeLeads, monthlyChart, chartMax, countryColors,
     countryStats, countryTotal, donutSegments, calendarData, filteredLeads,
     countryBarChartData, maxLeadsCount, yLabels, getCountryAbbreviation,
@@ -113,7 +114,12 @@ export function CrmSidebar() {
                   }`}
                 >
                   <Icon className={`${isActive ? "text-violet-400" : "text-slate-500"} text-base shrink-0`} />
-                  <span>{tab.label}</span>
+                  <span className="truncate">{tab.label}</span>
+                  {tab.id === "Leads" && currentUser?.role === "COUNSELOR" && assignmentNotifications.length > 0 && (
+                    <span className="crm-sidebar-assigned-count ml-auto min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-violet-600/20 text-violet-300 text-[10px] font-bold border border-violet-500/30">
+                      {assignmentNotifications.length > 9 ? "9+" : assignmentNotifications.length}
+                    </span>
+                  )}
                 </button>
               );
             })}

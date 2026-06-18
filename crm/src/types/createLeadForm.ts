@@ -45,7 +45,7 @@ export const CREATE_LEAD_INITIAL_STATE: CreateLeadFormState = {
   usaSecurityFood: "",
   usaSecurityCity: "",
   slotStatus: "",
-  caseOfficer: "Priya Mehta",
+  caseOfficer: "",
   leadSource: "MANUAL",
   employmentCategory: DEFAULT_EMPLOYMENT_CATEGORY,
   packageAmount: "",

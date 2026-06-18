@@ -15,13 +15,20 @@ import { DriveTab } from "./tabs/DriveTab";
 import { LeadDetailPage } from "./leads/LeadDetailPage";
 
 export function CrmTabViews() {
-  const { currentTab, isLeadDetailRoute, canViewLeads } = useCrmLayoutContext();
+  const { currentTab, isLeadDetailRoute, canViewLeads, leadDetailTab } = useCrmLayoutContext();
+
+  const isLeadDetailsTab =
+    currentTab === "Leads" && isLeadDetailRoute && leadDetailTab === "details";
 
   return (
     <div
       data-crm-scroll-container
       id="crm-main-scroll"
-      className="crm-slim-scrollbar flex-1 overflow-y-auto p-4 md:p-8"
+      className={
+        isLeadDetailsTab
+          ? "crm-slim-scrollbar flex-1 min-h-0 overflow-y-auto xl:overflow-hidden flex flex-col p-4 md:p-8"
+          : "crm-slim-scrollbar flex-1 min-h-0 overflow-y-auto p-4 md:p-8"
+      }
     >
       {currentTab === "Dashboard" && <DashboardTab />}
       {currentTab === "Leads" && isLeadDetailRoute && canViewLeads && <LeadDetailPage />}

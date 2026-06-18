@@ -8,6 +8,7 @@ import {
   mergeChecklist,
   type EmploymentCategory,
 } from "@/utils/documentChecklistConfig";
+import { normalizeAllowedTabs, normalizePermissions } from "@/utils/crmConstants";
 import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
 import type { LeadStatus } from "@/utils/leadStatusConfig";
 
@@ -32,7 +33,6 @@ export type StaffRole =
   | "DOCUMENT TEAM"
   | "VISA TEAM"
   | "ACCOUNT TEAM"
-  | "MANAGER"
   | "OTHER";
 
 export interface CrmUser {
@@ -42,6 +42,7 @@ export interface CrmUser {
   password?: string;
   role: StaffRole | string;
   allowedTabs: string[];
+  permissions?: string[];
   createdAt: string;
 }
 
@@ -162,6 +163,7 @@ interface CrmContextType {
   setCurrentUser: (user: CrmUser | null) => void;
   addUser: (user: Omit<CrmUser, "id" | "createdAt"> & { id?: string; password?: string; createdAt?: string }) => Promise<{ ok: boolean; error?: string }>;
   deleteUser: (userId: string) => Promise<{ ok: boolean; error?: string }>;
+  resetUserPassword: (userId: string, nextPassword?: string) => Promise<{ ok: boolean; error?: string; password?: string; user?: CrmUser }>;
   addLead: (lead: Omit<Lead, "id" | "dateCreated" | "lastUpdated" | "isDeleted">) => string;
   updateLeadStatus: (leadId: string, status: VisaStatus) => void;
   updateEmploymentCategory: (leadId: string, category: EmploymentCategory) => void;
@@ -265,7 +267,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       try {
         const [leadsRes, meetingsRes, activitiesRes, documentsRes, usersRes] = await Promise.all([
-          fetch("/api/leads?limit=1000"),
+          fetch("/api/leads?limit=1000&includeDeleted=true"),
           fetch("/api/meetings"),
           fetch("/api/activities"),
           fetch("/api/documents"),
@@ -281,13 +283,20 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (documentsRes.ok) setDocuments(await documentsRes.json());
         if (usersRes.ok) {
           const data = await usersRes.json();
-          setUsers(data);
+          const normalizedUsers = Array.isArray(data)
+            ? data.map((user: CrmUser) => ({
+                ...user,
+                allowedTabs: normalizeAllowedTabs(user.allowedTabs),
+                permissions: normalizePermissions(user.permissions, user.role),
+              }))
+            : [];
+          setUsers(normalizedUsers);
           
           // Seed initial user object structure in state if matching email was stored
           if (savedUserStr) {
             try {
               const parsed = JSON.parse(savedUserStr);
-              const matched = data.find((u: CrmUser) => u.id === parsed.id || u.email === parsed.email);
+              const matched = normalizedUsers.find((u: CrmUser) => u.id === parsed.id || u.email === parsed.email);
               if (matched) {
                 setCurrentUser(matched);
                 setCurrentRole(matched.role);
@@ -887,17 +896,27 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       // Update local state
       setUsers((prev) => {
-        const isExisting = prev.some((u) => u.id === data.user.id);
+        const normalizedUser: CrmUser = {
+          ...data.user,
+          allowedTabs: normalizeAllowedTabs(data.user.allowedTabs),
+          permissions: normalizePermissions(data.user.permissions, data.user.role),
+        };
+        const isExisting = prev.some((u) => u.id === normalizedUser.id);
         if (isExisting) {
-          return prev.map((u) => (u.id === data.user.id ? data.user : u));
+          return prev.map((u) => (u.id === normalizedUser.id ? normalizedUser : u));
         } else {
-          return [...prev, data.user];
+          return [...prev, normalizedUser];
         }
       });
       
       // If updating our own logged-in account, keep currentUser in sync
       if (currentUser && currentUser.id === data.user.id) {
-        const updatedCurrentUser = { ...currentUser, ...data.user };
+        const updatedCurrentUser = {
+          ...currentUser,
+          ...data.user,
+          allowedTabs: normalizeAllowedTabs(data.user.allowedTabs),
+          permissions: normalizePermissions(data.user.permissions, data.user.role),
+        };
         setCurrentUser(updatedCurrentUser);
         localStorage.setItem("visa_crm_user", JSON.stringify(updatedCurrentUser));
       }
@@ -924,6 +943,40 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { ok: true };
     } catch {
       return { ok: false, error: "Network error deleting user" };
+    }
+  };
+
+  const resetUserPassword = async (userId: string, nextPassword?: string) => {
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "RESET_PASSWORD",
+          id: userId,
+          password: typeof nextPassword === "string" ? nextPassword : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { ok: false, error: data.error || "Failed to reset password" };
+      }
+
+      const normalizedUser: CrmUser = {
+        ...data.user,
+        allowedTabs: normalizeAllowedTabs(data.user.allowedTabs),
+        permissions: normalizePermissions(data.user.permissions, data.user.role),
+      };
+      setUsers((prev) => prev.map((u) => (u.id === normalizedUser.id ? normalizedUser : u)));
+      if (currentUser && currentUser.id === data.user.id) {
+        const updatedCurrentUser = { ...currentUser, ...normalizedUser };
+        setCurrentUser(updatedCurrentUser);
+        localStorage.setItem("visa_crm_user", JSON.stringify(updatedCurrentUser));
+      }
+
+      return { ok: true, password: data.password, user: normalizedUser };
+    } catch {
+      return { ok: false, error: "Network error resetting password" };
     }
   };
 
@@ -1076,6 +1129,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCurrentUser: handleSetCurrentUser,
         addUser,
         deleteUser,
+        resetUserPassword,
         addLead,
         updateLeadStatus,
         updateEmploymentCategory,

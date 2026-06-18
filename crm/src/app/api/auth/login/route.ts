@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readUsers } from "@/utils/db";
+import { normalizePermissions } from "@/utils/crmConstants";
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,6 +25,7 @@ export async function POST(req: NextRequest) {
         email: user.email,
         role: user.role,
         allowedTabs: user.allowedTabs,
+        permissions: normalizePermissions(user.permissions, user.role),
       }
     });
 

@@ -1,10 +1,9 @@
 import type { Lead } from "@/context/CrmContext";
-import { COUNSELOR_OPTIONS } from "@/components/ui/CounselorSelectPill";
+import type { CrmUser } from "@/context/CrmContext";
+import { buildCounselorFilterOptions } from "@/utils/counselorOptions";
 import { destinationFilterOptions } from "@/components/ui/FormInputs";
 
 export type LeadFilterOption = { value: string; label: string };
-
-export { COUNSELOR_OPTIONS };
 
 export function getCountrySelectOptions(): LeadFilterOption[] {
   return destinationFilterOptions.filter((option) => option.value !== "All");
@@ -32,6 +31,9 @@ export function getVisaServiceFilterOptions(leads: Lead[]): LeadFilterOption[] {
   ];
 }
 
-export function getCounselorFilterOptions(): LeadFilterOption[] {
-  return [{ value: "All", label: "All Counselors" }, ...COUNSELOR_OPTIONS];
+export function getCounselorFilterOptions(
+  users: CrmUser[],
+  options?: { excludeUnassigned?: boolean }
+): LeadFilterOption[] {
+  return buildCounselorFilterOptions(users, options);
 }

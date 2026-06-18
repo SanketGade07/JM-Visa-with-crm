@@ -20,10 +20,10 @@ const segmentedTabBadgeBaseClass =
   "tabular-nums rounded-md px-1.5 py-0.5 text-[10px] font-bold";
 
 const segmentedTabBadgeActiveClass =
-  "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400";
+  "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400";
 
 const segmentedTabBadgeInactiveClass =
-  "bg-slate-200 text-slate-600 dark:bg-slate-950 dark:text-slate-400";
+  "bg-slate-200 text-slate-700 dark:bg-slate-950 dark:text-slate-400";
 
 export function segmentedTabBadgeClass(isActive: boolean): string {
   return `${segmentedTabBadgeBaseClass} ${
@@ -47,11 +47,14 @@ export function segmentedTabButtonHeaderClass(isActive: boolean): string {
   }`;
 }
 
+const segmentedTabBadgeActiveHeaderClass =
+  "crm-header-tab-count crm-header-tab-count--active bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400";
+
 const segmentedTabBadgeInactiveHeaderClass =
-  "bg-slate-200 text-slate-600 dark:bg-[#1a2436] dark:text-slate-400";
+  "crm-header-tab-count crm-header-tab-count--inactive bg-slate-200 text-slate-700 dark:bg-[#1a2436] dark:text-slate-400";
 
 export function segmentedTabBadgeHeaderClass(isActive: boolean): string {
   return `${segmentedTabBadgeBaseClass} ${
-    isActive ? segmentedTabBadgeActiveClass : segmentedTabBadgeInactiveHeaderClass
+    isActive ? segmentedTabBadgeActiveHeaderClass : segmentedTabBadgeInactiveHeaderClass
   }`;
 }

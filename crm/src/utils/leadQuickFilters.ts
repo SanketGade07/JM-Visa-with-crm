@@ -22,6 +22,7 @@ export const QUICK_TAB_FILTERS: QuickTabFilter[] = [
     label: getStatusLabel(status),
     statuses: [status] as VisaStatus[],
   })),
+  { id: "DROPPED", label: getStatusLabel("DROPPED"), statuses: ["DROPPED"] },
 ];
 
 export function matchesQuickTab(lead: Lead, tabId: string): boolean {
@@ -43,8 +44,6 @@ export function filterScopedLeads(
       if (l.dateCreated !== todayStr) return false;
     } else if (kpiFilter === "In Progress") {
       if (l.status !== "IN_PROGRESS") return false;
-    } else if (kpiFilter === "Total") {
-      if (l.status === "DROPPED") return false;
     } else if (kpiFilter === "Visa Success") {
       if (l.status !== "VISA_APPROVED") return false;
     }

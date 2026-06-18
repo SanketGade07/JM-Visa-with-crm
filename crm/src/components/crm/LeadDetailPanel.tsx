@@ -4,6 +4,7 @@ import React from "react";
 import type { Lead, VisaStatus } from "@/context/CrmContext";
 import { StatusPill } from "@/components/ui/DataTable";
 import { StatusSelectPill } from "@/components/ui/StatusSelectPill";
+import { CounselorNativeSelect } from "@/components/ui/CounselorNativeSelect";
 import {
   DEFAULT_EMPLOYMENT_CATEGORY,
   getChecklistKeysForLead,
@@ -62,17 +63,12 @@ export function LeadDetailPanel({
             <label className="text-gray-400 dark:text-slate-500 font-bold uppercase text-[10px] tracking-wider block">
               Assigned Counselor
             </label>
-            <select
+            <CounselorNativeSelect
               value={lead.counselor}
-              onChange={(e) => onCounselorChange(lead.id, e.target.value)}
+              onChange={(counselor) => onCounselorChange(lead.id, counselor)}
               disabled={!canModifyLeads}
               className="w-full bg-white dark:bg-slate-800/40 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <option value="Unassigned">Unassigned</option>
-              <option value="Priya Mehta">Priya Mehta</option>
-              <option value="Rohit Verma">Rohit Verma</option>
-              <option value="Simran Kaur">Simran Kaur</option>
-            </select>
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-4 border-t border-gray-100 dark:border-slate-800/80 pt-4">
