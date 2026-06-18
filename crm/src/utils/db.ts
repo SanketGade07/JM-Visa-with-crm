@@ -228,6 +228,16 @@ export const appendDocument = async (doc: Document): Promise<boolean> => {
   return true;
 };
 
+export const deleteDocument = async (id: string): Promise<boolean> => {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("documents").delete().eq("id", id);
+  if (error) {
+    console.error("Error deleting document from Supabase:", error);
+    return false;
+  }
+  return true;
+};
+
 // ── Users (Dynamic Staff Accounts in Storage) ───────────────────────────────
 export const getSeedUsers = (): CrmUser[] => [
   {

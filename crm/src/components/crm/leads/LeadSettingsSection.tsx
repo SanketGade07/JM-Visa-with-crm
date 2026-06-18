@@ -14,6 +14,7 @@ import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
 import { SearchableFilterSelect } from "@/components/ui/FormInputs";
 import { CompactRadioGroup } from "@/components/crm/leads/create/CompactRadioGroup";
 import { isUsaCountry } from "@/utils/countryUtils";
+import { getLeadPaymentSummary } from "@/utils/leadPaymentUtils";
 import {
   FiCalendar,
   FiCopy,
@@ -341,6 +342,11 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
   const activeKeys = getChecklistKeysForLead(employmentCategory);
   const verifiedCount = activeKeys.filter((key) => lead.checklist[key]).length;
   const totalCount = activeKeys.length;
+  const paymentSummary = useMemo(() => getLeadPaymentSummary(lead), [lead.payments]);
+  const paymentStatValue =
+    paymentSummary.totalPackage > 0
+      ? `₹${paymentSummary.received.toLocaleString("en-IN")} / ₹${paymentSummary.totalPackage.toLocaleString("en-IN")}`
+      : "Not set";
 
   const [credUsername, setCredUsername] = useState(lead.visaCredentials?.username ?? "");
   const [credPassword, setCredPassword] = useState(lead.visaCredentials?.password ?? "");
@@ -657,60 +663,62 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
         />
         <StatCard
           icon={FaCoins}
-          label="Payments"
-          value={lead.payments.length}
+          label="Amount Received"
+          value={paymentStatValue}
           accentClass="border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
         />
       </div>
 
       {isUsa ? (
-        <SettingsCard title="USA Slot Portal">
-          <div className="space-y-4">
-            <fieldset disabled={!canModifyLeads} className="space-y-1.5 border-0 p-0 m-0 min-w-0">
-              <legend className={`${fieldLabelCls} float-left mb-1.5`}>US Slot Tracking</legend>
-              <div className="clear-both">
-                <CompactRadioGroup
-                  name={`settings-slot-status-${lead.id}`}
-                  value={deriveSlotStatus(lead)}
-                  options={SLOT_STATUS_OPTIONS}
-                  onChange={handleSlotStatusChange}
-                  firstOptionId={`settings-slot-status-available-${lead.id}`}
-                />
-              </div>
-            </fieldset>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <SettingsCard title="USA Slot Portal">
+            <div className="space-y-4">
+              <fieldset disabled={!canModifyLeads} className="space-y-1.5 border-0 p-0 m-0 min-w-0">
+                <legend className={`${fieldLabelCls} float-left mb-1.5`}>US Slot Tracking</legend>
+                <div className="clear-both">
+                  <CompactRadioGroup
+                    name={`settings-slot-status-${lead.id}`}
+                    value={deriveSlotStatus(lead)}
+                    options={SLOT_STATUS_OPTIONS}
+                    onChange={handleSlotStatusChange}
+                    firstOptionId={`settings-slot-status-available-${lead.id}`}
+                  />
+                </div>
+              </fieldset>
 
-            <div className="space-y-3 border-t border-gray-200 dark:border-slate-800/80 pt-4">
-              <span className={fieldLabelCls}>Slot Portal</span>
-              <div className="space-y-1.5">
-                <label className={fieldLabelCls} htmlFor={`settings-slot-portal-user-${lead.id}`}>
-                  User ID
-                </label>
-                <input
-                  id={`settings-slot-portal-user-${lead.id}`}
-                  type="text"
-                  value={slotPortalUsername}
-                  onChange={(e) => setSlotPortalUsername(e.target.value)}
-                  disabled={!canModifyLeads}
-                  placeholder="Slot portal username"
-                  className={fieldInputCls}
-                  autoComplete="off"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className={fieldLabelCls} htmlFor={`settings-slot-portal-user-${lead.id}`}>
+                    User ID
+                  </label>
+                  <input
+                    id={`settings-slot-portal-user-${lead.id}`}
+                    type="text"
+                    value={slotPortalUsername}
+                    onChange={(e) => setSlotPortalUsername(e.target.value)}
+                    disabled={!canModifyLeads}
+                    placeholder="Slot portal username"
+                    className={fieldInputCls}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={fieldLabelCls} htmlFor={`settings-slot-portal-password-${lead.id}`}>
+                    Password
+                  </label>
+                  <input
+                    id={`settings-slot-portal-password-${lead.id}`}
+                    type="text"
+                    value={slotPortalPassword}
+                    onChange={(e) => setSlotPortalPassword(e.target.value)}
+                    disabled={!canModifyLeads}
+                    placeholder="Slot portal password"
+                    className={fieldInputCls}
+                    autoComplete="new-password"
+                  />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <label className={fieldLabelCls} htmlFor={`settings-slot-portal-password-${lead.id}`}>
-                  Password
-                </label>
-                <input
-                  id={`settings-slot-portal-password-${lead.id}`}
-                  type="text"
-                  value={slotPortalPassword}
-                  onChange={(e) => setSlotPortalPassword(e.target.value)}
-                  disabled={!canModifyLeads}
-                  placeholder="Slot portal password"
-                  className={fieldInputCls}
-                  autoComplete="new-password"
-                />
-              </div>
+
               <button
                 type="button"
                 disabled={!canModifyLeads || savingSlotPortal}
@@ -720,25 +728,26 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
                 {savingSlotPortal ? "Saving…" : "Save Slot Portal"}
               </button>
             </div>
+          </SettingsCard>
 
-            <div className="space-y-3 border-t border-gray-200 dark:border-slate-800/80 pt-4">
-              <span className={fieldLabelCls}>USA Slot Tracking</span>
-              <div className="space-y-1.5">
-                <label className={fieldLabelCls} htmlFor={`settings-usa-mobile-${lead.id}`}>
-                  Mobile Number
-                </label>
-                <input
-                  id={`settings-usa-mobile-${lead.id}`}
-                  type="text"
-                  value={trackingMobile}
-                  onChange={(e) => setTrackingMobile(e.target.value)}
-                  disabled={!canModifyLeads}
-                  placeholder="Tracking mobile number"
-                  className={fieldInputCls}
-                  autoComplete="off"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <SettingsCard title="USA Slot Tracking">
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className={fieldLabelCls} htmlFor={`settings-usa-mobile-${lead.id}`}>
+                    Mobile Number
+                  </label>
+                  <input
+                    id={`settings-usa-mobile-${lead.id}`}
+                    type="text"
+                    value={trackingMobile}
+                    onChange={(e) => setTrackingMobile(e.target.value)}
+                    disabled={!canModifyLeads}
+                    placeholder="Tracking mobile number"
+                    className={fieldInputCls}
+                    autoComplete="off"
+                  />
+                </div>
                 <div className="space-y-1.5">
                   <label className={fieldLabelCls} htmlFor={`settings-usa-car-${lead.id}`}>
                     Car
@@ -794,8 +803,8 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
                 {savingUsaTracking ? "Saving…" : "Save Tracking Details"}
               </button>
             </div>
-          </div>
-        </SettingsCard>
+          </SettingsCard>
+        </div>
       ) : null}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

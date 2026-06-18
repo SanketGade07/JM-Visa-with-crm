@@ -21,6 +21,8 @@ import { DriveToolbar } from "../drive/DriveToolbar";
 import { useMainDriveToolbar } from "../drive/MainDriveToolbarContext";
 import { QuickStatusTabs } from "@/components/ui/QuickStatusTabs";
 import { useLeadQuickStatusTabs } from "@/hooks/useLeadQuickStatusTabs";
+import { useUsaSlotTabs } from "@/hooks/useUsaSlotTabs";
+import type { UsaSlotView } from "../hooks/useCrmLayoutState";
 import { DEFAULT_EMPLOYMENT_CATEGORY } from "@/utils/documentChecklistConfig";
 import { docProgress } from "@/utils/leadHelpers";
 import { CRM_DROPDOWN_SCROLL_CLASS } from "@/utils/dropdownScrollStyles";
@@ -52,7 +54,6 @@ export function CrmHeader() {
   const {
     currentTab,
     isLeadDetailRoute,
-    isLeadsListRoute,
     isCreateLeadOpen,
     openCreateLead,
     setIsMobileSidebarOpen,
@@ -65,6 +66,7 @@ export function CrmHeader() {
     selectedLeadId,
     closeLeadDetail,
     exportLeadsCsv,
+    exportUsaSlotsCsv,
     leadDetailTab,
     setLeadDetailTab,
     openLeadDetail,
@@ -73,11 +75,14 @@ export function CrmHeader() {
     dismissAssignmentNotification,
     clearAssignmentNotifications,
     assignedLeadCount,
+    usaSlotView,
+    setUsaSlotView,
   } = useCrmLayoutContext();
 
   const { toolbarProps: mainDriveToolbarProps } = useMainDriveToolbar();
 
   const { quickStatusTabs } = useLeadQuickStatusTabs();
+  const { usaSlotTabs } = useUsaSlotTabs();
 
   const tabsWithIcons = useMemo(
     () =>
@@ -119,7 +124,13 @@ export function CrmHeader() {
 
   const showNewButton =
     currentTab === "Leads" && !isLeadDetailRoute && canModifyLeads;
-  const showExportButton = isLeadsListRoute;
+  const showExportButton =
+    (currentTab === "Leads" && !isLeadDetailRoute) || currentTab === "USASlots";
+
+  const handleExportCsv = () => {
+    if (currentTab === "USASlots") exportUsaSlotsCsv();
+    else exportLeadsCsv();
+  };
 
   return (
     <header className="relative h-16 border-b border-slate-800/80 bg-[#0a0a1a] px-4 md:px-8 flex items-center gap-2 md:gap-4 shrink-0 overflow-visible">
@@ -144,6 +155,18 @@ export function CrmHeader() {
             tabs={tabsWithIcons}
             activeTab={statusFilter}
             onChange={setStatusFilter}
+          />
+        </div>
+      )}
+
+      {currentTab === "USASlots" && (
+        <div className="crm-header__tabs crm-header__tabs--list min-w-0 flex-1">
+          <QuickStatusTabs
+            variant="header"
+            scroll
+            tabs={usaSlotTabs}
+            activeTab={usaSlotView}
+            onChange={(id) => setUsaSlotView(id as UsaSlotView)}
           />
         </div>
       )}
@@ -180,9 +203,9 @@ export function CrmHeader() {
         {showExportButton && (
           <button
             type="button"
-            onClick={exportLeadsCsv}
+            onClick={handleExportCsv}
             title="Export"
-            aria-label="Export leads"
+            aria-label={currentTab === "USASlots" ? "Export USA slots" : "Export leads"}
             className="p-2 rounded-xl bg-slate-900 border border-slate-800/80 text-slate-400 hover:text-violet-400 hover:border-violet-500/30 transition-all flex items-center justify-center shadow-md cursor-pointer"
           >
             <FiDownload className="text-sm" />

@@ -1952,6 +1952,8 @@ html.dark .lead-mgmt-toolbar__tabs-panel {
 
 .crm-header__tabs--list {
   flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .crm-header__tabs--list .quick-status-tabs-outer {

@@ -2,7 +2,7 @@
 
 import React from "react";
 import type { Lead } from "@/context/CrmContext";
-import { FaGlobe, FaFileDownload, FaFileUpload } from "react-icons/fa";
+import { FaGlobe, FaFileDownload, FaFileUpload, FaTrash } from "react-icons/fa";
 
 export type DocumentChecklistItemRowProps = {
   lead: Lead;
@@ -17,7 +17,11 @@ export type DocumentChecklistItemRowProps = {
     docType: string,
     file: File
   ) => Promise<{ ok: boolean; error?: string }>;
-  getLeadDocuments: (leadId: string) => { docType: string; fileUrl: string; fileName: string }[];
+  removeDocument: (
+    leadId: string,
+    documentId: string
+  ) => Promise<{ ok: boolean; error?: string }>;
+  getLeadDocuments: (leadId: string) => { id: string; docType: string; fileUrl: string; fileName: string }[];
   showToast: (message: string, type?: "success" | "error") => void;
   setPastedUrl: (url: string) => void;
   setUrlModalData: (data: { leadId: string; docType: string; title: string } | null) => void;
@@ -34,6 +38,7 @@ export function DocumentChecklistItemRow({
   setUploadingKey,
   setUploadError,
   uploadDocument,
+  removeDocument,
   getLeadDocuments,
   showToast,
   setPastedUrl,
@@ -73,14 +78,44 @@ export function DocumentChecklistItemRow({
 
       <div className="flex flex-wrap items-center gap-2 pl-6 sm:shrink-0 sm:pl-0">
         {doc ? (
-          <button
-            onClick={() => openSignedUrl(doc.fileUrl)}
-            className="inline-flex min-w-0 max-w-[220px] cursor-pointer items-center space-x-1.5 rounded-lg border border-emerald-100 bg-emerald-50/50 px-2.5 py-1 text-left text-[10px] font-semibold text-emerald-600 transition-colors hover:bg-emerald-100/50 hover:text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-300"
-            title={doc.fileName}
-          >
-            <FaFileDownload className="shrink-0 text-[9px]" />
-            <span className="truncate">{doc.fileName}</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => openSignedUrl(doc.fileUrl)}
+              className="inline-flex min-w-0 max-w-[220px] cursor-pointer items-center space-x-1.5 rounded-lg border border-emerald-100 bg-emerald-50/50 px-2.5 py-1 text-left text-[10px] font-semibold text-emerald-600 transition-colors hover:bg-emerald-100/50 hover:text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-300"
+              title={doc.fileName}
+            >
+              <FaFileDownload className="shrink-0 text-[9px]" />
+              <span className="truncate">{doc.fileName}</span>
+            </button>
+            {canVerifyDocs && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (isUploading) return;
+                  setUploadError("");
+                  setUploadingKey(rowKey);
+                  const res = await removeDocument(lead.id, doc.id);
+                  setUploadingKey(null);
+                  if (res.ok) {
+                    showToast("Document removed successfully!");
+                  } else {
+                    setUploadError(res.error || "Removal failed");
+                    showToast(res.error || "Removal failed", "error");
+                  }
+                }}
+                disabled={isUploading}
+                className={`p-1.5 rounded-lg border transition-colors ${
+                  isUploading
+                    ? "opacity-40 cursor-not-allowed border-gray-200 dark:border-slate-800 text-gray-400"
+                    : "border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:border-rose-200 dark:hover:border-rose-500/30 cursor-pointer"
+                }`}
+                aria-label={`Remove ${label} file`}
+                title="Remove file or link"
+              >
+                <FaTrash className="text-[10px]" />
+              </button>
+            )}
+          </div>
         ) : (
           <span className="text-[10px] text-gray-500 dark:text-slate-500">No file uploaded</span>
         )}

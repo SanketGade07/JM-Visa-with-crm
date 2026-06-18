@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readDocuments, appendDocument, appendActivity } from "@/utils/db";
+import { readDocuments, appendDocument, appendActivity, deleteDocument } from "@/utils/db";
 import { getSupabase, isSupabaseConfigured, DOCUMENTS_BUCKET } from "@/utils/supabase";
 import { Document, Activity } from "@/context/CrmContext";
 
@@ -104,5 +104,54 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("POST /api/documents error:", error);
     return NextResponse.json({ error: "Failed to upload document" }, { status: 500 });
+  }
+}
+
+// DELETE /api/documents?id=doc-xxx — remove a checklist document (file or link)
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "id is required" }, { status: 400 });
+    }
+
+    const docs = await readDocuments();
+    const doc = docs.find((d) => d.id === id);
+    if (!doc) {
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
+    }
+
+    if (doc.fileUrl.startsWith("storage://") && isSupabaseConfigured()) {
+      const objectPath = doc.fileUrl.replace("storage://", "");
+      const supabase = getSupabase();
+      const { error: storageError } = await supabase.storage
+        .from(DOCUMENTS_BUCKET)
+        .remove([objectPath]);
+      if (storageError) {
+        console.error("Supabase storage delete error:", storageError);
+      }
+    }
+
+    const deleted = await deleteDocument(id);
+    if (!deleted) {
+      return NextResponse.json({ error: "Failed to delete document" }, { status: 500 });
+    }
+
+    const activity: Activity = {
+      id: `act-${Date.now()}`,
+      leadId: doc.leadId,
+      type: "document",
+      content: `Document "${doc.docType}" removed`,
+      createdAt: new Date().toISOString(),
+      createdBy: "SYSTEM",
+    };
+    await appendActivity(activity);
+
+    return NextResponse.json({ success: true, document: doc });
+  } catch (error) {
+    console.error("DELETE /api/documents error:", error);
+    return NextResponse.json({ error: "Failed to delete document" }, { status: 500 });
   }
 }

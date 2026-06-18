@@ -55,6 +55,7 @@ export function PaymentsTab() {
     setLeadPackage,
     canManagePayments,
     showToast,
+    openLeadDetail,
   } = useCrmLayoutContext();
 
   const [paymentsView, setPaymentsView] = useState<PaymentsView>("ledger");
@@ -141,9 +142,16 @@ export function PaymentsTab() {
       {
         header: "Client Name",
         render: (lead) => (
-          <span className="font-semibold text-gray-900 dark:text-slate-100 text-[13px]">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openLeadDetail(lead.id);
+            }}
+            className="font-semibold text-gray-900 dark:text-slate-100 text-[13px] text-left hover:text-violet-600 dark:hover:text-violet-400 hover:underline cursor-pointer transition-colors"
+          >
             {lead.name}
-          </span>
+          </button>
         ),
       },
       {
@@ -210,7 +218,7 @@ export function PaymentsTab() {
         },
       },
     ],
-    [startDate, endDate, canManagePayments]
+    [startDate, endDate, canManagePayments, openLeadDetail]
   );
 
   const dateRangeCalendar = (

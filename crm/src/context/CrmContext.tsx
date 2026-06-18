@@ -188,6 +188,7 @@ interface CrmContextType {
   getLeadActivities: (leadId: string) => Activity[];
   postLeadDiscussionMessage: (leadId: string, content: string) => Promise<void>;
   uploadDocument: (leadId: string, docType: string, fileOrUrl: File | string) => Promise<{ ok: boolean; error?: string }>;
+  removeDocument: (leadId: string, documentId: string) => Promise<{ ok: boolean; error?: string }>;
   uploadInvoice: (leadId: string, invoiceNumber: string, fileOrUrl: File | string) => Promise<{ ok: boolean; error?: string }>;
   getLeadDocuments: (leadId: string) => Document[];
 }
@@ -808,6 +809,48 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const removeDocument = async (
+    leadId: string,
+    documentId: string
+  ): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const doc = documents.find((d) => d.id === documentId && d.leadId === leadId);
+      if (!doc) {
+        return { ok: false, error: "Document not found" };
+      }
+
+      const res = await fetch(`/api/documents?id=${encodeURIComponent(documentId)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        return { ok: false, error: data.error || "Removal failed" };
+      }
+
+      const remainingForType = documents.filter(
+        (d) => d.leadId === leadId && d.docType === doc.docType && d.id !== documentId
+      );
+
+      setDocuments((prev) => prev.filter((d) => d.id !== documentId));
+
+      if (remainingForType.length === 0) {
+        applyChecklistValue(leadId, doc.docType, false);
+      }
+
+      logActivity({
+        leadId,
+        type: "document",
+        content: `Document "${formatChecklistItemName(doc.docType)}" removed`,
+        createdBy: currentRole,
+      });
+
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Network error during removal" };
+    }
+  };
+
   const uploadInvoice = async (
     leadId: string,
     invoiceNumber: string,
@@ -1151,6 +1194,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         getLeadActivities,
         postLeadDiscussionMessage,
         uploadDocument,
+        removeDocument,
         uploadInvoice,
         getLeadDocuments,
       }}

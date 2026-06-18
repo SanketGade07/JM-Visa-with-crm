@@ -20,8 +20,11 @@ function CountryCell({ country }: { country: string }) {
   );
 }
 
+const leadNameLinkClass =
+  "font-semibold text-gray-900 dark:text-white text-[13px] truncate text-left hover:text-violet-600 dark:hover:text-violet-400 hover:underline cursor-pointer transition-colors";
+
 export function SubmissionsTab() {
-  const { leads, updateLeadStatus, canSubmitVisa } = useCrmLayoutContext();
+  const { leads, updateLeadStatus, canSubmitVisa, openLeadDetail } = useCrmLayoutContext();
 
   const [submissionView, setSubmissionView] = useState<SubmissionView>("ready");
   const [countryFilter, setCountryFilter] = useState("All");
@@ -81,9 +84,16 @@ export function SubmissionsTab() {
         header: "Applicant",
         render: (lead) => (
           <div className="min-w-0">
-            <div className="text-[13px] font-semibold text-gray-900 dark:text-white leading-snug truncate">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                openLeadDetail(lead.id);
+              }}
+              className={`${leadNameLinkClass} leading-snug block max-w-full`}
+            >
               {lead.name}
-            </div>
+            </button>
             <div className="text-[11px] text-gray-500 dark:text-slate-500 mt-0.5 truncate">
               {lead.visaType}
             </div>
@@ -117,7 +127,10 @@ export function SubmissionsTab() {
           <button
             type="button"
             disabled={!canSubmitVisa}
-            onClick={() => updateLeadStatus(lead.id, "VISA_SUBMISSION")}
+            onClick={(e) => {
+              e.stopPropagation();
+              updateLeadStatus(lead.id, "VISA_SUBMISSION");
+            }}
             className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed max-w-full"
           >
             <FiSend className="text-[12px] shrink-0" />
@@ -126,7 +139,7 @@ export function SubmissionsTab() {
         ),
       },
     ],
-    [canSubmitVisa, updateLeadStatus]
+    [canSubmitVisa, updateLeadStatus, openLeadDetail]
   );
 
   const dispatchedColumns = useMemo<Column<Lead>[]>(
@@ -134,9 +147,16 @@ export function SubmissionsTab() {
       {
         header: "Applicant",
         render: (lead) => (
-          <span className="text-[13px] font-semibold text-gray-900 dark:text-white truncate block">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openLeadDetail(lead.id);
+            }}
+            className={`${leadNameLinkClass} block max-w-full`}
+          >
             {lead.name}
-          </span>
+          </button>
         ),
       },
       {
@@ -183,7 +203,10 @@ export function SubmissionsTab() {
           <button
             type="button"
             disabled={!canSubmitVisa}
-            onClick={() => updateLeadStatus(lead.id, "VISA_APPROVED")}
+            onClick={(e) => {
+              e.stopPropagation();
+              updateLeadStatus(lead.id, "VISA_APPROVED");
+            }}
             className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed max-w-full"
           >
             <FiArchive className="text-[12px] shrink-0" />
@@ -192,7 +215,7 @@ export function SubmissionsTab() {
         ),
       },
     ],
-    [canSubmitVisa, updateLeadStatus]
+    [canSubmitVisa, updateLeadStatus, openLeadDetail]
   );
 
   const tableColumns = submissionView === "ready" ? readyColumns : dispatchedColumns;

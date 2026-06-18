@@ -35,6 +35,9 @@ export function segmentedTabBadgeClass(isActive: boolean): string {
 export const segmentedTabListHeaderClass =
   "inline-flex w-fit max-w-full shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-slate-100 py-1 pl-1 pr-0.5 dark:border-[#1a2332] dark:bg-[#070b12]";
 
+const segmentedTabButtonHeaderBaseClass =
+  "relative flex items-center justify-center gap-1 whitespace-nowrap rounded-lg border px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-all duration-200 md:gap-1.5 md:px-3 md:text-[11px]";
+
 const segmentedTabButtonActiveHeaderClass =
   "border-blue-600 bg-white text-slate-900 shadow-sm dark:border-blue-400 dark:bg-[#151c28] dark:text-white";
 
@@ -42,7 +45,7 @@ const segmentedTabButtonInactiveHeaderClass =
   "border-transparent text-slate-500 hover:bg-white hover:text-slate-800 dark:text-slate-400 dark:hover:bg-[#151c28]/70 dark:hover:text-slate-200";
 
 export function segmentedTabButtonHeaderClass(isActive: boolean): string {
-  return `${segmentedTabButtonBaseClass} ${
+  return `${segmentedTabButtonHeaderBaseClass} ${
     isActive ? segmentedTabButtonActiveHeaderClass : segmentedTabButtonInactiveHeaderClass
   }`;
 }

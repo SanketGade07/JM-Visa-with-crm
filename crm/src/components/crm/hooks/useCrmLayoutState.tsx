@@ -20,6 +20,8 @@ export type AssignmentNotification = {
   assignedAt: string;
 };
 
+export type UsaSlotView = "available" | "paid";
+
 const ASSIGNMENT_NOTIFICATIONS_KEY = "crm-assignment-notifications";
 
 function readStoredNotifications(userId: string): AssignmentNotification[] {
@@ -99,6 +101,7 @@ export function useCrmLayoutState() {
     setLeadDriveFolder,
     patchLeadDriveFolder,
     uploadDocument,
+    removeDocument,
     uploadInvoice,
     getLeadDocuments,
     getLeadActivities,
@@ -231,6 +234,7 @@ export function useCrmLayoutState() {
   const [uploadingInvoiceKey, setUploadingInvoiceKey] = useState<string | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<string>("NEW_LEAD");
+  const [usaSlotView, setUsaSlotView] = useState<UsaSlotView>("available");
   const [kpiFilter, setKpiFilter] = useState<string>("Total");
   const [countryFilter, setCountryFilter] = useState<string>("All");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -479,6 +483,7 @@ export function useCrmLayoutState() {
   const [cardMapCenter, setCardMapCenter] = useState<[number, number]>([122, -18]);
   const hoveredCountryRef = useRef<string | null>(null);
   const leadsExportRef = useRef<(() => void) | null>(null);
+  const usaSlotsExportRef = useRef<(() => void) | null>(null);
   const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
 
   const registerLeadsExport = useCallback((fn: (() => void) | null) => {
@@ -487,6 +492,14 @@ export function useCrmLayoutState() {
 
   const exportLeadsCsv = useCallback(() => {
     leadsExportRef.current?.();
+  }, []);
+
+  const registerUsaSlotsExport = useCallback((fn: (() => void) | null) => {
+    usaSlotsExportRef.current = fn;
+  }, []);
+
+  const exportUsaSlotsCsv = useCallback(() => {
+    usaSlotsExportRef.current?.();
   }, []);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const tooltipPosRef = useRef({ x: 0, y: 0 });
@@ -1090,7 +1103,7 @@ export function useCrmLayoutState() {
     leads, meetings, users, currentUser, currentRole, currentTab, setCurrentTab,
     setCurrentRole, setCurrentUser, addUser, deleteUser, resetUserPassword, addLead: wrappedAddLead, updateLeadStatus,
     updateUsaSlots, addPayment, setLeadPackage, addMeeting, updateMeeting, restoreLead, updateLeadNotes,
-    updateLeadProfile, assignCounselor: wrappedAssignCounselor, updateEmploymentCategory, setLeadCredentials, setLeadDriveFolder, patchLeadDriveFolder, uploadDocument, uploadInvoice, getLeadDocuments, getLeadActivities, postLeadDiscussionMessage, toggleChecklistItem,
+    updateLeadProfile, assignCounselor: wrappedAssignCounselor, updateEmploymentCategory, setLeadCredentials, setLeadDriveFolder, patchLeadDriveFolder, uploadDocument, removeDocument, uploadInvoice, getLeadDocuments, getLeadActivities, postLeadDiscussionMessage, toggleChecklistItem,
     assignmentNotifications, dismissAssignmentNotification, clearAssignmentNotifications, assignedLeadCount,
     handleLogout, searchTerm, setSearchTerm, checklistSearch, setChecklistSearch,
     isMobileSidebarOpen, setIsMobileSidebarOpen, isMobileDetailOpen, setIsMobileDetailOpen,
@@ -1101,6 +1114,7 @@ export function useCrmLayoutState() {
     invoiceLeadId, setInvoiceLeadId, urlInvoiceData, setUrlInvoiceData,
     pastedInvoiceUrl, setPastedInvoiceUrl, uploadInvoiceError, setUploadInvoiceError,
     uploadingInvoiceKey, setUploadingInvoiceKey, statusFilter, setStatusFilter,
+    usaSlotView, setUsaSlotView,
     kpiFilter, setKpiFilter, countryFilter, setCountryFilter,
     selectedLeadId, setSelectedLeadId,
     openLeadDetail, closeLeadDetail, leadDetailTab, setLeadDetailTab,
@@ -1135,6 +1149,7 @@ export function useCrmLayoutState() {
     handlePeriodChange, handleCalendarDateClick, getDaysInMonth, monthNames,
     leadsMgmtData, topCountryStats, pipelineStats, cardMap, modalMap,
     registerLeadsExport, exportLeadsCsv,
+    registerUsaSlotsExport, exportUsaSlotsCsv,
   };
 }
 

@@ -58,7 +58,7 @@ export function FollowUpsTab() {
     handleCountryClick, resetMap, startDate, setStartDate, endDate, setEndDate,
     tempInvoiceFile, setTempInvoiceFile,
     tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
-    allowedTabs, userAllowedTabs, canModifyLeads, canVerifyDocs, canSubmitVisa, canManagePayments,
+    allowedTabs, userAllowedTabs, canModifyLeads, canVerifyDocs, canSubmitVisa, canManagePayments, openLeadDetail,
     openSignedUrl, selectedLead, activeLeads, monthlyChart, chartMax, countryColors,
     countryStats, countryTotal, donutSegments, calendarData, filteredLeads,
     countryBarChartData, maxLeadsCount, yLabels, getCountryAbbreviation,
@@ -99,7 +99,16 @@ export function FollowUpsTab() {
                   {
                     header: "Name",
                     render: (lead) => (
-                      <span className="font-semibold text-gray-900 dark:text-slate-100 text-[13px]">{lead.name}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openLeadDetail(lead.id);
+                        }}
+                        className="font-semibold text-gray-900 dark:text-slate-100 text-[13px] text-left hover:text-violet-600 dark:hover:text-violet-400 hover:underline cursor-pointer transition-colors"
+                      >
+                        {lead.name}
+                      </button>
                     ),
                   },
                   { header: "Visa Type", render: (lead) => <span className="text-gray-600 dark:text-slate-300">{lead.country} - {lead.visaType}</span> },
