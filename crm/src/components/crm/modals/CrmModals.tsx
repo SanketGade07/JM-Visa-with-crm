@@ -939,12 +939,8 @@ export function CrmModals() {
                   }
                 });
 
-                const permissions: string[] = [];
-                AVAILABLE_PERMISSIONS.forEach((p) => {
-                  if (fd.get(`perm-${p.id}`)) {
-                    permissions.push(p.id);
-                  }
-                });
+                // Action permissions UI commented out for now — preserve existing permissions on save
+                const permissions = editingStaff.permissions ?? [];
 
                 const res = await addUser({
                   id: editingStaff.id,
@@ -995,11 +991,11 @@ export function CrmModals() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5 text-left">
-                  <label className="text-slate-400 font-bold block">Password (Leave blank to keep current)</label>
+                  <label className="text-slate-400 font-bold block">Password <span className="font-normal text-slate-500">(edit to change)</span></label>
                   <input
-                    type="password"
+                    type="text"
                     name="password"
-                    placeholder="••••••••"
+                    defaultValue={editingStaff.password}
                     className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 text-slate-200"
                   />
                 </div>
@@ -1053,6 +1049,7 @@ export function CrmModals() {
                 </div>
               </div>
 
+              {/* Action Permissions — commented out for now
               <div className="space-y-2 text-left">
                 <label className="text-slate-400 font-bold block border-b border-slate-900 pb-1.5">
                   Action Permissions
@@ -1079,6 +1076,7 @@ export function CrmModals() {
                   ))}
                 </div>
               </div>
+              */}
 
               <button 
                 type="submit"
