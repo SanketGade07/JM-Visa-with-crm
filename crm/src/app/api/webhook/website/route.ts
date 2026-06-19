@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readLeads, writeLeads, appendActivity } from "@/utils/db";
 import { Lead, Activity } from "@/context/CrmContext";
+import { provisionLeadDriveFolder } from "@/lib/provisionLeadDriveFolder";
 import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
 
 export async function POST(req: NextRequest) {
@@ -81,6 +82,12 @@ export async function POST(req: NextRequest) {
 
     if (!leadsOk) {
       return NextResponse.json({ error: "Failed to save lead" }, { status: 500 });
+    }
+
+    try {
+      await provisionLeadDriveFolder(leadId);
+    } catch (e) {
+      console.error("Drive provision failed:", leadId, e);
     }
 
     console.log(`Webhook lead created: ${newLead.name} (${leadId})`);

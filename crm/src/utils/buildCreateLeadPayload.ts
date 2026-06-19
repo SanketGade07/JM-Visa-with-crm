@@ -5,6 +5,7 @@ import {
 } from "@/utils/documentChecklistConfig";
 import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
 import { isUsaCountry, normalizeCrmCountry } from "@/utils/countryUtils";
+import { isCounselorAssigned, UNASSIGNED_COUNSELOR } from "@/utils/counselorOptions";
 import type { CreateLeadFormState } from "@/types/createLeadForm";
 
 export type CreateLeadPayload = Omit<
@@ -31,7 +32,9 @@ export function buildCreateLeadPayload(state: CreateLeadFormState): CreateLeadPa
     visaType: state.visaSubtype.trim(),
     status: "NEW_LEAD",
     source: state.leadSource,
-    counselor: state.caseOfficer.trim(),
+    counselor: isCounselorAssigned(state.caseOfficer)
+      ? state.caseOfficer.trim()
+      : UNASSIGNED_COUNSELOR,
     notes: state.notes.trim(),
     employmentCategory,
     checklist: buildEmptyChecklist(employmentCategory),

@@ -47,7 +47,7 @@ export function CreateLeadWizardPage({
 }: CreateLeadWizardPageProps = {}) {
   const router = useRouter();
   const isInline = variant === "inline";
-  const { addLead, showToast, canModifyLeads, canAssignLeads, openLeadDetail, currentUser } = useCrmLayoutContext();
+  const { addLead, showToast, canModifyLeads, canAssignLeads, openLeadDetail } = useCrmLayoutContext();
   const {
     state,
     currentStep,
@@ -65,9 +65,7 @@ export function CreateLeadWizardPage({
     clearFocusFieldId,
     completedSteps,
   } = useCreateLeadForm();
-  const caseOfficerOptions = useCounselorSelectOptions(state.caseOfficer, {
-    includeUnassigned: false,
-  });
+  const caseOfficerOptions = useCounselorSelectOptions(state.caseOfficer);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -79,12 +77,6 @@ export function CreateLeadWizardPage({
       }
     }
   }, [canModifyLeads, isInline, onClose, router]);
-
-  useEffect(() => {
-    if (!canAssignLeads && currentUser?.name && state.caseOfficer !== currentUser.name) {
-      updateField("caseOfficer", currentUser.name);
-    }
-  }, [canAssignLeads, currentUser?.name, state.caseOfficer, updateField]);
 
   useEffect(() => {
     if (!focusFieldId) return;
@@ -579,7 +571,7 @@ export function CreateLeadWizardPage({
             </FormSection>
             <FormSectionGrid>
               <FormSection
-                label="Assign Case Officer"
+                label="Case Officer"
                 htmlFor="create-lead-case-officer"
                 error={caseOfficerError}
               >
@@ -593,7 +585,6 @@ export function CreateLeadWizardPage({
                     caseOfficerError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
                   } disabled:opacity-60 disabled:cursor-not-allowed`}
                 >
-                  <option value="">Select officer</option>
                   {caseOfficerOptions.map((officer) => (
                     <option key={officer.value} value={officer.value}>
                       {officer.label}

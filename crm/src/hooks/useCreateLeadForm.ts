@@ -142,9 +142,6 @@ export function getStepFieldErrors(
       if (!state.visaSubtype.trim()) {
         errors.visaSubtype = "Visa subtype is required.";
       }
-      if (!state.caseOfficer.trim()) {
-        errors.caseOfficer = "Assign a case officer.";
-      }
       if (!state.leadSource) {
         errors.leadSource = "Select a lead source.";
       }

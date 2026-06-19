@@ -342,7 +342,8 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // ── Persistence helpers ─────────────────────────────────────────────────────
 
-  const syncLeads = async (updated: Lead[]) => {
+  const syncLeads = async (updated: Lead[]): Promise<boolean> => {
+    const previousLeads = leadsRef.current;
     let merged = updated;
     setLeads((prev) => {
       merged = updated.map((lead) => {
@@ -355,13 +356,41 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return merged;
     });
     try {
-      await fetch("/api/leads", {
+      const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leads: merged }),
       });
+      if (!res.ok) {
+        console.error("Failed to sync leads:", await res.text());
+        setLeads(previousLeads);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("crm-toast", {
+              detail: {
+                message: "Failed to save changes. Please try again.",
+                type: "error",
+              },
+            })
+          );
+        }
+        return false;
+      }
+      return true;
     } catch (error) {
       console.error("Failed to sync leads:", error);
+      setLeads(previousLeads);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("crm-toast", {
+            detail: {
+              message: "Failed to save changes. Please try again.",
+              type: "error",
+            },
+          })
+        );
+      }
+      return false;
     }
   };
 
@@ -413,25 +442,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...(isCounselorAssigned(newLeadData.counselor) ? { assignedAt: now } : {}),
       isDeleted: false,
     };
-    void syncLeads([...leads, newLead]).then(async () => {
-      try {
-        const res = await fetch(`/api/leads/${newLead.id}/drive-create`, { method: "POST" });
-        if (!res.ok) {
-          console.error(
-            "Drive folder provisioning failed for new lead:",
-            newLead.id,
-            await res.text()
-          );
-          return;
-        }
-        const data = await res.json();
-        if (data.driveFolderId) {
-          patchLeadDriveFolder(newLead.id, data.driveFolderId as string);
-        }
-      } catch (error) {
-        console.error("Failed to create Drive folder for lead:", error);
-      }
-    });
+    void syncLeads([...leads, newLead]);
     logActivity({
       leadId: newLead.id,
       type: "lead_created",

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readLeads, writeLeads, appendActivity } from "@/utils/db";
 import { Lead, Activity } from "@/context/CrmContext";
+import { provisionLeadDriveFolder } from "@/lib/provisionLeadDriveFolder";
 import { DEFAULT_USA_SLOTS, normalizeLead } from "@/utils/normalizeLead";
 import { normalizeLeadStatus } from "@/utils/leadStatusConfig";
 import { isCounselorAssigned } from "@/utils/counselorOptions";
@@ -77,9 +78,21 @@ export async function POST(req: NextRequest) {
           : normalized;
       });
       const ok = await writeLeads(merged);
-      return ok
-        ? NextResponse.json({ success: true })
-        : NextResponse.json({ error: "Failed to write leads" }, { status: 500 });
+      if (!ok) {
+        return NextResponse.json({ error: "Failed to write leads" }, { status: 500 });
+      }
+
+      const existingIds = new Set(existingLeads.map((l) => l.id));
+      const newlyCreated = merged.filter((l) => !existingIds.has(l.id));
+      for (const lead of newlyCreated) {
+        try {
+          await provisionLeadDriveFolder(lead.id);
+        } catch (e) {
+          console.error("Drive provision failed:", lead.id, e);
+        }
+      }
+
+      return NextResponse.json({ success: true });
     }
 
     // Single manual lead creation
@@ -130,7 +143,21 @@ export async function POST(req: NextRequest) {
     };
     await appendActivity(activity);
 
-    return NextResponse.json({ success: true, lead: newLead }, { status: 201 });
+    let driveFolderId: string | undefined;
+    try {
+      const provisioned = await provisionLeadDriveFolder(leadId);
+      if (provisioned.ok) {
+        driveFolderId = provisioned.driveFolderId;
+        newLead.driveFolderId = driveFolderId;
+      }
+    } catch (e) {
+      console.error("Drive provision failed:", leadId, e);
+    }
+
+    return NextResponse.json(
+      { success: true, lead: newLead, ...(driveFolderId ? { driveFolderId } : {}) },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("POST /api/leads error:", error);
     return NextResponse.json({ error: "Failed to process request" }, { status: 500 });

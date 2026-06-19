@@ -52,6 +52,45 @@ export function normalizeUsaSlots(raw: unknown): UsaSlotTracking {
   };
 }
 
+/** Columns accepted by the Supabase `leads` table upsert. */
+export const LEAD_DB_COLUMNS = [
+  "id",
+  "name",
+  "email",
+  "phone",
+  "country",
+  "visaType",
+  "status",
+  "source",
+  "counselor",
+  "assignedAt",
+  "dateCreated",
+  "lastUpdated",
+  "isDeleted",
+  "notes",
+  "employmentCategory",
+  "checklist",
+  "payments",
+  "usaSlots",
+  "visaCredentials",
+  "driveFolderId",
+] as const;
+
+export function serializeLeadForDb(
+  lead: Lead,
+  options?: { omitAssignedAt?: boolean }
+): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  for (const key of LEAD_DB_COLUMNS) {
+    if (options?.omitAssignedAt && key === "assignedAt") continue;
+    const value = lead[key as keyof Lead];
+    if (value !== undefined) {
+      row[key] = value;
+    }
+  }
+  return row;
+}
+
 export function normalizeLead(raw: Record<string, unknown>): Lead {
   const employmentCategory: EmploymentCategory = isEmploymentCategory(raw.employmentCategory)
     ? raw.employmentCategory
@@ -73,6 +112,9 @@ export function normalizeLead(raw: Record<string, unknown>): Lead {
     ...raw,
     status: normalizeLeadStatus(rawStatus),
     country,
+    assignedAt:
+      (raw.assignedAt as Lead["assignedAt"]) ??
+      (raw.assignedat as Lead["assignedAt"]),
     visaCredentials:
       (raw.visaCredentials as Lead["visaCredentials"]) ??
       (raw.visacredentials as Lead["visaCredentials"]),

@@ -215,6 +215,18 @@ export function useCrmLayoutState() {
   };
 
   useEffect(() => {
+    const onCrmToast = (event: Event) => {
+      const detail = (event as CustomEvent<{ message: string; type?: "success" | "error" }>).detail;
+      if (detail?.message) {
+        showToast(detail.message, detail.type ?? "error");
+      }
+    };
+    window.addEventListener("crm-toast", onCrmToast);
+    return () => window.removeEventListener("crm-toast", onCrmToast);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable bridge from CrmContext sync errors
+  }, []);
+
+  useEffect(() => {
     if (toast) {
       const durationMs = toast.type === "error" ? 6000 : 5000;
       const timer = setTimeout(() => setToast(null), durationMs);

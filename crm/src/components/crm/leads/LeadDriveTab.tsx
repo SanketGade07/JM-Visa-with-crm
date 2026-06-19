@@ -35,8 +35,9 @@ type LeadDriveTabProps = {
 };
 
 export function LeadDriveTab({ lead }: LeadDriveTabProps) {
-  const { currentRole, showToast, patchLeadDriveFolder } = useCrmLayoutContext();
+  const { currentRole, currentUser, showToast, patchLeadDriveFolder } = useCrmLayoutContext();
   const isAdmin = currentRole === "ADMIN";
+  const isLoggedIn = Boolean(currentUser);
 
   const [rootFolderId, setRootFolderId] = useState<string | null>(
     lead.driveFolderId ?? null
@@ -132,7 +133,10 @@ export function LeadDriveTab({ lead }: LeadDriveTabProps) {
     let cancelled = false;
 
     const syncDriveFolderFromServer = async () => {
-      setFolderResolveAttempted(Boolean(lead.driveFolderId));
+      if (lead.driveFolderId) {
+        setFolderResolveAttempted(true);
+        return;
+      }
 
       try {
         const freshRes = await fetch(`/api/leads/${lead.id}`);
@@ -143,19 +147,7 @@ export function LeadDriveTab({ lead }: LeadDriveTabProps) {
           if (fresh?.driveFolderId) {
             setRootFolderId(fresh.driveFolderId);
             patchLeadDriveFolder(lead.id, fresh.driveFolderId);
-            return;
           }
-        }
-
-        if (!isAdmin) return;
-
-        const res = await fetch(`/api/leads/${lead.id}/drive-create`, { method: "POST" });
-        if (cancelled || !res.ok) return;
-
-        const data = (await res.json()) as { driveFolderId?: string };
-        if (data.driveFolderId) {
-          setRootFolderId(data.driveFolderId);
-          patchLeadDriveFolder(lead.id, data.driveFolderId);
         }
       } catch (err) {
         if (!cancelled) {
@@ -172,7 +164,7 @@ export function LeadDriveTab({ lead }: LeadDriveTabProps) {
     return () => {
       cancelled = true;
     };
-  }, [isAdmin, lead.id, patchLeadDriveFolder]);
+  }, [lead.driveFolderId, lead.id, patchLeadDriveFolder]);
 
   const browseFolder = useCallback(
     async (
@@ -619,11 +611,11 @@ export function LeadDriveTab({ lead }: LeadDriveTabProps) {
         No Drive folder linked
       </p>
       <p className={`text-xs mt-1 max-w-sm ${DRIVE_TEXT_SECONDARY}`}>
-        {isAdmin
-          ? "Create a dedicated Google Drive folder for this lead under Clients/."
+        {isLoggedIn
+          ? "Create a dedicated Google Drive folder for this lead under Clients/, or wait for automatic provisioning after save."
           : "A Drive folder has not been set up for this lead yet."}
       </p>
-      {isAdmin ? (
+      {isLoggedIn ? (
         <button
           type="button"
           onClick={() => void handleProvisionFolder()}

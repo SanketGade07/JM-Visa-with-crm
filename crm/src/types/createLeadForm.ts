@@ -1,6 +1,7 @@
 import type { CountryType, LeadSource } from "@/context/CrmContext";
 import type { EmploymentCategory } from "@/utils/documentChecklistConfig";
 import { DEFAULT_EMPLOYMENT_CATEGORY } from "@/utils/documentChecklistConfig";
+import { UNASSIGNED_COUNSELOR } from "@/utils/counselorOptions";
 
 export type CreateLeadType = "study_abroad" | "visa" | null;
 
@@ -45,7 +46,7 @@ export const CREATE_LEAD_INITIAL_STATE: CreateLeadFormState = {
   usaSecurityFood: "",
   usaSecurityCity: "",
   slotStatus: "",
-  caseOfficer: "",
+  caseOfficer: UNASSIGNED_COUNSELOR,
   leadSource: "MANUAL",
   employmentCategory: DEFAULT_EMPLOYMENT_CATEGORY,
   packageAmount: "",

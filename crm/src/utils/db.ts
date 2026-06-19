@@ -1,6 +1,6 @@
 import { getSupabase } from "@/utils/supabase";
 import { Lead, Meeting, Activity, Expense, Document, CrmUser, type StaffRole } from "@/context/CrmContext";
-import { normalizeLead } from "@/utils/normalizeLead";
+import { normalizeLead, serializeLeadForDb } from "@/utils/normalizeLead";
 import { ROLE_TABS, normalizePermissions } from "@/utils/crmConstants";
 
 /** Drop deprecated manager accounts and reassign MANAGER role users to COUNSELOR. */
@@ -78,7 +78,24 @@ export const readLeads = async (): Promise<Lead[]> => {
 
 export const writeLeads = async (leads: Lead[]): Promise<boolean> => {
   const supabase = getSupabase();
-  const { error } = await supabase.from("leads").upsert(leads);
+
+  const upsert = async (omitAssignedAt: boolean) => {
+    const rows = leads.map((lead) => serializeLeadForDb(lead, { omitAssignedAt }));
+    return supabase.from("leads").upsert(rows);
+  };
+
+  let { error } = await upsert(false);
+  if (
+    error?.code === "PGRST204" &&
+    typeof error.message === "string" &&
+    error.message.includes("assignedAt")
+  ) {
+    console.warn(
+      "leads.assignedAt column missing — saving without it. Run: npm run migrate:assigned-at"
+    );
+    ({ error } = await upsert(true));
+  }
+
   if (error) {
     console.error("Error writing leads to Supabase:", error);
     return false;
