@@ -1,87 +1,146 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import type { Lead } from "@/context/CrmContext";
 import { timeAgo } from "@/utils/leadHelpers";
 import { getCountryFlag } from "@/components/CountryFlags";
-import { FiSend, FiArchive, FiCheckCircle } from "react-icons/fi";
+import { FiSend, FiCheckCircle, FiXCircle, FiRefreshCw } from "react-icons/fi";
 import DataTable, { type Column } from "@/components/ui/DataTable";
-import { TableViewToggle } from "@/components/crm/ui/TableViewToggle";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
-
-type SubmissionView = "ready" | "dispatched";
+import { useColumnSearch } from "@/hooks/useColumnSearch";
+import { applyColumnSearch } from "@/utils/columnSearch";
+import {
+  getCountryFilterOptions,
+  getCounselorFilterOptions,
+  getVisaServiceFilterOptions,
+} from "@/utils/leadFilterOptions";
+import { getCountryDisplayName } from "@/utils/countryUtils";
 
 function CountryCell({ country }: { country: string }) {
+  const displayCountry = getCountryDisplayName(country);
   return (
-    <span className="inline-flex items-center gap-2 min-w-0 max-w-full">
+    <span
+      className="inline-flex items-center gap-2 min-w-0 max-w-[140px]"
+      title={displayCountry}
+    >
       {getCountryFlag(country)}
-      <span className="text-[13px] text-gray-700 dark:text-white truncate">{country}</span>
+      <span className="text-[13px] text-gray-700 dark:text-white truncate">{displayCountry}</span>
     </span>
   );
 }
 
 const leadNameLinkClass =
-  "font-semibold text-gray-900 dark:text-white text-[13px] truncate text-left hover:text-violet-600 dark:hover:text-violet-400 hover:underline cursor-pointer transition-colors";
+  "font-bold text-gray-900 dark:text-slate-100 text-[13px] truncate text-left hover:text-violet-600 dark:hover:text-violet-400 hover:underline cursor-pointer transition-colors";
 
 export function SubmissionsTab() {
-  const { leads, updateLeadStatus, canSubmitVisa, openLeadDetail } = useCrmLayoutContext();
+  const {
+    leads,
+    users,
+    currentUser,
+    updateLeadStatus,
+    canSubmitVisa,
+    openLeadDetail,
+    submissionView,
+  } = useCrmLayoutContext();
 
-  const [submissionView, setSubmissionView] = useState<SubmissionView>("ready");
-  const [countryFilter, setCountryFilter] = useState("All");
-  const [countryFilterOpen, setCountryFilterOpen] = useState(false);
+  const columnSearch = useColumnSearch();
+  const { clearFilter, setActiveColumn, activeColumn } = columnSearch;
+  const isCounselorView = currentUser?.role === "COUNSELOR";
 
-  const handleSubmissionViewChange = (view: SubmissionView) => {
-    setSubmissionView(view);
-    setCountryFilter("All");
-    setCountryFilterOpen(false);
-  };
+  useEffect(() => {
+    if (!isCounselorView) return;
+    clearFilter("counselor");
+    if (activeColumn === "counselor") {
+      setActiveColumn(null);
+    }
+  }, [isCounselorView, clearFilter, setActiveColumn, activeColumn]);
 
-  const readyLeads = useMemo(
-    () =>
-      leads.filter(
-        (l) =>
-          !l.isDeleted &&
-          l.status === "IN_PROGRESS" &&
-          (countryFilter === "All" || l.country === countryFilter)
-      ),
-    [leads, countryFilter]
+  const leadSearchGetters = useMemo(
+    () => ({
+      lead: (lead: Lead) =>
+        [lead.name, lead.phone, lead.email, lead.country]
+          .filter(Boolean)
+          .join(" "),
+      service: (lead: Lead) => lead.visaType,
+      country: (lead: Lead) => lead.country,
+      counselor: (lead: Lead) => lead.counselor,
+    }),
+    []
   );
 
-  const dispatchedLeads = useMemo(
-    () =>
-      leads.filter(
-        (l) =>
-          !l.isDeleted &&
-          l.status === "VISA_SUBMISSION" &&
-          (countryFilter === "All" || l.country === countryFilter)
-      ),
-    [leads, countryFilter]
+  const leadSearchColumns = useMemo(
+    () => [
+      { searchKey: "lead", getSearchValue: leadSearchGetters.lead },
+      { searchKey: "service", getSearchValue: leadSearchGetters.service, filterMode: "exact" as const, filterClearValue: "All" },
+      { searchKey: "country", getSearchValue: leadSearchGetters.country, filterMode: "exact" as const, filterClearValue: "All" },
+      ...(!isCounselorView
+        ? [
+            {
+              searchKey: "counselor",
+              getSearchValue: leadSearchGetters.counselor,
+              filterMode: "exact" as const,
+              filterClearValue: "All",
+            },
+          ]
+        : []),
+    ],
+    [leadSearchGetters, isCounselorView]
   );
 
-  const readyLeadsUnfiltered = useMemo(
-    () =>
-      leads.filter((l) => !l.isDeleted && l.status === "IN_PROGRESS"),
+  const serviceFilterOptions = useMemo(
+    () => getVisaServiceFilterOptions(leads),
     [leads]
   );
 
-  const dispatchedLeadsUnfiltered = useMemo(
+  const counselorFilterOptions = useMemo(
+    () => (isCounselorView ? [] : getCounselorFilterOptions(users)),
+    [users, isCounselorView]
+  );
+
+  const countryFilterOptions = getCountryFilterOptions();
+
+  const readyLeads = useMemo(
+    () => leads.filter((l) => !l.isDeleted && l.status === "IN_PROGRESS"),
+    [leads]
+  );
+
+  const dispatchedLeads = useMemo(
     () => leads.filter((l) => !l.isDeleted && l.status === "VISA_SUBMISSION"),
     [leads]
   );
 
-  const availableCountries = useMemo(() => {
-    const source =
-      submissionView === "ready" ? readyLeadsUnfiltered : dispatchedLeadsUnfiltered;
-    const set = new Set(source.map((l) => l.country));
-    return ["All", ...Array.from(set).sort()];
-  }, [submissionView, readyLeadsUnfiltered, dispatchedLeadsUnfiltered]);
+  const approvedLeads = useMemo(
+    () => leads.filter((l) => !l.isDeleted && l.status === "VISA_APPROVED"),
+    [leads]
+  );
 
-  const tableRows = submissionView === "ready" ? readyLeads : dispatchedLeads;
+  const rejectedLeads = useMemo(
+    () => leads.filter((l) => !l.isDeleted && l.status === "VISA_REJECTED"),
+    [leads]
+  );
+
+  const baseRows = useMemo(() => {
+    if (submissionView === "dispatched") return dispatchedLeads;
+    if (submissionView === "approved") return approvedLeads;
+    if (submissionView === "rejected") return rejectedLeads;
+    return readyLeads;
+  }, [submissionView, readyLeads, dispatchedLeads, approvedLeads, rejectedLeads]);
+
+  const tableRows = useMemo(() => {
+    return applyColumnSearch(
+      baseRows,
+      leadSearchColumns,
+      columnSearch.debouncedFilters
+    );
+  }, [baseRows, leadSearchColumns, columnSearch.debouncedFilters]);
 
   const readyColumns = useMemo<Column<Lead>[]>(
     () => [
       {
-        header: "Applicant",
+        header: "Lead",
+        searchKey: "lead",
+        searchLabel: "Lead",
+        getSearchValue: leadSearchGetters.lead,
         render: (lead) => (
           <div className="min-w-0">
             <button
@@ -90,35 +149,54 @@ export function SubmissionsTab() {
                 e.stopPropagation();
                 openLeadDetail(lead.id);
               }}
-              className={`${leadNameLinkClass} leading-snug block max-w-full`}
+              className={leadNameLinkClass}
             >
               {lead.name}
             </button>
-            <div className="text-[11px] text-gray-500 dark:text-slate-500 mt-0.5 truncate">
-              {lead.visaType}
-            </div>
           </div>
         ),
       },
       {
-        header: "Visa Type",
+        header: "Service",
+        searchKey: "service",
+        searchLabel: "Service",
+        filterSelectOptions: serviceFilterOptions,
+        filterSelectPlaceholder: "All Services",
+        filterSelectClearValue: "All",
+        getSearchValue: leadSearchGetters.service,
         render: (lead) => (
-          <span className="text-[13px] text-gray-700 dark:text-white truncate block">
+          <span className="font-medium text-gray-600 dark:text-slate-300 text-[13px] whitespace-nowrap">
             {lead.visaType}
           </span>
         ),
       },
       {
-        header: "Assigned To",
-        render: (lead) => (
-          <span className="text-[13px] text-gray-700 dark:text-white truncate block">
-            {lead.counselor}
-          </span>
-        ),
+        header: "Country",
+        searchKey: "country",
+        searchLabel: "Country",
+        filterSelectOptions: countryFilterOptions,
+        filterSelectClearValue: "All",
+        getSearchValue: leadSearchGetters.country,
+        render: (lead) => <CountryCell country={lead.country} />,
       },
       {
-        header: "Country",
-        render: (lead) => <CountryCell country={lead.country} />,
+        header: "Assign to",
+        ...(isCounselorView
+          ? {}
+          : {
+              searchKey: "counselor",
+              searchLabel: "Assign to",
+              filterSelectOptions: counselorFilterOptions,
+              filterSelectPlaceholder: "All Counselors",
+              filterSelectClearValue: "All",
+              filterSelectShowSearch: false,
+              getSearchValue: leadSearchGetters.counselor,
+            }),
+        render: (lead) => (
+          <span className="font-medium text-gray-600 dark:text-slate-300 text-[13px] whitespace-nowrap">
+            {lead.counselor || "Unassigned"}
+          </span>
+        ),
       },
       {
         header: "Action",
@@ -139,13 +217,16 @@ export function SubmissionsTab() {
         ),
       },
     ],
-    [canSubmitVisa, updateLeadStatus, openLeadDetail]
+    [leadSearchGetters, isCounselorView, serviceFilterOptions, countryFilterOptions, counselorFilterOptions, canSubmitVisa, updateLeadStatus, openLeadDetail]
   );
 
   const dispatchedColumns = useMemo<Column<Lead>[]>(
     () => [
       {
-        header: "Applicant",
+        header: "Lead",
+        searchKey: "lead",
+        searchLabel: "Lead",
+        getSearchValue: leadSearchGetters.lead,
         render: (lead) => (
           <button
             type="button"
@@ -153,46 +234,174 @@ export function SubmissionsTab() {
               e.stopPropagation();
               openLeadDetail(lead.id);
             }}
-            className={`${leadNameLinkClass} block max-w-full`}
+            className={leadNameLinkClass}
           >
             {lead.name}
           </button>
         ),
       },
       {
-        header: "Visa Type",
+        header: "Service",
+        searchKey: "service",
+        searchLabel: "Service",
+        filterSelectOptions: serviceFilterOptions,
+        filterSelectPlaceholder: "All Services",
+        filterSelectClearValue: "All",
+        getSearchValue: leadSearchGetters.service,
         render: (lead) => (
-          <span className="text-[13px] text-gray-700 dark:text-white truncate block">
+          <span className="font-medium text-gray-600 dark:text-slate-300 text-[13px] whitespace-nowrap">
             {lead.visaType}
+          </span>
+        ),
+      },
+      {
+        header: "Country",
+        searchKey: "country",
+        searchLabel: "Country",
+        filterSelectOptions: countryFilterOptions,
+        filterSelectClearValue: "All",
+        getSearchValue: leadSearchGetters.country,
+        render: (lead) => <CountryCell country={lead.country} />,
+      },
+      {
+        header: "Assign to",
+        ...(isCounselorView
+          ? {}
+          : {
+              searchKey: "counselor",
+              searchLabel: "Assign to",
+              filterSelectOptions: counselorFilterOptions,
+              filterSelectPlaceholder: "All Counselors",
+              filterSelectClearValue: "All",
+              filterSelectShowSearch: false,
+              getSearchValue: leadSearchGetters.counselor,
+            }),
+        render: (lead) => (
+          <span className="font-medium text-gray-600 dark:text-slate-300 text-[13px] whitespace-nowrap">
+            {lead.counselor || "Unassigned"}
           </span>
         ),
       },
       {
         header: "Dispatched",
         render: (lead) => (
-          <span className="text-[12px] text-gray-600 dark:text-white truncate block">
+          <span className="text-[12px] text-gray-600 dark:text-white truncate block font-medium">
             {timeAgo(lead.lastUpdated)}
           </span>
         ),
       },
       {
-        header: "Assigned To",
+        header: "Action",
+        align: "right",
         render: (lead) => (
-          <span className="text-[13px] text-gray-700 dark:text-white truncate block">
-            {lead.counselor}
+          <div className="flex items-center gap-3 justify-end">
+            <button
+              type="button"
+              disabled={!canSubmitVisa}
+              onClick={(e) => {
+                e.stopPropagation();
+                updateLeadStatus(lead.id, "VISA_APPROVED");
+              }}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed max-w-full"
+            >
+              <FiCheckCircle className="text-[12px] shrink-0" />
+              <span className="truncate">Approve</span>
+            </button>
+            <button
+              type="button"
+              disabled={!canSubmitVisa}
+              onClick={(e) => {
+                e.stopPropagation();
+                updateLeadStatus(lead.id, "VISA_REJECTED");
+              }}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed max-w-full"
+            >
+              <FiXCircle className="text-[12px] shrink-0" />
+              <span className="truncate">Reject</span>
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [leadSearchGetters, isCounselorView, serviceFilterOptions, countryFilterOptions, counselorFilterOptions, canSubmitVisa, updateLeadStatus, openLeadDetail]
+  );
+
+  const approvedColumns = useMemo<Column<Lead>[]>(
+    () => [
+      {
+        header: "Lead",
+        searchKey: "lead",
+        searchLabel: "Lead",
+        getSearchValue: leadSearchGetters.lead,
+        render: (lead) => (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openLeadDetail(lead.id);
+            }}
+            className={leadNameLinkClass}
+          >
+            {lead.name}
+          </button>
+        ),
+      },
+      {
+        header: "Service",
+        searchKey: "service",
+        searchLabel: "Service",
+        filterSelectOptions: serviceFilterOptions,
+        filterSelectPlaceholder: "All Services",
+        filterSelectClearValue: "All",
+        getSearchValue: leadSearchGetters.service,
+        render: (lead) => (
+          <span className="font-medium text-gray-600 dark:text-slate-300 text-[13px] whitespace-nowrap">
+            {lead.visaType}
           </span>
         ),
       },
       {
         header: "Country",
+        searchKey: "country",
+        searchLabel: "Country",
+        filterSelectOptions: countryFilterOptions,
+        filterSelectClearValue: "All",
+        getSearchValue: leadSearchGetters.country,
         render: (lead) => <CountryCell country={lead.country} />,
+      },
+      {
+        header: "Assign to",
+        ...(isCounselorView
+          ? {}
+          : {
+              searchKey: "counselor",
+              searchLabel: "Assign to",
+              filterSelectOptions: counselorFilterOptions,
+              filterSelectPlaceholder: "All Counselors",
+              filterSelectClearValue: "All",
+              filterSelectShowSearch: false,
+              getSearchValue: leadSearchGetters.counselor,
+            }),
+        render: (lead) => (
+          <span className="font-medium text-gray-600 dark:text-slate-300 text-[13px] whitespace-nowrap">
+            {lead.counselor || "Unassigned"}
+          </span>
+        ),
+      },
+      {
+        header: "Approved Date",
+        render: (lead) => (
+          <span className="text-[12px] text-gray-600 dark:text-white truncate block font-medium">
+            {timeAgo(lead.lastUpdated)}
+          </span>
+        ),
       },
       {
         header: "Status",
         render: () => (
           <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-500 max-w-full">
             <FiCheckCircle className="text-[12px] shrink-0" />
-            <span className="truncate">Consulate Approved</span>
+            <span className="truncate">Approved</span>
           </span>
         ),
       },
@@ -205,92 +414,143 @@ export function SubmissionsTab() {
             disabled={!canSubmitVisa}
             onClick={(e) => {
               e.stopPropagation();
-              updateLeadStatus(lead.id, "VISA_APPROVED");
+              updateLeadStatus(lead.id, "VISA_SUBMISSION");
             }}
             className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed max-w-full"
           >
-            <FiArchive className="text-[12px] shrink-0" />
-            <span className="truncate">Close Case</span>
+            <FiRefreshCw className="text-[12px] shrink-0" />
+            <span className="truncate">Revert to Dispatched</span>
           </button>
         ),
       },
     ],
-    [canSubmitVisa, updateLeadStatus, openLeadDetail]
+    [leadSearchGetters, isCounselorView, serviceFilterOptions, countryFilterOptions, counselorFilterOptions, canSubmitVisa, updateLeadStatus, openLeadDetail]
   );
 
-  const tableColumns = submissionView === "ready" ? readyColumns : dispatchedColumns;
-
-  const cardMeta =
-    submissionView === "ready"
-      ? {
-          title: "Applications Ready",
-          subtitle: "Applications that are ready to be submitted to embassies.",
-          emptyText: "No files ready for submission. Complete document verification first.",
-        }
-      : {
-          title: "Dispatched to Embassy",
-          subtitle: "Applications that have been dispatched to embassies.",
-          emptyText: "No active submissions currently at the embassy.",
-        };
-
-  const viewToggle = (
-    <TableViewToggle
-      value={submissionView}
-      onChange={handleSubmissionViewChange}
-      options={[
-        {
-          id: "ready",
-          label: "Ready",
-          count: readyLeadsUnfiltered.length,
-          icon: FiCheckCircle,
-        },
-        {
-          id: "dispatched",
-          label: "Dispatched",
-          count: dispatchedLeadsUnfiltered.length,
-          icon: FiSend,
-        },
-      ]}
-    />
+  const rejectedColumns = useMemo<Column<Lead>[]>(
+    () => [
+      {
+        header: "Lead",
+        searchKey: "lead",
+        searchLabel: "Lead",
+        getSearchValue: leadSearchGetters.lead,
+        render: (lead) => (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openLeadDetail(lead.id);
+            }}
+            className={leadNameLinkClass}
+          >
+            {lead.name}
+          </button>
+        ),
+      },
+      {
+        header: "Service",
+        searchKey: "service",
+        searchLabel: "Service",
+        filterSelectOptions: serviceFilterOptions,
+        filterSelectPlaceholder: "All Services",
+        filterSelectClearValue: "All",
+        getSearchValue: leadSearchGetters.service,
+        render: (lead) => (
+          <span className="font-medium text-gray-600 dark:text-slate-300 text-[13px] whitespace-nowrap">
+            {lead.visaType}
+          </span>
+        ),
+      },
+      {
+        header: "Country",
+        searchKey: "country",
+        searchLabel: "Country",
+        filterSelectOptions: countryFilterOptions,
+        filterSelectClearValue: "All",
+        getSearchValue: leadSearchGetters.country,
+        render: (lead) => <CountryCell country={lead.country} />,
+      },
+      {
+        header: "Assign to",
+        ...(isCounselorView
+          ? {}
+          : {
+              searchKey: "counselor",
+              searchLabel: "Assign to",
+              filterSelectOptions: counselorFilterOptions,
+              filterSelectPlaceholder: "All Counselors",
+              filterSelectClearValue: "All",
+              filterSelectShowSearch: false,
+              getSearchValue: leadSearchGetters.counselor,
+            }),
+        render: (lead) => (
+          <span className="font-medium text-gray-600 dark:text-slate-300 text-[13px] whitespace-nowrap">
+            {lead.counselor || "Unassigned"}
+          </span>
+        ),
+      },
+      {
+        header: "Rejected Date",
+        render: (lead) => (
+          <span className="text-[12px] text-gray-600 dark:text-white truncate block font-medium">
+            {timeAgo(lead.lastUpdated)}
+          </span>
+        ),
+      },
+      {
+        header: "Status",
+        render: () => (
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-600 dark:text-rose-500 max-w-full">
+            <FiXCircle className="text-[12px] shrink-0" />
+            <span className="truncate">Rejected</span>
+          </span>
+        ),
+      },
+      {
+        header: "Action",
+        align: "right",
+        render: (lead) => (
+          <button
+            type="button"
+            disabled={!canSubmitVisa}
+            onClick={(e) => {
+              e.stopPropagation();
+              updateLeadStatus(lead.id, "IN_PROGRESS");
+            }}
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed max-w-full"
+          >
+            <FiRefreshCw className="text-[12px] shrink-0" />
+            <span className="truncate">Reapply</span>
+          </button>
+        ),
+      },
+    ],
+    [leadSearchGetters, isCounselorView, serviceFilterOptions, countryFilterOptions, counselorFilterOptions, canSubmitVisa, updateLeadStatus, openLeadDetail]
   );
 
-  const countryChips = countryFilterOpen ? (
-    <div className="px-5 py-2.5 border-b border-gray-200 dark:border-slate-800/60 flex flex-wrap gap-2">
-      {availableCountries.map((country) => (
-        <button
-          key={country}
-          type="button"
-          onClick={() => setCountryFilter(country)}
-          className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
-            countryFilter === country
-              ? "bg-blue-500/10 text-blue-600 border border-blue-500/30 dark:bg-sky-500/15 dark:text-sky-400 dark:border-sky-500/30"
-              : "bg-gray-100 text-gray-500 border border-gray-200 hover:text-gray-700 dark:bg-slate-800/60 dark:text-slate-400 dark:border-slate-700/60 dark:hover:text-slate-200"
-          }`}
-        >
-          {country}
-        </button>
-      ))}
-    </div>
-  ) : null;
+  const tableColumns = useMemo(() => {
+    if (submissionView === "dispatched") return dispatchedColumns;
+    if (submissionView === "approved") return approvedColumns;
+    if (submissionView === "rejected") return rejectedColumns;
+    return readyColumns;
+  }, [submissionView, readyColumns, dispatchedColumns, approvedColumns, rejectedColumns]);
 
   return (
-    <div className="min-w-0">
-      <DataTable
-        title={cardMeta.title}
-        subtitle={cardMeta.subtitle}
-        pagination={true}
-        defaultPageSize={10}
-        rows={tableRows}
-        getRowId={(l) => l.id}
-        filters={viewToggle}
-        onFilter={() => setCountryFilterOpen((v) => !v)}
-        filterActive={countryFilterOpen || countryFilter !== "All"}
-        belowTitle={countryChips}
-        columns={tableColumns}
-        showCheckbox={false}
-        showIndex={false}
-        emptyText={cardMeta.emptyText}
-      />
+    <div className="-m-4 md:-m-8 p-4 md:p-6 bg-gray-50 dark:bg-transparent min-h-[calc(100vh-4rem)] space-y-5">
+      <div className="min-w-0">
+        <DataTable
+          pagination={true}
+          defaultPageSize={10}
+          showToolbar={false}
+          rows={tableRows}
+          columnSearch={columnSearch}
+          getRowId={(l) => l.id}
+          columns={tableColumns}
+          showCheckbox={false}
+          showIndex={false}
+          emptyText="No leads match your filters."
+        />
+      </div>
     </div>
   );
 }

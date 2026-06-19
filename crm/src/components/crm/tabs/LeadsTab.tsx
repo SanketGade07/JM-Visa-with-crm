@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { createPortal } from "react-dom";
 import { VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Meeting, Lead } from "@/context/CrmContext";
 import { ROLE_TABS, AVAILABLE_TABS } from "@/utils/crmConstants";
-import { docProgress, getStatusColor, scopeLeadsForUser } from "@/utils/leadHelpers";
+import { docProgress, getStatusColor, scopeLeadsForUser, sortLeadsByRecency } from "@/utils/leadHelpers";
 import { AustraliaFlag, MalaysiaFlag, IndonesiaFlag, SingaporeFlag } from "@/components/CountryFlags";
 import {
   FaUserFriends, FaGlobe, FaCheckSquare, FaCalendarAlt, FaHistory,
@@ -33,6 +33,7 @@ import {
   getVisaServiceFilterOptions,
 } from "@/utils/leadFilterOptions";
 import { getStatusPillStyle } from "@/utils/leadStatusConfig";
+import { getCountryDisplayName } from "@/utils/countryUtils";
 // @ts-ignore
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
 import { getLeadAvatar, getLeadDescription, getLeadCompany } from "../helpers/leadDisplayHelpers";
@@ -81,7 +82,7 @@ export function LeadsTab() {
     handleCountryClick, resetMap, startDate, setStartDate, endDate, setEndDate,
     tempInvoiceFile, setTempInvoiceFile,
     tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
-    allowedTabs, userAllowedTabs, canModifyLeads, canAssignLeads, canVerifyDocs, canSubmitVisa, canManagePayments,
+    allowedTabs, userAllowedTabs, canModifyLeads, canAssignLeads, canVerifyDocs, canAccessLeadChecklist, canSubmitVisa, canManagePayments,
     openSignedUrl, selectedLead, activeLeads, monthlyChart, chartMax, countryColors,
     countryStats, countryTotal, donutSegments, calendarData, filteredLeads,
     countryBarChartData, maxLeadsCount, yLabels, getCountryAbbreviation,
@@ -178,10 +179,14 @@ export function LeadsTab() {
     [leadSearchGetters, isAllQuickTab, isCounselorView]
   );
 
-  const tableRows = useMemo(
-    () => applyColumnSearch(baseFilteredLeads, leadSearchColumns, columnSearch.debouncedFilters),
-    [baseFilteredLeads, leadSearchColumns, columnSearch.debouncedFilters]
-  );
+  const tableRows = useMemo(() => {
+    const searched = applyColumnSearch(
+      baseFilteredLeads,
+      leadSearchColumns,
+      columnSearch.debouncedFilters
+    );
+    return sortLeadsByRecency(searched);
+  }, [baseFilteredLeads, leadSearchColumns, columnSearch.debouncedFilters]);
 
   useEffect(() => {
     registerLeadsExport(() =>
@@ -422,11 +427,17 @@ export function LeadsTab() {
                         filterSelectOptions: countryFilterOptions,
                         filterSelectClearValue: "All",
                         getSearchValue: leadSearchGetters.country,
-                        render: (lead) => (
-                          <span className="font-medium text-gray-600 dark:text-slate-300 text-[13px] whitespace-nowrap">
-                            {lead.country}
-                          </span>
-                        ),
+                        render: (lead) => {
+                          const displayCountry = getCountryDisplayName(lead.country);
+                          return (
+                            <span
+                              className="font-medium text-gray-600 dark:text-slate-300 text-[13px] block truncate max-w-[130px]"
+                              title={displayCountry}
+                            >
+                              {displayCountry}
+                            </span>
+                          );
+                        },
                       },
                       {
                         header: "Assign to",
@@ -484,7 +495,7 @@ export function LeadsTab() {
                         render: (lead) => {
                           const pct = docProgress(lead.checklist, lead.employmentCategory);
                           const filledCount = pct === 0 ? 0 : Math.ceil(pct / 25);
-                          const canOpenChecklist = userAllowedTabs.includes("Checklist");
+                          const canOpenChecklist = canAccessLeadChecklist;
 
                           return (
                             <div className="min-w-[120px] flex items-center justify-start h-full">
@@ -517,49 +528,107 @@ export function LeadsTab() {
                       },
                       {
                         header: "Credentials",
-                        render: (lead) => (
-                          <div className="flex items-center gap-2">
-                            {lead.visaCredentials?.username ? (
-                              <button
-                                type="button"
-                                data-tooltip="Copy username"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    navigator.clipboard.writeText(lead.visaCredentials?.username || "");
-                                    showToast("Username copied");
-                                  } catch {
-                                    showToast("Copied", "success");
-                                  }
-                                }}
-                                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
-                              >
-                                <FiUser className="text-[13.5px]" />
-                              </button>
-                            ) : null}
-                            {lead.visaCredentials?.password ? (
-                              <button
-                                type="button"
-                                data-tooltip="Copy password"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    navigator.clipboard.writeText(lead.visaCredentials?.password || "");
-                                    showToast("Password copied");
-                                  } catch {
-                                    showToast("Copied", "success");
-                                  }
-                                }}
-                                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
-                              >
-                                <FiLock className="text-[13.5px]" />
-                              </button>
-                            ) : null}
-                            {!lead.visaCredentials?.username && !lead.visaCredentials?.password ? (
-                              <span className="text-gray-400 dark:text-slate-500 text-[11px]">—</span>
-                            ) : null}
-                          </div>
-                        ),
+                        render: (lead) => {
+                          const hasStandard = lead.visaCredentials?.username || lead.visaCredentials?.password;
+                          const hasSlots = lead.country === "USA" && (lead.usaSlots?.slotPortalUsername || lead.usaSlots?.slotPortalPassword);
+
+                          if (!hasStandard && !hasSlots) {
+                            return <span className="text-gray-400 dark:text-slate-500 text-[11px]">—</span>;
+                          }
+
+                          return (
+                            <div className="flex items-center gap-2">
+                              {/* Standard Visa Credentials */}
+                              {hasStandard && (
+                                <div className="flex items-center gap-1">
+                                  {lead.visaCredentials?.username && (
+                                    <button
+                                      type="button"
+                                      data-tooltip="Copy visa username"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          navigator.clipboard.writeText(lead.visaCredentials?.username || "");
+                                          showToast("Visa username copied");
+                                        } catch {
+                                          showToast("Copied", "success");
+                                        }
+                                      }}
+                                      className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
+                                    >
+                                      <FiUser className="text-[13.5px]" />
+                                    </button>
+                                  )}
+                                  {lead.visaCredentials?.password && (
+                                    <button
+                                      type="button"
+                                      data-tooltip="Copy visa password"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          navigator.clipboard.writeText(lead.visaCredentials?.password || "");
+                                          showToast("Visa password copied");
+                                        } catch {
+                                          showToast("Copied", "success");
+                                        }
+                                      }}
+                                      className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
+                                    >
+                                      <FiLock className="text-[13.5px]" />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Separator if both exist */}
+                              {hasStandard && hasSlots && (
+                                <span className="h-4 w-px bg-gray-200 dark:bg-slate-800" />
+                              )}
+
+                              {/* USA Slots Portal Credentials */}
+                              {hasSlots && (
+                                <div className="flex items-center gap-1">
+                                  {lead.usaSlots?.slotPortalUsername && (
+                                    <button
+                                      type="button"
+                                      data-tooltip="Copy slots username"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          navigator.clipboard.writeText(lead.usaSlots?.slotPortalUsername || "");
+                                          showToast("Slots portal username copied");
+                                        } catch {
+                                          showToast("Copied", "success");
+                                        }
+                                      }}
+                                      className="w-8 h-8 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                                    >
+                                      <FiUser className="text-[13.5px]" />
+                                    </button>
+                                  )}
+                                  {lead.usaSlots?.slotPortalPassword && (
+                                    <button
+                                      type="button"
+                                      data-tooltip="Copy slots password"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          navigator.clipboard.writeText(lead.usaSlots?.slotPortalPassword || "");
+                                          showToast("Slots portal password copied");
+                                        } catch {
+                                          showToast("Copied", "success");
+                                        }
+                                      }}
+                                      className="w-8 h-8 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                                    >
+                                      <FiLock className="text-[13.5px]" />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        },
                       },
                     ]}
                     actions={(lead) => [

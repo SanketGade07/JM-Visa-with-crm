@@ -1,16 +1,17 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { Lead, PaymentDetails } from "@/context/CrmContext";
 import { FaEnvelope, FaFileInvoiceDollar, FaTag } from "react-icons/fa";
-import { FiFileText, FiGlobe } from "react-icons/fi";
 import DataTable, { type Column } from "@/components/ui/DataTable";
 import { TableViewToggle } from "@/components/crm/ui/TableViewToggle";
-import { DateRangeCalendarPopover } from "@/components/crm/ui/DateRangeCalendarPopover";
 import { UpdatePackageModal } from "@/components/crm/modals/UpdatePackageModal";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { getDeskCountriesFromLeads } from "@/utils/leadHelpers";
-import { getDepositPickerLeads } from "@/utils/leadPaymentUtils";
+import { getCountryDisplayName } from "@/utils/countryUtils";
+import { getDepositPickerLeads, getLeadPaymentSummary } from "@/utils/leadPaymentUtils";
+import { useColumnSearch } from "@/hooks/useColumnSearch";
+import { applyColumnSearch } from "@/utils/columnSearch";
 
 function isDateRangeActive(startDate: string, endDate: string): boolean {
   return !!(startDate && endDate);
@@ -33,12 +34,21 @@ function paymentsInRange(
   return payments.filter((p) => isPaymentInRange(p, startDate, endDate));
 }
 
-type PaymentsView = "ledger" | "desk-revenue";
+function isLeadPaid(lead: Lead): boolean {
+  const { totalPackage, pending } = getLeadPaymentSummary(lead);
+  return totalPackage > 0 && pending <= 0;
+}
+
+function isLeadUnpaid(lead: Lead): boolean {
+  const { totalPackage, pending } = getLeadPaymentSummary(lead);
+  return totalPackage > 0 && pending > 0;
+}
+
+type LedgerPaymentFilter = "paid" | "unpaid";
 
 type DeskRevenueRow = {
   id: string;
   country: string;
-  deskLabel: string;
   realizedRevenue: number;
   clientCount: number;
 };
@@ -56,10 +66,19 @@ export function PaymentsTab() {
     canManagePayments,
     showToast,
     openLeadDetail,
+    paymentsView,
   } = useCrmLayoutContext();
 
-  const [paymentsView, setPaymentsView] = useState<PaymentsView>("ledger");
+  const columnSearch = useColumnSearch();
+  const [ledgerPaymentFilter, setLedgerPaymentFilter] =
+    useState<LedgerPaymentFilter>("unpaid");
   const [packageLeadId, setPackageLeadId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (paymentsView === "desk-revenue") {
+      setLedgerPaymentFilter("unpaid");
+    }
+  }, [paymentsView]);
 
   const packageLead = useMemo(
     () => (packageLeadId ? leads.find((l) => l.id === packageLeadId) ?? null : null),
@@ -75,6 +94,44 @@ export function PaymentsTab() {
       l.payments.some((p) => isPaymentInRange(p, startDate, endDate))
     );
   }, [leads, startDate, endDate, dateFilterActive]);
+
+  const paidCount = useMemo(
+    () => ledgerRows.filter(isLeadPaid).length,
+    [ledgerRows]
+  );
+
+  const unpaidCount = useMemo(
+    () => ledgerRows.filter(isLeadUnpaid).length,
+    [ledgerRows]
+  );
+
+  const ledgerFilteredRows = useMemo(() => {
+    if (ledgerPaymentFilter === "paid") {
+      return ledgerRows.filter(isLeadPaid);
+    }
+    return ledgerRows.filter(isLeadUnpaid);
+  }, [ledgerRows, ledgerPaymentFilter]);
+
+  const clientSearchGetter = useMemo(
+    () => (lead: Lead) =>
+      [lead.name, lead.country, lead.email].filter(Boolean).join(" "),
+    []
+  );
+
+  const deskSearchGetter = useMemo(
+    () => (row: DeskRevenueRow) => row.country,
+    []
+  );
+
+  const ledgerTableRows = useMemo(
+    () =>
+      applyColumnSearch(
+        ledgerFilteredRows,
+        [{ searchKey: "client", getSearchValue: clientSearchGetter }],
+        columnSearch.debouncedFilters
+      ),
+    [ledgerFilteredRows, clientSearchGetter, columnSearch.debouncedFilters]
+  );
 
   const financeMetrics = useMemo(() => {
     const activeLeads = leads.filter((l) => l.status !== "DROPPED");
@@ -129,7 +186,6 @@ export function PaymentsTab() {
         return {
           id: country,
           country,
-          deskLabel: `${country} Desk`,
           realizedRevenue,
           clientCount: relevantLeads.length,
         };
@@ -137,10 +193,28 @@ export function PaymentsTab() {
     [leads, startDate, endDate, dateFilterActive]
   );
 
+  const deskTableRows = useMemo(
+    () =>
+      applyColumnSearch(
+        deskRevenueRows,
+        [{ searchKey: "desk", getSearchValue: deskSearchGetter }],
+        columnSearch.debouncedFilters
+      ),
+    [deskRevenueRows, deskSearchGetter, columnSearch.debouncedFilters]
+  );
+
+  const totalDeskRevenue = useMemo(
+    () => deskRevenueRows.reduce((sum, row) => sum + row.realizedRevenue, 0),
+    [deskRevenueRows]
+  );
+
   const ledgerColumns = useMemo<Column<Lead>[]>(
     () => [
       {
         header: "Client Name",
+        searchKey: "client",
+        searchLabel: "Client",
+        getSearchValue: clientSearchGetter,
         render: (lead) => (
           <button
             type="button"
@@ -156,9 +230,17 @@ export function PaymentsTab() {
       },
       {
         header: "Destination",
-        render: (lead) => (
-          <span className="text-gray-600 dark:text-slate-300">{lead.country}</span>
-        ),
+        render: (lead) => {
+          const displayCountry = getCountryDisplayName(lead.country);
+          return (
+            <span
+              className="text-gray-600 dark:text-slate-300 text-[13px] block truncate max-w-[130px]"
+              title={displayCountry}
+            >
+              {displayCountry}
+            </span>
+          );
+        },
       },
       {
         header: "Invoiced Package",
@@ -218,23 +300,13 @@ export function PaymentsTab() {
         },
       },
     ],
-    [startDate, endDate, canManagePayments, openLeadDetail]
+    [startDate, endDate, canManagePayments, openLeadDetail, clientSearchGetter]
   );
 
-  const dateRangeCalendar = (
-    <DateRangeCalendarPopover
-      startDate={startDate}
-      endDate={endDate}
-      onStartChange={setStartDate}
-      onEndChange={setEndDate}
-      onClear={() => {
-        setStartDate("");
-        setEndDate("");
-      }}
-    />
-  );
 
-  const toolbarRight = (
+  const showRecordButton = paymentsView === "ledger" && ledgerPaymentFilter === "unpaid";
+
+  const toolbarRight = showRecordButton ? (
     <button
       onClick={() => {
         if (!canManagePayments) return;
@@ -249,15 +321,29 @@ export function PaymentsTab() {
     >
       Record Client Deposit
     </button>
+  ) : null;
+
+  const paidUnpaidToggle = (
+    <TableViewToggle
+      value={ledgerPaymentFilter}
+      onChange={setLedgerPaymentFilter}
+      options={[
+        { id: "paid", label: "Paid", count: paidCount },
+        { id: "unpaid", label: "Unpaid", count: unpaidCount },
+      ]}
+    />
   );
 
   const deskRevenueColumns = useMemo<Column<DeskRevenueRow>[]>(
     () => [
       {
         header: "Destination Desk",
+        searchKey: "desk",
+        searchLabel: "Desk",
+        getSearchValue: deskSearchGetter,
         render: (row) => (
           <span className="font-semibold text-gray-900 dark:text-slate-100 text-[13px]">
-            {row.deskLabel}
+            {row.country}
           </span>
         ),
       },
@@ -279,40 +365,20 @@ export function PaymentsTab() {
       },
       {
         header: "Revenue Share",
-        render: (row) => (
-          <div className="w-full max-w-[200px] h-1.5 bg-gray-100 dark:bg-slate-700/50 rounded-full overflow-hidden">
-            <div
-              className="bg-indigo-500 h-full rounded-full transition-all"
-              style={{
-                width: `${Math.min(100, (row.realizedRevenue / 100000) * 100)}%`,
-              }}
-            />
-          </div>
-        ),
+        render: (row) => {
+          const sharePct =
+            totalDeskRevenue > 0
+              ? (row.realizedRevenue / totalDeskRevenue) * 100
+              : 0;
+          return (
+            <span className="text-gray-600 dark:text-slate-300 font-medium tabular-nums">
+              {sharePct.toFixed(1)}%
+            </span>
+          );
+        },
       },
     ],
-    []
-  );
-
-  const viewToggle = (
-    <TableViewToggle
-      value={paymentsView}
-      onChange={setPaymentsView}
-      options={[
-        {
-          id: "ledger",
-          label: "Client Ledger",
-          count: ledgerRows.length,
-          icon: FiFileText,
-        },
-        {
-          id: "desk-revenue",
-          label: "Desks Revenue",
-          count: deskRevenueRows.length,
-          icon: FiGlobe,
-        },
-      ]}
-    />
+    [totalDeskRevenue, deskSearchGetter]
   );
 
   const summaryCards = [
@@ -334,82 +400,81 @@ export function PaymentsTab() {
   ];
 
   return (
-    <div className="min-w-0 space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {summaryCards.map((card) => (
-          <div
-            key={card.label}
-            className="p-6 rounded-2xl border bg-white dark:bg-slate-900/60 border-gray-200/70 dark:border-slate-800/80"
-          >
-            <p className="text-[10px] font-bold text-gray-500 dark:text-slate-500 uppercase tracking-wider">
-              {card.label}
-            </p>
-            <p className="mt-2 text-xl font-extrabold text-gray-900 dark:text-white tabular-nums">
-              ₹{card.value.toLocaleString()}
-            </p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
-              {card.description}
-            </p>
-          </div>
-        ))}
-      </div>
+    <div className="-m-4 md:-m-8 p-4 md:p-6 bg-gray-50 dark:bg-transparent min-h-[calc(100vh-4rem)] space-y-5">
+      <div className="min-w-0 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {summaryCards.map((card) => (
+            <div
+              key={card.label}
+              className="p-6 rounded-2xl border bg-white dark:bg-slate-900/60 border-gray-200/70 dark:border-slate-800/80"
+            >
+              <p className="text-[10px] font-bold text-gray-500 dark:text-slate-500 uppercase tracking-wider">
+                {card.label}
+              </p>
+              <p className="mt-2 text-xl font-extrabold text-gray-900 dark:text-white tabular-nums">
+                ₹{card.value.toLocaleString()}
+              </p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                {card.description}
+              </p>
+            </div>
+          ))}
+        </div>
 
-      {paymentsView === "ledger" ? (
-        <DataTable
-          title="Clients Accounts Ledger"
-          pagination={true}
-          defaultPageSize={10}
-          rows={ledgerRows}
-          getRowId={(l) => l.id}
-          filters={viewToggle}
-          rightSlot={toolbarRight}
-          toolbarEndSlot={dateRangeCalendar}
-          columns={ledgerColumns}
-          actions={(lead) => [
-            {
-              icon: FaTag,
-              title: "Edit package",
-              hidden: () => !canManagePayments,
-              onClick: (l) => setPackageLeadId(l.id),
-            },
-            {
-              icon: FaFileInvoiceDollar,
-              title: "View invoices",
-              onClick: (l) => setInvoiceLeadId(l.id),
-            },
-            {
-              icon: FaEnvelope,
-              title: "Email",
-              onClick: (l) => window.open(`mailto:${l.email}`),
-            },
-          ]}
-          actionsHeader="Actions"
-          emptyText="No active client accounts."
-        />
-      ) : (
-        <DataTable
-          title="Destination Desk Revenue"
-          pagination={true}
-          defaultPageSize={10}
-          rows={deskRevenueRows}
-          getRowId={(row) => row.id}
-          filters={viewToggle}
-          rightSlot={toolbarRight}
-          toolbarEndSlot={dateRangeCalendar}
-          columns={deskRevenueColumns}
-          showCheckbox={false}
-          showIndex={false}
-          emptyText="No desk revenue data available."
-        />
-      )}
-      {packageLead ? (
-        <UpdatePackageModal
-          lead={packageLead}
-          onClose={() => setPackageLeadId(null)}
-          onSave={setLeadPackage}
-          showToast={showToast}
-        />
-      ) : null}
+        {paymentsView === "ledger" ? (
+          <DataTable
+            pagination={true}
+            defaultPageSize={10}
+            rows={ledgerTableRows}
+            getRowId={(l) => l.id}
+            filters={paidUnpaidToggle}
+            columnSearch={columnSearch}
+            rightSlot={toolbarRight}
+            columns={ledgerColumns}
+            actions={(lead) => [
+              {
+                icon: FaTag,
+                title: "Edit package",
+                hidden: () => !canManagePayments,
+                onClick: (l) => setPackageLeadId(l.id),
+              },
+              {
+                icon: FaFileInvoiceDollar,
+                title: "View invoices",
+                onClick: (l) => setInvoiceLeadId(l.id),
+              },
+              {
+                icon: FaEnvelope,
+                title: "Email",
+                onClick: (l) => window.open(`mailto:${l.email}`),
+              },
+            ]}
+            actionsHeader="Actions"
+            emptyText="No active client accounts."
+          />
+        ) : (
+          <DataTable
+            pagination={true}
+            defaultPageSize={10}
+            showToolbar={false}
+            rows={deskTableRows}
+            getRowId={(row) => row.id}
+            columnSearch={columnSearch}
+            columns={deskRevenueColumns}
+            showCheckbox={false}
+            showIndex={false}
+            emptyText="No desk revenue data available."
+          />
+        )}
+        {packageLead ? (
+          <UpdatePackageModal
+            lead={packageLead}
+            onClose={() => setPackageLeadId(null)}
+            onSave={setLeadPackage}
+            showToast={showToast}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

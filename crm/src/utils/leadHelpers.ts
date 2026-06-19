@@ -11,6 +11,31 @@ export function isLeadAssignedToCounselor(lead: Lead, counselorName: string): bo
   return assigned !== "" && assigned !== "unassigned" && assigned === counselor;
 }
 
+/** Milliseconds from lead id (`lead-<timestamp>`) or dateCreated. */
+export function getLeadCreatedTimestamp(lead: Lead): number {
+  const idMatch = lead.id.match(/^lead-(\d+)$/);
+  if (idMatch) {
+    const ts = Number(idMatch[1]);
+    if (!Number.isNaN(ts)) return ts;
+  }
+  const parsed = Date.parse(lead.dateCreated);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+/** Most recent of create time or last counselor assignment. */
+export function getLeadRecencyTimestamp(lead: Lead): number {
+  const created = getLeadCreatedTimestamp(lead);
+  const assigned = lead.assignedAt ? Date.parse(lead.assignedAt) : 0;
+  return Math.max(created, Number.isNaN(assigned) ? 0 : assigned);
+}
+
+/** Newest created or assigned leads first. */
+export function sortLeadsByRecency<T extends Lead>(leads: T[]): T[] {
+  return [...leads].sort(
+    (a, b) => getLeadRecencyTimestamp(b) - getLeadRecencyTimestamp(a)
+  );
+}
+
 export function scopeLeadsForUser(leads: Lead[], user: CrmUser | null): Lead[] {
   if (!user || user.role !== "COUNSELOR") {
     return leads;

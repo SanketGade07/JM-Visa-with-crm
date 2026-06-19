@@ -7,6 +7,8 @@ import { FiSettings, FiPhone, FiMail, FiCopy } from "react-icons/fi";
 import DataTable, { exportRowsToCsv } from "@/components/ui/DataTable";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { useUsaSlotTabs } from "@/hooks/useUsaSlotTabs";
+import { useColumnSearch } from "@/hooks/useColumnSearch";
+import { applyColumnSearch } from "@/utils/columnSearch";
 
 // function formatDisplayDate(iso: string): string {
 //   if (!iso) return "";
@@ -388,13 +390,30 @@ export function USASlotsTab() {
   } = useCrmLayoutContext();
 
   const { filteredUsaLeads } = useUsaSlotTabs();
+  const columnSearch = useColumnSearch();
+
+  const clientSearchGetter = useMemo(
+    () => (lead: Lead) =>
+      [lead.name, lead.phone, lead.email].filter(Boolean).join(" "),
+    []
+  );
+
+  const tableRows = useMemo(
+    () =>
+      applyColumnSearch(
+        filteredUsaLeads,
+        [{ searchKey: "client", getSearchValue: clientSearchGetter }],
+        columnSearch.debouncedFilters
+      ),
+    [filteredUsaLeads, clientSearchGetter, columnSearch.debouncedFilters]
+  );
 
   useEffect(() => {
     registerUsaSlotsExport(() =>
       exportRowsToCsv(
         "usa-slots",
         ["Client", "Phone", "Visa User", "Visa Pass", "Slot User", "Slot Pass", "Car", "Food", "City"],
-        filteredUsaLeads.map((l) => [
+        tableRows.map((l) => [
           l.name,
           l.phone ?? "",
           l.visaCredentials?.username ?? "",
@@ -408,7 +427,7 @@ export function USASlotsTab() {
       )
     );
     return () => registerUsaSlotsExport(null);
-  }, [registerUsaSlotsExport, filteredUsaLeads]);
+  }, [registerUsaSlotsExport, tableRows]);
 
   const openSlotSettings = (lead: Lead) => {
     setSelectedLeadId(lead.id);
@@ -418,14 +437,17 @@ export function USASlotsTab() {
   return (
     <div className="space-y-6">
       <DataTable
-        title="USA Client Profiles"
         pagination={true}
         defaultPageSize={10}
-        rows={filteredUsaLeads}
+        columnSearch={columnSearch}
+        rows={tableRows}
         getRowId={(l) => l.id}
         columns={[
           {
             header: "Client",
+            searchKey: "client",
+            searchLabel: "Client",
+            getSearchValue: clientSearchGetter,
             render: (lead) => (
               <div className="flex flex-col gap-0.5 min-w-0">
                 <button

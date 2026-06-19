@@ -3,6 +3,7 @@ import { readLeads, writeLeads, appendActivity } from "@/utils/db";
 import { Lead, Activity } from "@/context/CrmContext";
 import { DEFAULT_USA_SLOTS, normalizeLead } from "@/utils/normalizeLead";
 import { normalizeLeadStatus } from "@/utils/leadStatusConfig";
+import { isCounselorAssigned } from "@/utils/counselorOptions";
 import {
   buildEmptyChecklist,
   DEFAULT_EMPLOYMENT_CATEGORY,
@@ -83,6 +84,7 @@ export async function POST(req: NextRequest) {
 
     // Single manual lead creation
     const today = new Date().toISOString().split("T")[0];
+    const now = new Date().toISOString();
     const leadId = `lead-${Date.now()}`;
     const country = body.country || "UK";
     const employmentCategory: EmploymentCategory =
@@ -103,6 +105,7 @@ export async function POST(req: NextRequest) {
       counselor: body.counselor || "Unassigned",
       dateCreated: today,
       lastUpdated: today,
+      ...(isCounselorAssigned(body.counselor) ? { assignedAt: now } : {}),
       isDeleted: false,
       employmentCategory,
       checklist: buildEmptyChecklist(employmentCategory),

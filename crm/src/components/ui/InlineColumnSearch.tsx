@@ -110,7 +110,7 @@ export function InlineColumnSearch({
             className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-all duration-150 cursor-pointer"
             aria-label={`Clear ${label} search`}
           >
-            <svg viewBox="0 0 12 12" fill="none" aria-hidden="true" className="w-2.5 h-2.5">
+            <svg viewBox="0 0 12 12" fill="none" aria-hidden="true" className="w-3.5 h-3.5">
               <path
                 d="M3.25 3.25l5.5 5.5M8.75 3.25l-5.5 5.5"
                 stroke="currentColor"

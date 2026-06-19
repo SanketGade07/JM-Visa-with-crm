@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useState, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useState, useEffect, useRef } from "react";
 import {
   DEFAULT_EMPLOYMENT_CATEGORY,
   getChecklistItemLabel,
@@ -9,6 +9,11 @@ import {
   type EmploymentCategory,
 } from "@/utils/documentChecklistConfig";
 import { normalizeAllowedTabs, normalizePermissions } from "@/utils/crmConstants";
+import {
+  isCounselorAssigned,
+  reconcileOrphanCounselorAssignments,
+  UNASSIGNED_COUNSELOR,
+} from "@/utils/counselorOptions";
 import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
 import type { LeadStatus } from "@/utils/leadStatusConfig";
 
@@ -122,6 +127,8 @@ export interface Lead {
   status: VisaStatus;
   source: LeadSource;
   counselor: string;
+  /** ISO timestamp when counselor was last assigned (for table recency sort). */
+  assignedAt?: string;
   dateCreated: string;
   employmentCategory?: EmploymentCategory;
   checklist: DocumentChecklist;
@@ -196,18 +203,6 @@ interface CrmContextType {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
 
-const isAssignedCounselor = (counselor: string) =>
-  counselor.trim() !== "" && counselor !== "Unassigned";
-
-const resolveStatusAfterCounselorChange = (
-  status: VisaStatus,
-  counselor: string
-): VisaStatus => {
-  if (isAssignedCounselor(counselor) && status === "NEW_LEAD") return "IN_PROGRESS";
-  if (!isAssignedCounselor(counselor) && status === "IN_PROGRESS") return "NEW_LEAD";
-  return status;
-};
-
 const TERMINAL_STATUSES: VisaStatus[] = [
   "VISA_SUBMISSION",
   "VISA_APPROVED",
@@ -249,6 +244,8 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentUser, setCurrentUser] = useState<CrmUser | null>(null);
   const [currentRole, setCurrentRole] = useState<StaffRole | string>("ADMIN");
   const [currentTab, setCurrentTab] = useState<string>("Dashboard");
+  const leadsRef = useRef(leads);
+  leadsRef.current = leads;
 
   useEffect(() => {
     const loadData = async () => {
@@ -314,6 +311,35 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (users.length === 0) return;
+
+    const currentLeads = leadsRef.current;
+    if (currentLeads.length === 0) return;
+
+    const orphans = reconcileOrphanCounselorAssignments(users, currentLeads);
+    if (orphans.length === 0) return;
+
+    const today = new Date().toISOString().split("T")[0];
+    const orphanIds = new Set(orphans.map((lead) => lead.id));
+    const updated = currentLeads.map((lead) => {
+      if (!orphanIds.has(lead.id)) return lead;
+      return { ...lead, counselor: UNASSIGNED_COUNSELOR, lastUpdated: today };
+    });
+
+    void syncLeads(updated);
+    for (const lead of orphans) {
+      const prevCounselor = lead.counselor;
+      void logActivity({
+        leadId: lead.id,
+        type: "note",
+        content: `Counselor changed from "${prevCounselor}" to "${UNASSIGNED_COUNSELOR}" (counselor no longer in staff)`,
+        createdBy: "SYSTEM",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reconcile when staff directory loads or changes
+  }, [users]);
+
   // ── Persistence helpers ─────────────────────────────────────────────────────
 
   const syncLeads = async (updated: Lead[]) => {
@@ -374,16 +400,17 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addLead = (newLeadData: Omit<Lead, "id" | "dateCreated" | "lastUpdated" | "isDeleted">): string => {
     const today = new Date().toISOString().split("T")[0];
+    const now = new Date().toISOString();
     const category = newLeadData.employmentCategory ?? DEFAULT_EMPLOYMENT_CATEGORY;
-    const status = resolveStatusAfterCounselorChange(newLeadData.status, newLeadData.counselor);
     const newLead: Lead = {
       ...newLeadData,
       employmentCategory: category,
       checklist: mergeChecklist(newLeadData.checklist, category),
-      status,
+      status: newLeadData.status,
       id: `lead-${Date.now()}`,
       dateCreated: today,
       lastUpdated: today,
+      ...(isCounselorAssigned(newLeadData.counselor) ? { assignedAt: now } : {}),
       isDeleted: false,
     };
     void syncLeads([...leads, newLead]).then(async () => {
@@ -411,14 +438,6 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       content: `Lead created manually by ${currentRole}`,
       createdBy: currentRole,
     });
-    if (status !== newLeadData.status) {
-      logActivity({
-        leadId: newLead.id,
-        type: "status_change",
-        content: `Status auto-set to "${status}" after counselor assignment`,
-        createdBy: "SYSTEM",
-      });
-    }
     return newLead.id;
   };
 
@@ -488,11 +507,19 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const assignCounselor = (leadId: string, counselor: string) => {
     const today = new Date().toISOString().split("T")[0];
+    const now = new Date().toISOString();
     const prev = leads.find((l) => l.id === leadId);
+    const counselorChanged = prev && prev.counselor !== counselor;
     const updated = leads.map((lead) => {
       if (lead.id !== leadId) return lead;
-      const status = resolveStatusAfterCounselorChange(lead.status, counselor);
-      return { ...lead, counselor, status, lastUpdated: today };
+      return {
+        ...lead,
+        counselor,
+        lastUpdated: today,
+        ...(counselorChanged && isCounselorAssigned(counselor)
+          ? { assignedAt: now }
+          : {}),
+      };
     });
     syncLeads(updated);
     if (prev && prev.counselor !== counselor) {
@@ -502,15 +529,6 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         content: `Counselor changed from "${prev.counselor}" to "${counselor}"`,
         createdBy: currentRole,
       });
-      const newStatus = resolveStatusAfterCounselorChange(prev.status, counselor);
-      if (newStatus !== prev.status) {
-        logActivity({
-          leadId,
-          type: "status_change",
-          content: `Status auto-updated from "${prev.status}" to "${newStatus}" after counselor assignment`,
-          createdBy: "SYSTEM",
-        });
-      }
     }
   };
 
@@ -971,6 +989,9 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteUser = async (userId: string) => {
+    const deletedUser = users.find((u) => u.id === userId);
+    const deletedName = deletedUser?.name?.trim();
+
     try {
       const res = await fetch("/api/users", {
         method: "POST",
@@ -983,6 +1004,33 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       setUsers((prev) => prev.filter((u) => u.id !== userId));
+
+      if (deletedName) {
+        const today = new Date().toISOString().split("T")[0];
+        const nameLower = deletedName.toLowerCase();
+        const affected = leads.filter(
+          (lead) => (lead.counselor?.trim() ?? "").toLowerCase() === nameLower
+        );
+
+        if (affected.length > 0) {
+          const affectedIds = new Set(affected.map((lead) => lead.id));
+          const updated = leads.map((lead) => {
+            if (!affectedIds.has(lead.id)) return lead;
+            return { ...lead, counselor: UNASSIGNED_COUNSELOR, lastUpdated: today };
+          });
+          await syncLeads(updated);
+
+          for (const lead of affected) {
+            void logActivity({
+              leadId: lead.id,
+              type: "note",
+              content: `Counselor changed from "${deletedName}" to "${UNASSIGNED_COUNSELOR}" (counselor removed from staff)`,
+              createdBy: currentRole,
+            });
+          }
+        }
+      }
+
       return { ok: true };
     } catch {
       return { ok: false, error: "Network error deleting user" };

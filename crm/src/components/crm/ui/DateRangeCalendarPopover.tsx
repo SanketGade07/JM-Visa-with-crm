@@ -317,13 +317,13 @@ export function DateRangeCalendarPopover({
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => (open ? closePopover() : openPopover())}
-        className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+        className={`p-2 rounded-xl bg-slate-900 border transition-all flex items-center justify-center shadow-md cursor-pointer ${
           isActive
-            ? "text-blue-600 dark:text-sky-400 bg-blue-50 dark:bg-sky-400/10 hover:bg-blue-100 dark:hover:bg-sky-400/15"
-            : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
+            ? "border-violet-500/60 text-violet-400 hover:text-violet-300"
+            : "border-slate-800/80 text-slate-400 hover:text-violet-400 hover:border-violet-500/30"
         }`}
       >
-        <FiCalendar className="text-[14.5px]" />
+        <FiCalendar className="text-sm" />
       </button>
       {typeof document !== "undefined" && popover ? createPortal(popover, document.body) : null}
     </>

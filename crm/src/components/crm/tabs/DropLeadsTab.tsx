@@ -21,6 +21,7 @@ import { SearchableCountrySelect, PhoneInput } from "@/components/ui/FormInputs"
 // @ts-ignore
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
 import { getLeadAvatar, getLeadDescription, getLeadCompany } from "../helpers/leadDisplayHelpers";
+import { getCountryDisplayName } from "@/utils/countryUtils";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 
 
@@ -64,58 +65,74 @@ export function DropLeadsTab() {
     countryBarChartData, maxLeadsCount, yLabels, getCountryAbbreviation,
     handlePeriodChange, handleCalendarDateClick, getDaysInMonth, monthNames,
     leadsMgmtData, topCountryStats, pipelineStats, cardMap, modalMap,
+    registerDroppedLeadsExport,
   } = useCrmLayoutContext();
 
+  const droppedLeads = useMemo(
+    () => leads.filter((l) => l.status === "DROPPED"),
+    [leads]
+  );
+
+  useEffect(() => {
+    registerDroppedLeadsExport(() =>
+      exportRowsToCsv(
+        "dropped-leads",
+        ["#", "Client Name", "Destination", "Sub Visa Type", "Counselor", "Date Created"],
+        droppedLeads.map((l, i) => [i + 1, l.name, l.country, l.visaType, l.counselor, l.dateCreated])
+      )
+    );
+    return () => registerDroppedLeadsExport(null);
+  }, [registerDroppedLeadsExport, droppedLeads]);
+
   return (
-    <>
-            <div className="space-y-6">
-              
-              <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl">
-                <h3 className="text-base font-bold text-white mb-1">Archived & Dropped Leads Log</h3>
-                <p className="text-xs text-slate-400">Leads that withdrew or were archived. Restoring moves them back to the active list.</p>
-              </div>
-
-              {/* Dropped leads log table */}
-              <DataTable
-                title="Archived & Dropped Leads"
-                rows={leads.filter((l) => l.status === "DROPPED")}
-                getRowId={(l) => l.id}
-                onExport={() =>
-                  exportRowsToCsv(
-                    "dropped-leads",
-                    ["#", "Client Name", "Destination", "Sub Visa Type", "Counselor", "Date Created"],
-                    leads.filter((l) => l.status === "DROPPED").map((l, i) => [i + 1, l.name, l.country, l.visaType, l.counselor, l.dateCreated])
-                  )
-                }
-                columns={[
-                  {
-                    header: "Client Name",
-                    render: (lead) => (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openLeadDetail(lead.id);
-                        }}
-                        className="font-semibold text-gray-900 dark:text-slate-100 text-[13px] text-left hover:text-violet-600 dark:hover:text-violet-400 hover:underline cursor-pointer transition-colors"
-                      >
-                        {lead.name}
-                      </button>
-                    ),
-                  },
-                  { header: "Destination Desk", render: (lead) => <span className="text-gray-600 dark:text-slate-300">{lead.country}</span> },
-                  { header: "Sub Visa Type", render: (lead) => <span className="text-gray-500 dark:text-slate-400">{lead.visaType}</span> },
-                  { header: "Last Counselor", render: (lead) => <span className="text-gray-600 dark:text-slate-300 font-medium">{lead.counselor}</span> },
-                  { header: "Date Created", render: (lead) => <span className="text-gray-500 dark:text-slate-400">{lead.dateCreated}</span> },
-                ]}
-                actions={(lead) => [
-                  { icon: FaUndo, title: "Re-activate lead", disabled: () => !canModifyLeads, onClick: (l) => restoreLead(l.id) },
-                ]}
-                actionsHeader="Restore"
-                emptyText="Archive log is currently empty."
-              />
-
-            </div>
-    </>
+    <div className="-m-4 md:-m-8 p-4 md:p-6 bg-gray-50 dark:bg-transparent min-h-[calc(100vh-4rem)] space-y-5">
+      <div className="min-w-0 space-y-6">
+        {/* Dropped leads log table */}
+        <DataTable
+          title="Archived & Dropped Leads"
+          rows={droppedLeads}
+          getRowId={(l) => l.id}
+          columns={[
+            {
+              header: "Client Name",
+              render: (lead) => (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openLeadDetail(lead.id);
+                  }}
+                  className="font-semibold text-gray-900 dark:text-slate-100 text-[13px] text-left hover:text-violet-600 dark:hover:text-violet-400 hover:underline cursor-pointer transition-colors"
+                >
+                  {lead.name}
+                </button>
+              ),
+            },
+            {
+              header: "Destination Desk",
+              render: (lead) => {
+                const displayCountry = getCountryDisplayName(lead.country);
+                return (
+                  <span
+                    className="text-gray-600 dark:text-slate-300 text-[13px] block truncate max-w-[130px]"
+                    title={displayCountry}
+                  >
+                    {displayCountry}
+                  </span>
+                );
+              },
+            },
+            { header: "Sub Visa Type", render: (lead) => <span className="text-gray-500 dark:text-slate-400">{lead.visaType}</span> },
+            { header: "Last Counselor", render: (lead) => <span className="text-gray-600 dark:text-slate-300 font-medium">{lead.counselor}</span> },
+            { header: "Date Created", render: (lead) => <span className="text-gray-500 dark:text-slate-400">{lead.dateCreated}</span> },
+          ]}
+          actions={(lead) => [
+            { icon: FaUndo, title: "Re-activate lead", disabled: () => !canModifyLeads, onClick: (l) => restoreLead(l.id) },
+          ]}
+          actionsHeader="Restore"
+          emptyText="Archive log is currently empty."
+        />
+      </div>
+    </div>
   );
 }

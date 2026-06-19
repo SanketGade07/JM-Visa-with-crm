@@ -1,4 +1,6 @@
 import React from "react";
+import { getCode } from "country-list";
+import { isUsaCountry, isUkCountry, isUaeCountry } from "@/utils/countryUtils";
 
 // Sharp lightweight SVG flags for platform-agnostic color fidelity.
 // Pure presentational components — no props, no state.
@@ -237,14 +239,61 @@ const COUNTRY_FLAG_MAP: Record<string, () => React.ReactElement> = {
   Europe: RectEuropeFlag,
 };
 
+function CountryFlagImage({ code, country }: { code: string; country: string }) {
+  const [failed, setFailed] = React.useState(false);
+
+  if (failed) {
+    const textCode = country.slice(0, 2).toUpperCase();
+    return (
+      <span className={`${RECT_FLAG} inline-flex items-center justify-center text-[6px] font-bold text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50`}>
+        {textCode}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={`https://purecatamphetamine.github.io/country-flag-icons/3x2/${code.toUpperCase()}.svg`}
+      className={RECT_FLAG}
+      alt={country}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export function getCountryFlag(country: string): React.ReactElement {
   const Flag = COUNTRY_FLAG_MAP[country];
   if (Flag) return <Flag />;
 
-  const code = country.slice(0, 2).toUpperCase();
+  // Try to resolve 2-letter country code
+  let code = "";
+  const trimmed = country.trim();
+  if (isUsaCountry(trimmed)) {
+    code = "us";
+  } else if (isUkCountry(trimmed)) {
+    code = "gb";
+  } else if (isUaeCountry(trimmed)) {
+    code = "ae";
+  } else {
+    try {
+      const parsedCode = getCode(trimmed);
+      if (parsedCode) {
+        code = parsedCode.toLowerCase();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (code) {
+    return <CountryFlagImage code={code} country={country} />;
+  }
+
+  // Fallback placeholder text if code is not resolved
+  const textCode = country.slice(0, 2).toUpperCase();
   return (
-    <span className={`${RECT_FLAG} inline-flex items-center justify-center text-[6px] font-bold text-slate-300 uppercase bg-gradient-to-br from-slate-600 to-slate-700`}>
-      {code}
+    <span className={`${RECT_FLAG} inline-flex items-center justify-center text-[6px] font-bold text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50`}>
+      {textCode}
     </span>
   );
 }

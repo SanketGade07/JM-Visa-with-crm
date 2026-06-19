@@ -21,6 +21,8 @@ export type AssignmentNotification = {
 };
 
 export type UsaSlotView = "available" | "paid";
+export type SubmissionView = "ready" | "dispatched" | "approved" | "rejected";
+export type PaymentsView = "ledger" | "desk-revenue";
 
 const ASSIGNMENT_NOTIFICATIONS_KEY = "crm-assignment-notifications";
 
@@ -235,6 +237,8 @@ export function useCrmLayoutState() {
 
   const [statusFilter, setStatusFilter] = useState<string>("NEW_LEAD");
   const [usaSlotView, setUsaSlotView] = useState<UsaSlotView>("available");
+  const [submissionView, setSubmissionView] = useState<SubmissionView>("ready");
+  const [paymentsView, setPaymentsView] = useState<PaymentsView>("ledger");
   const [kpiFilter, setKpiFilter] = useState<string>("Total");
   const [countryFilter, setCountryFilter] = useState<string>("All");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -267,6 +271,28 @@ export function useCrmLayoutState() {
       if (currentUser?.id === counselorUser.id) {
         setAssignmentNotifications(next);
       }
+    },
+    [users, leads, currentUser?.id]
+  );
+
+  const pushAssignmentNotificationForAdmin = useCallback(
+    (leadId: string, leadName?: string) => {
+      const name = leadName ?? leads.find((l) => l.id === leadId)?.name ?? "Lead";
+      const entry: AssignmentNotification = {
+        leadId,
+        leadName: name,
+        assignedAt: new Date().toISOString(),
+      };
+
+      const admins = users.filter((u) => u.role === "ADMIN");
+      admins.forEach((admin) => {
+        const next = appendStoredNotification(admin.id, entry);
+        writeStoredNotifications(admin.id, next);
+
+        if (currentUser?.id === admin.id) {
+          setAssignmentNotifications(next);
+        }
+      });
     },
     [users, leads, currentUser?.id]
   );
@@ -311,9 +337,10 @@ export function useCrmLayoutState() {
           newLeadData.name
         );
       }
+      pushAssignmentNotificationForAdmin(newId, newLeadData.name);
       return newId;
     },
-    [addLead, pushAssignmentNotificationForCounselor]
+    [addLead, pushAssignmentNotificationForCounselor, pushAssignmentNotificationForAdmin]
   );
 
   const assignedLeadCount = useMemo(() => {
@@ -484,6 +511,7 @@ export function useCrmLayoutState() {
   const hoveredCountryRef = useRef<string | null>(null);
   const leadsExportRef = useRef<(() => void) | null>(null);
   const usaSlotsExportRef = useRef<(() => void) | null>(null);
+  const droppedLeadsExportRef = useRef<(() => void) | null>(null);
   const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
 
   const registerLeadsExport = useCallback((fn: (() => void) | null) => {
@@ -501,6 +529,15 @@ export function useCrmLayoutState() {
   const exportUsaSlotsCsv = useCallback(() => {
     usaSlotsExportRef.current?.();
   }, []);
+
+  const registerDroppedLeadsExport = useCallback((fn: (() => void) | null) => {
+    droppedLeadsExportRef.current = fn;
+  }, []);
+
+  const exportDroppedLeadsCsv = useCallback(() => {
+    droppedLeadsExportRef.current?.();
+  }, []);
+
   const tooltipRef = useRef<HTMLDivElement>(null);
   const tooltipPosRef = useRef({ x: 0, y: 0 });
   const [isMounted, setIsMounted] = useState(false);
@@ -704,7 +741,7 @@ export function useCrmLayoutState() {
 
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
-      if (lead.isDeleted) return false;
+      if (lead.isDeleted || lead.status === "DROPPED") return false;
       if (dateRangeStart) {
         const dateCreated = lead.dateCreated || "";
         if (dateRangeEnd) {
@@ -1115,6 +1152,8 @@ export function useCrmLayoutState() {
     pastedInvoiceUrl, setPastedInvoiceUrl, uploadInvoiceError, setUploadInvoiceError,
     uploadingInvoiceKey, setUploadingInvoiceKey, statusFilter, setStatusFilter,
     usaSlotView, setUsaSlotView,
+    submissionView, setSubmissionView,
+    paymentsView, setPaymentsView,
     kpiFilter, setKpiFilter, countryFilter, setCountryFilter,
     selectedLeadId, setSelectedLeadId,
     openLeadDetail, closeLeadDetail, leadDetailTab, setLeadDetailTab,
@@ -1150,6 +1189,7 @@ export function useCrmLayoutState() {
     leadsMgmtData, topCountryStats, pipelineStats, cardMap, modalMap,
     registerLeadsExport, exportLeadsCsv,
     registerUsaSlotsExport, exportUsaSlotsCsv,
+    registerDroppedLeadsExport, exportDroppedLeadsCsv,
   };
 }
 

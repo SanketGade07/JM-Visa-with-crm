@@ -21,6 +21,7 @@ import { SearchableCountrySelect, PhoneInput } from "@/components/ui/FormInputs"
 // @ts-ignore
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
 import { getLeadAvatar, getLeadDescription, getLeadCompany } from "../helpers/leadDisplayHelpers";
+import { getCountryDisplayName } from "@/utils/countryUtils";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 
 
@@ -111,7 +112,20 @@ export function FollowUpsTab() {
                       </button>
                     ),
                   },
-                  { header: "Visa Type", render: (lead) => <span className="text-gray-600 dark:text-slate-300">{lead.country} - {lead.visaType}</span> },
+                  {
+                    header: "Visa Type",
+                    render: (lead) => {
+                      const displayCountry = getCountryDisplayName(lead.country);
+                      return (
+                        <span
+                          className="text-gray-600 dark:text-slate-300 text-[13px] block truncate max-w-[200px]"
+                          title={`${displayCountry} - ${lead.visaType}`}
+                        >
+                          {displayCountry} - {lead.visaType}
+                        </span>
+                      );
+                    },
+                  },
                   { header: "Last Status", render: (lead) => <StatusPill status={lead.status} /> },
                   { header: "File Notes Log", render: (lead) => <span className="text-gray-500 truncate max-w-xs block">{lead.notes || "No notes yet..."}</span> },
                   { header: "Counselor", render: (lead) => <span className="text-gray-600 dark:text-slate-300 font-medium">{lead.counselor}</span> },

@@ -262,21 +262,45 @@ export function InlineColumnFilterSelect({
   return (
     <div className="inline-column-filter">
       <style>{FILTER_THEME_CSS}</style>
-      <button
-        ref={anchorRef}
-        type="button"
-        onClick={() => (menuOpen ? closeMenu() : openMenu())}
-        className={headerIdle}
-        aria-label={`Filter ${label}`}
-        aria-haspopup="listbox"
-        aria-expanded={menuOpen}
-      >
-        <span className="truncate normal-case">{label}</span>
-        <FiFilter
-          className={hasFilter ? iconHighlight : iconIdle}
-          aria-hidden="true"
-        />
-      </button>
+      <div className="inline-flex items-center gap-0">
+        <button
+          ref={anchorRef}
+          type="button"
+          onClick={() => (menuOpen ? closeMenu() : openMenu())}
+          className={headerIdle}
+          aria-label={`Filter ${label}`}
+          aria-haspopup="listbox"
+          aria-expanded={menuOpen}
+        >
+          <span className="truncate normal-case">{label}</span>
+          <FiFilter
+            className={hasFilter ? iconHighlight : iconIdle}
+            aria-hidden="true"
+          />
+        </button>
+        {hasFilter && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange(clearValue);
+              closeMenu();
+            }}
+            className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-all duration-150 cursor-pointer ml-0.5"
+            aria-label={`Clear ${label} filter`}
+            title={`Clear ${label} filter`}
+          >
+            <svg viewBox="0 0 12 12" fill="none" aria-hidden="true" className="w-3.5 h-3.5">
+              <path
+                d="M3.25 3.25l5.5 5.5M8.75 3.25l-5.5 5.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        )}
+      </div>
       {typeof document !== "undefined" && menu ? createPortal(menu, document.body) : null}
     </div>
   );

@@ -9,14 +9,14 @@ import {
 } from "@/utils/counselorOptions";
 
 export function useCounselorSelectOptions(
-  currentValue?: string | null,
+  _currentValue?: string | null,
   options?: { includeUnassigned?: boolean }
 ): CounselorOption[] {
   const { users } = useCrm();
 
   return useMemo(
-    () => buildCounselorSelectOptions(users, { currentValue, ...options }),
-    [users, currentValue, options?.includeUnassigned]
+    () => buildCounselorSelectOptions(users, options),
+    [users, options?.includeUnassigned]
   );
 }
 

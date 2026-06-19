@@ -45,7 +45,24 @@ import { defaultCountries, parseCountry, FlagImage } from 'react-international-p
 import 'react-international-phone/style.css';
 import { validatePhone } from '@/utils/validatePhone';
 
-const countryOptions = getNames().map(name => ({ value: name, label: name })).sort((a, b) => a.label.localeCompare(b.label));
+const countryMapping: Record<string, { value: string; label: string }> = {
+  "United States": { value: "USA", label: "United States of America (the)" },
+  "United States of America": { value: "USA", label: "United States of America (the)" },
+  "United States of America (the)": { value: "USA", label: "United States of America (the)" },
+  "United Kingdom": { value: "UK", label: "United Kingdom" },
+  "United Kingdom of Great Britain and Northern Ireland": { value: "UK", label: "United Kingdom" },
+  "United Arab Emirates": { value: "UAE", label: "United Arab Emirates" },
+};
+
+const uniqueOptionsMap = new Map<string, string>();
+getNames().forEach(name => {
+  const mapped = countryMapping[name] ?? { value: name, label: name };
+  uniqueOptionsMap.set(mapped.value, mapped.label);
+});
+
+const countryOptions = Array.from(uniqueOptionsMap.entries())
+  .map(([value, label]) => ({ value, label }))
+  .sort((a, b) => a.label.localeCompare(b.label));
 
 export const destinationFilterOptions = [
   { value: "All", label: "All Countries" },

@@ -7,6 +7,8 @@ import {
   FiBell,
   FiCheckCircle,
   FiDownload,
+  FiFileText,
+  FiGlobe,
   FiGrid,
   FiMenu,
   FiRefreshCw,
@@ -21,8 +23,11 @@ import { DriveToolbar } from "../drive/DriveToolbar";
 import { useMainDriveToolbar } from "../drive/MainDriveToolbarContext";
 import { QuickStatusTabs } from "@/components/ui/QuickStatusTabs";
 import { useLeadQuickStatusTabs } from "@/hooks/useLeadQuickStatusTabs";
+import { usePaymentsTabs } from "@/hooks/usePaymentsTabs";
+import { useSubmissionTabs } from "@/hooks/useSubmissionTabs";
 import { useUsaSlotTabs } from "@/hooks/useUsaSlotTabs";
-import type { UsaSlotView } from "../hooks/useCrmLayoutState";
+import type { PaymentsView, SubmissionView, UsaSlotView } from "../hooks/useCrmLayoutState";
+import { DateRangeCalendarPopover } from "@/components/crm/ui/DateRangeCalendarPopover";
 import { DEFAULT_EMPLOYMENT_CATEGORY } from "@/utils/documentChecklistConfig";
 import { docProgress } from "@/utils/leadHelpers";
 import { CRM_DROPDOWN_SCROLL_CLASS } from "@/utils/dropdownScrollStyles";
@@ -67,6 +72,7 @@ export function CrmHeader() {
     closeLeadDetail,
     exportLeadsCsv,
     exportUsaSlotsCsv,
+    exportDroppedLeadsCsv,
     leadDetailTab,
     setLeadDetailTab,
     openLeadDetail,
@@ -77,12 +83,22 @@ export function CrmHeader() {
     assignedLeadCount,
     usaSlotView,
     setUsaSlotView,
+    submissionView,
+    setSubmissionView,
+    paymentsView,
+    setPaymentsView,
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
   } = useCrmLayoutContext();
 
   const { toolbarProps: mainDriveToolbarProps } = useMainDriveToolbar();
 
   const { quickStatusTabs } = useLeadQuickStatusTabs();
   const { usaSlotTabs } = useUsaSlotTabs();
+  const { submissionTabs } = useSubmissionTabs();
+  const { paymentsTabs } = usePaymentsTabs();
 
   const tabsWithIcons = useMemo(
     () =>
@@ -91,6 +107,31 @@ export function CrmHeader() {
         icon: QUICK_TAB_ICONS[tab.id] ?? FiGrid,
       })),
     [quickStatusTabs]
+  );
+
+  const submissionTabsWithIcons = useMemo(
+    () =>
+      submissionTabs.map((tab) => {
+        let icon = FiGrid;
+        if (tab.id === "ready") icon = FiRefreshCw;
+        else if (tab.id === "dispatched") icon = FiSend;
+        else if (tab.id === "approved") icon = FiCheckCircle;
+        else if (tab.id === "rejected") icon = FiX;
+        return {
+          ...tab,
+          icon,
+        };
+      }),
+    [submissionTabs]
+  );
+
+  const paymentsTabsWithIcons = useMemo(
+    () =>
+      paymentsTabs.map((tab) => ({
+        ...tab,
+        icon: tab.id === "ledger" ? FiFileText : FiGlobe,
+      })),
+    [paymentsTabs]
   );
 
   const lead = selectedLeadId ? leads.find((l) => l.id === selectedLeadId) : null;
@@ -125,10 +166,13 @@ export function CrmHeader() {
   const showNewButton =
     currentTab === "Leads" && !isLeadDetailRoute && canModifyLeads;
   const showExportButton =
-    (currentTab === "Leads" && !isLeadDetailRoute) || currentTab === "USASlots";
+    (currentTab === "Leads" && !isLeadDetailRoute) ||
+    currentTab === "USASlots" ||
+    currentTab === "DropLeads";
 
   const handleExportCsv = () => {
     if (currentTab === "USASlots") exportUsaSlotsCsv();
+    else if (currentTab === "DropLeads") exportDroppedLeadsCsv();
     else exportLeadsCsv();
   };
 
@@ -171,6 +215,30 @@ export function CrmHeader() {
         </div>
       )}
 
+      {currentTab === "Submissions" && (
+        <div className="crm-header__tabs crm-header__tabs--list min-w-0 flex-1">
+          <QuickStatusTabs
+            variant="header"
+            scroll
+            tabs={submissionTabsWithIcons}
+            activeTab={submissionView}
+            onChange={(id) => setSubmissionView(id as SubmissionView)}
+          />
+        </div>
+      )}
+
+      {currentTab === "Payments" && (
+        <div className="crm-header__tabs crm-header__tabs--list min-w-0 flex-1">
+          <QuickStatusTabs
+            variant="header"
+            scroll
+            tabs={paymentsTabsWithIcons}
+            activeTab={paymentsView}
+            onChange={(id) => setPaymentsView(id as PaymentsView)}
+          />
+        </div>
+      )}
+
       {currentTab === "Leads" && isLeadDetailRoute && lead && (
         <>
           <div className="flex items-center gap-2 min-w-0 flex-1 z-10">
@@ -205,11 +273,30 @@ export function CrmHeader() {
             type="button"
             onClick={handleExportCsv}
             title="Export"
-            aria-label={currentTab === "USASlots" ? "Export USA slots" : "Export leads"}
+            aria-label={
+              currentTab === "USASlots"
+                ? "Export USA slots"
+                : currentTab === "DropLeads"
+                  ? "Export dropped leads"
+                  : "Export leads"
+            }
             className="p-2 rounded-xl bg-slate-900 border border-slate-800/80 text-slate-400 hover:text-violet-400 hover:border-violet-500/30 transition-all flex items-center justify-center shadow-md cursor-pointer"
           >
             <FiDownload className="text-sm" />
           </button>
+        )}
+
+        {currentTab === "Payments" && (
+          <DateRangeCalendarPopover
+            startDate={startDate}
+            endDate={endDate}
+            onStartChange={setStartDate}
+            onEndChange={setEndDate}
+            onClear={() => {
+              setStartDate("");
+              setEndDate("");
+            }}
+          />
         )}
 
         <button
