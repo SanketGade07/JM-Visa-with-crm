@@ -520,6 +520,16 @@ export async function parseApiError(res: Response): Promise<string> {
   }
 }
 
+/** True when a linked folder ID no longer exists or is unreachable (e.g. old Google account). */
+export function isStaleDriveFolderError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("not found") ||
+    lower.includes("file or folder not found") ||
+    lower.includes("request failed (404)")
+  );
+}
+
 export type DriveTypeFilter =
   | "all"
   | "folders"

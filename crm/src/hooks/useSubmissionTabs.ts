@@ -2,28 +2,34 @@
 
 import { useMemo } from "react";
 import { useCrmLayoutContext } from "@/components/crm/context/CrmLayoutContext";
+import { scopeLeadsForUser } from "@/utils/leadHelpers";
 
 export function useSubmissionTabs() {
-  const { leads, submissionView } = useCrmLayoutContext();
+  const { leads, currentUser, submissionView } = useCrmLayoutContext();
+
+  const counselorScopedLeads = useMemo(
+    () => scopeLeadsForUser(leads, currentUser),
+    [leads, currentUser]
+  );
 
   const readyCount = useMemo(
-    () => leads.filter((l) => !l.isDeleted && l.status === "IN_PROGRESS").length,
-    [leads]
+    () => counselorScopedLeads.filter((l) => !l.isDeleted && l.status === "IN_PROGRESS").length,
+    [counselorScopedLeads]
   );
 
   const dispatchedCount = useMemo(
-    () => leads.filter((l) => !l.isDeleted && l.status === "VISA_SUBMISSION").length,
-    [leads]
+    () => counselorScopedLeads.filter((l) => !l.isDeleted && l.status === "VISA_SUBMISSION").length,
+    [counselorScopedLeads]
   );
 
   const approvedCount = useMemo(
-    () => leads.filter((l) => !l.isDeleted && l.status === "VISA_APPROVED").length,
-    [leads]
+    () => counselorScopedLeads.filter((l) => !l.isDeleted && l.status === "VISA_APPROVED").length,
+    [counselorScopedLeads]
   );
 
   const rejectedCount = useMemo(
-    () => leads.filter((l) => !l.isDeleted && l.status === "VISA_REJECTED").length,
-    [leads]
+    () => counselorScopedLeads.filter((l) => !l.isDeleted && l.status === "VISA_REJECTED").length,
+    [counselorScopedLeads]
   );
 
   const submissionTabs = useMemo(

@@ -7,7 +7,7 @@ import DataTable, { type Column } from "@/components/ui/DataTable";
 import { TableViewToggle } from "@/components/crm/ui/TableViewToggle";
 import { UpdatePackageModal } from "@/components/crm/modals/UpdatePackageModal";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
-import { getDeskCountriesFromLeads } from "@/utils/leadHelpers";
+import { getDeskCountriesFromLeads, scopeLeadsForUser } from "@/utils/leadHelpers";
 import { getCountryDisplayName } from "@/utils/countryUtils";
 import { getDepositPickerLeads, getLeadPaymentSummary } from "@/utils/leadPaymentUtils";
 import { useColumnSearch } from "@/hooks/useColumnSearch";
@@ -56,6 +56,7 @@ type DeskRevenueRow = {
 export function PaymentsTab() {
   const {
     leads,
+    currentUser,
     startDate,
     setStartDate,
     endDate,
@@ -80,20 +81,28 @@ export function PaymentsTab() {
     }
   }, [paymentsView]);
 
+  const counselorScopedLeads = useMemo(
+    () => scopeLeadsForUser(leads, currentUser),
+    [leads, currentUser]
+  );
+
   const packageLead = useMemo(
-    () => (packageLeadId ? leads.find((l) => l.id === packageLeadId) ?? null : null),
-    [leads, packageLeadId]
+    () =>
+      packageLeadId
+        ? counselorScopedLeads.find((l) => l.id === packageLeadId) ?? null
+        : null,
+    [counselorScopedLeads, packageLeadId]
   );
 
   const dateFilterActive = isDateRangeActive(startDate, endDate);
 
   const ledgerRows = useMemo(() => {
-    const active = leads.filter((l) => l.status !== "DROPPED");
+    const active = counselorScopedLeads.filter((l) => l.status !== "DROPPED");
     if (!dateFilterActive) return active;
     return active.filter((l) =>
       l.payments.some((p) => isPaymentInRange(p, startDate, endDate))
     );
-  }, [leads, startDate, endDate, dateFilterActive]);
+  }, [counselorScopedLeads, startDate, endDate, dateFilterActive]);
 
   const paidCount = useMemo(
     () => ledgerRows.filter(isLeadPaid).length,
@@ -134,7 +143,7 @@ export function PaymentsTab() {
   );
 
   const financeMetrics = useMemo(() => {
-    const activeLeads = leads.filter((l) => l.status !== "DROPPED");
+    const activeLeads = counselorScopedLeads.filter((l) => l.status !== "DROPPED");
 
     const grossInvoiced = activeLeads.reduce(
       (acc, l) => acc + (l.payments[0]?.totalPackage || 0),
@@ -161,12 +170,12 @@ export function PaymentsTab() {
     }, 0);
 
     return { grossInvoiced, deposited, pending };
-  }, [leads, startDate, endDate]);
+  }, [counselorScopedLeads, startDate, endDate]);
 
   const deskRevenueRows = useMemo<DeskRevenueRow[]>(
     () =>
-      getDeskCountriesFromLeads(leads).map((country) => {
-        const cLeads = leads.filter(
+      getDeskCountriesFromLeads(counselorScopedLeads).map((country) => {
+        const cLeads = counselorScopedLeads.filter(
           (l) => l.country === country && l.status !== "DROPPED"
         );
         const relevantLeads = dateFilterActive
@@ -190,7 +199,7 @@ export function PaymentsTab() {
           clientCount: relevantLeads.length,
         };
       }),
-    [leads, startDate, endDate, dateFilterActive]
+    [counselorScopedLeads, startDate, endDate, dateFilterActive]
   );
 
   const deskTableRows = useMemo(
@@ -310,7 +319,7 @@ export function PaymentsTab() {
     <button
       onClick={() => {
         if (!canManagePayments) return;
-        if (getDepositPickerLeads(leads).length === 0) {
+        if (getDepositPickerLeads(counselorScopedLeads).length === 0) {
           showToast("No active clients to record a deposit", "error");
           return;
         }

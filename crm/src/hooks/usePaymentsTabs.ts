@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { PaymentDetails } from "@/context/CrmContext";
 import { useCrmLayoutContext } from "@/components/crm/context/CrmLayoutContext";
-import { getDeskCountriesFromLeads } from "@/utils/leadHelpers";
+import { getDeskCountriesFromLeads, scopeLeadsForUser } from "@/utils/leadHelpers";
 
 function isDateRangeActive(startDate: string, endDate: string): boolean {
   return !!(startDate && endDate);
@@ -18,21 +18,27 @@ function isPaymentInRange(
 }
 
 export function usePaymentsTabs() {
-  const { leads, startDate, endDate, paymentsView } = useCrmLayoutContext();
+  const { leads, currentUser, startDate, endDate, paymentsView } =
+    useCrmLayoutContext();
+
+  const counselorScopedLeads = useMemo(
+    () => scopeLeadsForUser(leads, currentUser),
+    [leads, currentUser]
+  );
 
   const dateFilterActive = isDateRangeActive(startDate, endDate);
 
   const ledgerCount = useMemo(() => {
-    const active = leads.filter((l) => l.status !== "DROPPED");
+    const active = counselorScopedLeads.filter((l) => l.status !== "DROPPED");
     if (!dateFilterActive) return active.length;
     return active.filter((l) =>
       l.payments.some((p) => isPaymentInRange(p, startDate, endDate))
     ).length;
-  }, [leads, startDate, endDate, dateFilterActive]);
+  }, [counselorScopedLeads, startDate, endDate, dateFilterActive]);
 
   const deskRevenueCount = useMemo(
-    () => getDeskCountriesFromLeads(leads).length,
-    [leads]
+    () => getDeskCountriesFromLeads(counselorScopedLeads).length,
+    [counselorScopedLeads]
   );
 
   const paymentsTabs = useMemo(

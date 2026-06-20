@@ -36,7 +36,6 @@ import {
   DRIVE_FILE_PREVIEW_LIMIT,
   DRIVE_FOLDER_PREVIEW_LIMIT,
   DRIVE_SECTION_GAP,
-  DRIVE_SECTION_LABEL,
   DRIVE_SURFACE_SECONDARY,
   DRIVE_TEXT_MUTED,
   DRIVE_TEXT_PRIMARY,
@@ -48,8 +47,10 @@ import {
 } from "./driveUtils";
 import { DriveBreadcrumbs } from "./DriveBreadcrumbs";
 import { DriveItemGrid } from "./DriveItemGrid";
-import { DriveListView } from "./DriveListView";
+import { DriveListSections } from "./DriveListSections";
+import { DriveSectionHeader } from "./DriveSectionHeader";
 import { DriveStatusFooter } from "./DriveStatusFooter";
+import { useDriveSectionPreview } from "./useDriveSectionPreview";
 
 type DriveBrowserBodyProps = {
   items: DriveItem[];
@@ -119,76 +120,83 @@ function DriveGridSections({
   };
 
   const showSplitSections = typeFilter === "all" || typeFilter === "folders";
+  const folders = items.filter((item) => item.isFolder);
+  const files = items.filter((item) => !item.isFolder);
+
+  const flatPreview = useDriveSectionPreview(items, DRIVE_FILE_PREVIEW_LIMIT);
+  const folderPreview = useDriveSectionPreview(folders, DRIVE_FOLDER_PREVIEW_LIMIT);
+  const filePreview = useDriveSectionPreview(files, DRIVE_FILE_PREVIEW_LIMIT);
 
   if (!showSplitSections) {
     return (
       <div className={`${DRIVE_CONTENT_PADDING} pb-2 ${DRIVE_CONTENT_BG}`}>
-        <DriveItemGrid items={items} {...gridProps} />
-        <DriveStatusFooter items={items} />
+        {flatPreview.hasMore ? (
+          <DriveSectionHeader
+            label="Items"
+            totalCount={flatPreview.total}
+            expanded={flatPreview.expanded}
+            hasMore={flatPreview.hasMore}
+            onToggle={flatPreview.toggle}
+          />
+        ) : null}
+        <DriveItemGrid items={flatPreview.visible} {...gridProps} />
+        <DriveStatusFooter
+          items={items}
+          sections={[
+            {
+              kind: "file",
+              visible: flatPreview.visibleCount,
+              total: flatPreview.total,
+            },
+          ]}
+        />
       </div>
     );
   }
 
-  const folders = items.filter((i) => i.isFolder);
-  const files = items.filter((i) => !i.isFolder);
-  const [showAllFolders, setShowAllFolders] = React.useState(false);
-  const [showAllFiles, setShowAllFiles] = React.useState(false);
-  const hasMoreFolders = folders.length > DRIVE_FOLDER_PREVIEW_LIMIT;
-  const hasMoreFiles = files.length > DRIVE_FILE_PREVIEW_LIMIT;
-  const visibleFolders = showAllFolders
-    ? folders
-    : folders.slice(0, DRIVE_FOLDER_PREVIEW_LIMIT);
-  const visibleFiles = showAllFiles
-    ? files
-    : files.slice(0, DRIVE_FILE_PREVIEW_LIMIT);
-
-  React.useEffect(() => {
-    setShowAllFolders(false);
-  }, [folders.map((f) => f.id).join(",")]);
-
-  React.useEffect(() => {
-    setShowAllFiles(false);
-  }, [files.map((f) => f.id).join(",")]);
-
   return (
     <div className={`${DRIVE_CONTENT_PADDING} pb-2 ${DRIVE_CONTENT_BG}`}>
       <div className={DRIVE_SECTION_GAP}>
-        {folders.length > 0 && (
+        {folders.length > 0 ? (
           <section>
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <p className={DRIVE_SECTION_LABEL}>Folders</p>
-              {hasMoreFolders && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllFolders((expanded) => !expanded)}
-                  className={`shrink-0 text-[12px] font-medium ${DRIVE_ACCENT_TEXT} hover:underline`}
-                >
-                  {showAllFolders ? "Show less" : "View all"}
-                </button>
-              )}
-            </div>
-            <DriveItemGrid items={visibleFolders} {...gridProps} />
+            <DriveSectionHeader
+              label="Folders"
+              totalCount={folderPreview.total}
+              expanded={folderPreview.expanded}
+              hasMore={folderPreview.hasMore}
+              onToggle={folderPreview.toggle}
+            />
+            <DriveItemGrid items={folderPreview.visible} {...gridProps} />
           </section>
-        )}
-        {files.length > 0 && (
+        ) : null}
+        {files.length > 0 ? (
           <section>
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <p className={DRIVE_SECTION_LABEL}>Files</p>
-              {hasMoreFiles && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllFiles((expanded) => !expanded)}
-                  className={`shrink-0 text-[12px] font-medium ${DRIVE_ACCENT_TEXT} hover:underline`}
-                >
-                  {showAllFiles ? "Show less" : "View all"}
-                </button>
-              )}
-            </div>
-            <DriveItemGrid items={visibleFiles} {...gridProps} />
+            <DriveSectionHeader
+              label="Files"
+              totalCount={filePreview.total}
+              expanded={filePreview.expanded}
+              hasMore={filePreview.hasMore}
+              onToggle={filePreview.toggle}
+            />
+            <DriveItemGrid items={filePreview.visible} {...gridProps} />
           </section>
-        )}
+        ) : null}
       </div>
-      <DriveStatusFooter items={items} />
+      <DriveStatusFooter
+        items={items}
+        sections={[
+          {
+            kind: "folder",
+            visible: folderPreview.visibleCount,
+            total: folderPreview.total,
+          },
+          {
+            kind: "file",
+            visible: filePreview.visibleCount,
+            total: filePreview.total,
+          },
+        ]}
+      />
     </div>
   );
 }
@@ -449,8 +457,9 @@ export function DriveBrowser(props: DriveBrowserProps) {
   );
 
   const renderEmbeddedList = () => (
-    <DriveListView
+    <DriveListSections
       items={filteredItems}
+      typeFilter={typeFilter}
       activeItemId={activeItemId}
       onItemClick={onItemClick}
       onContextMenu={onContextMenu}

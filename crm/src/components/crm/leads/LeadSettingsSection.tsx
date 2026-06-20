@@ -28,6 +28,7 @@ import {
 import {
   FaCheckCircle,
   FaCoins,
+  FaExclamationTriangle,
   FaFolder,
   FaSpinner,
   FaUnlink,
@@ -440,6 +441,9 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
 
   const [folderInput, setFolderInput] = useState("");
   const [linkedFolderName, setLinkedFolderName] = useState<string | null>(null);
+  const [folderLinkStatus, setFolderLinkStatus] = useState<
+    "idle" | "checking" | "valid" | "stale"
+  >("idle");
   const [isValidatingFolder, setIsValidatingFolder] = useState(false);
   const [isUnlinkingFolder, setIsUnlinkingFolder] = useState(false);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
@@ -450,10 +454,12 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
     setConfirmUnlink(false);
     if (!lead.driveFolderId) {
       setLinkedFolderName(null);
+      setFolderLinkStatus("idle");
       return;
     }
 
     let cancelled = false;
+    setFolderLinkStatus("checking");
     void (async () => {
       try {
         const res = await fetch("/api/drive/validate", {
@@ -461,12 +467,22 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ folderId: lead.driveFolderId }),
         });
-        if (res.ok && !cancelled) {
+        if (cancelled) return;
+
+        if (res.ok) {
           const data = await res.json();
           setLinkedFolderName((data.folderName as string) || null);
+          setFolderLinkStatus("valid");
+          return;
         }
+
+        setLinkedFolderName(null);
+        setFolderLinkStatus("stale");
       } catch {
-        if (!cancelled) setLinkedFolderName(null);
+        if (!cancelled) {
+          setLinkedFolderName(null);
+          setFolderLinkStatus("stale");
+        }
       }
     })();
 
@@ -501,6 +517,7 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
       setLinkedFolderName((validated.folderName as string) || null);
       setFolderInput("");
       setConfirmUnlink(false);
+      setFolderLinkStatus("valid");
       showToast(
         `Linked folder: ${(validated.folderName as string) || validated.folderId}`,
         "success"
@@ -523,6 +540,7 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
       setLinkedFolderName(null);
       setFolderInput("");
       setConfirmUnlink(false);
+      setFolderLinkStatus("idle");
       showToast("Drive folder unlinked", "success");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Unlink failed", "error");
@@ -547,6 +565,7 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
       patchLeadDriveFolder(lead.id, folderId);
       setLinkedFolderName(folderName);
       setFolderInput("");
+      setFolderLinkStatus("valid");
       showToast(`Drive folder created: ${folderName}`, "success");
     } catch (err) {
       showToast(
@@ -861,20 +880,32 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
             <div className="space-y-4">
               {lead.driveFolderId ? (
                 <div
-                  className={`p-3 rounded-xl border text-xs ${DRIVE_SURFACE_SECONDARY} ${DRIVE_BORDER}`}
+                  className={`p-3 rounded-xl border text-xs ${
+                    folderLinkStatus === "stale"
+                      ? "border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10"
+                      : `${DRIVE_SURFACE_SECONDARY} ${DRIVE_BORDER}`
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 space-y-1">
-                      <p className={DRIVE_TEXT_MUTED}>Linked folder</p>
+                      <p className={DRIVE_TEXT_MUTED}>
+                        {folderLinkStatus === "stale" ? "Stale folder link" : "Linked folder"}
+                      </p>
                       <p className={`font-semibold ${DRIVE_TEXT_PRIMARY} truncate`}>
                         {linkedFolderName || lead.name || "Client folder"}
                       </p>
                       <code
-                        className={`block ${DRIVE_ACCENT_TEXT} font-mono text-[11px] break-all`}
+                        className={`block ${folderLinkStatus === "stale" ? "text-amber-700 dark:text-amber-300" : DRIVE_ACCENT_TEXT} font-mono text-[11px] break-all`}
                       >
                         {lead.driveFolderId}
                       </code>
-                      {driveFolderUrl ? (
+                      {folderLinkStatus === "stale" ? (
+                        <p className="text-[11px] text-amber-800 dark:text-amber-200/90 leading-relaxed mt-2">
+                          This folder could not be found in Google Drive. It may be from a
+                          previous account. Unlink it below, then link a new folder or create
+                          one under Clients/.
+                        </p>
+                      ) : driveFolderUrl ? (
                         <a
                           href={driveFolderUrl}
                           target="_blank"
@@ -886,10 +917,22 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
                         </a>
                       ) : null}
                     </div>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 px-2 py-0.5 rounded-full shrink-0">
-                      <FaCheckCircle className="text-[9px]" />
-                      Connected
-                    </span>
+                    {folderLinkStatus === "checking" ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 px-2 py-0.5 rounded-full shrink-0">
+                        <FaSpinner className="text-[9px] animate-spin" />
+                        Checking
+                      </span>
+                    ) : folderLinkStatus === "stale" ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/25 px-2 py-0.5 rounded-full shrink-0">
+                        <FaExclamationTriangle className="text-[9px]" />
+                        Unreachable
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 px-2 py-0.5 rounded-full shrink-0">
+                        <FaCheckCircle className="text-[9px]" />
+                        Connected
+                      </span>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -901,24 +944,38 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
               )}
 
               {canManageDrive ? (
-                confirmUnlink ? (
+                confirmUnlink || folderLinkStatus === "stale" ? (
                   <div className="space-y-3">
                     <p className={`text-xs ${DRIVE_TEXT_SECONDARY} leading-relaxed`}>
-                      Unlink{" "}
-                      <span className={`font-semibold ${DRIVE_TEXT_PRIMARY}`}>
-                        {linkedFolderName || "this folder"}
-                      </span>
-                      ? The Drive tab will no longer browse this folder until you link a new one.
+                      {folderLinkStatus === "stale" ? (
+                        <>
+                          Unlink the stale folder ID{" "}
+                          <code className="font-mono text-[11px]">{lead.driveFolderId}</code>? The
+                          Drive tab will stop erroring. You can then link a new folder or create
+                          one under Clients/.
+                        </>
+                      ) : (
+                        <>
+                          Unlink{" "}
+                          <span className={`font-semibold ${DRIVE_TEXT_PRIMARY}`}>
+                            {linkedFolderName || "this folder"}
+                          </span>
+                          ? The Drive tab will no longer browse this folder until you link a new
+                          one.
+                        </>
+                      )}
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setConfirmUnlink(false)}
-                        disabled={isUnlinkingFolder}
-                        className={DRIVE_BTN_SECONDARY}
-                      >
-                        Cancel
-                      </button>
+                      {folderLinkStatus !== "stale" ? (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmUnlink(false)}
+                          disabled={isUnlinkingFolder}
+                          className={DRIVE_BTN_SECONDARY}
+                        >
+                          Cancel
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => void handleUnlinkFolder()}
@@ -930,7 +987,7 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
                         ) : (
                           <FaUnlink />
                         )}
-                        Confirm unlink
+                        {folderLinkStatus === "stale" ? "Unlink stale folder" : "Confirm unlink"}
                       </button>
                     </div>
                   </div>
@@ -1000,7 +1057,9 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
 
               <p className={`text-[11px] ${DRIVE_TEXT_MUTED} leading-relaxed border-t ${DRIVE_BORDER} pt-3`}>
                 {lead.driveFolderId
-                  ? "This lead's Drive tab browses the linked folder. Unlinking does not delete files in Google Drive."
+                  ? folderLinkStatus === "stale"
+                    ? "Unlinking clears the stored folder ID only — it does not delete anything in Google Drive."
+                    : "This lead's Drive tab browses the linked folder. Unlinking does not delete files in Google Drive."
                   : "Share the folder with your Storage Owner Gmail as Editor before linking."}
               </p>
             </div>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo } from "react";
 import type { Lead } from "@/context/CrmContext";
-import { timeAgo } from "@/utils/leadHelpers";
+import { scopeLeadsForUser, timeAgo } from "@/utils/leadHelpers";
 import { getCountryFlag } from "@/components/CountryFlags";
 import { FiSend, FiCheckCircle, FiXCircle, FiRefreshCw } from "react-icons/fi";
 import DataTable, { type Column } from "@/components/ui/DataTable";
@@ -99,24 +99,29 @@ export function SubmissionsTab() {
 
   const countryFilterOptions = getCountryFilterOptions();
 
+  const counselorScopedLeads = useMemo(
+    () => scopeLeadsForUser(leads, currentUser),
+    [leads, currentUser]
+  );
+
   const readyLeads = useMemo(
-    () => leads.filter((l) => !l.isDeleted && l.status === "IN_PROGRESS"),
-    [leads]
+    () => counselorScopedLeads.filter((l) => !l.isDeleted && l.status === "IN_PROGRESS"),
+    [counselorScopedLeads]
   );
 
   const dispatchedLeads = useMemo(
-    () => leads.filter((l) => !l.isDeleted && l.status === "VISA_SUBMISSION"),
-    [leads]
+    () => counselorScopedLeads.filter((l) => !l.isDeleted && l.status === "VISA_SUBMISSION"),
+    [counselorScopedLeads]
   );
 
   const approvedLeads = useMemo(
-    () => leads.filter((l) => !l.isDeleted && l.status === "VISA_APPROVED"),
-    [leads]
+    () => counselorScopedLeads.filter((l) => !l.isDeleted && l.status === "VISA_APPROVED"),
+    [counselorScopedLeads]
   );
 
   const rejectedLeads = useMemo(
-    () => leads.filter((l) => !l.isDeleted && l.status === "VISA_REJECTED"),
-    [leads]
+    () => counselorScopedLeads.filter((l) => !l.isDeleted && l.status === "VISA_REJECTED"),
+    [counselorScopedLeads]
   );
 
   const baseRows = useMemo(() => {

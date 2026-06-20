@@ -2,13 +2,19 @@
 
 import { useMemo } from "react";
 import { useCrmLayoutContext } from "@/components/crm/context/CrmLayoutContext";
+import { scopeLeadsForUser } from "@/utils/leadHelpers";
 
 export function useUsaSlotTabs() {
-  const { leads, usaSlotView } = useCrmLayoutContext();
+  const { leads, currentUser, usaSlotView } = useCrmLayoutContext();
+
+  const scopedLeads = useMemo(
+    () => scopeLeadsForUser(leads, currentUser),
+    [leads, currentUser]
+  );
 
   const usaLeads = useMemo(
-    () => leads.filter((l) => l.country === "USA" && l.status !== "DROPPED"),
-    [leads]
+    () => scopedLeads.filter((l) => l.country === "USA" && l.status !== "DROPPED"),
+    [scopedLeads]
   );
 
   const availableCount = useMemo(

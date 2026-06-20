@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FaExclamationTriangle, FaFolder, FaSpinner } from "react-icons/fa";
+import { FaExclamationTriangle, FaFolder, FaSpinner, FaUnlink } from "react-icons/fa";
 import type { Lead } from "@/context/CrmContext";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { DriveBrowser } from "../drive/DriveBrowser";
@@ -25,6 +25,7 @@ import {
   filterDriveItemsByType,
   getDriveItemMenuPosition,
   inferBlankFileMimeType,
+  isStaleDriveFolderError,
   parseApiError,
   sortDriveItems,
   validateNewFileName,
@@ -35,7 +36,14 @@ type LeadDriveTabProps = {
 };
 
 export function LeadDriveTab({ lead }: LeadDriveTabProps) {
-  const { currentRole, currentUser, showToast, patchLeadDriveFolder } = useCrmLayoutContext();
+  const {
+    currentRole,
+    currentUser,
+    showToast,
+    patchLeadDriveFolder,
+    setLeadDriveFolder,
+    setLeadDetailTab,
+  } = useCrmLayoutContext();
   const isAdmin = currentRole === "ADMIN";
   const isLoggedIn = Boolean(currentUser);
 
@@ -78,6 +86,7 @@ export function LeadDriveTab({ lead }: LeadDriveTabProps) {
 
   const [deleteConfirm, setDeleteConfirm] = useState<DriveItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUnlinkingFolder, setIsUnlinkingFolder] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -100,6 +109,8 @@ export function LeadDriveTab({ lead }: LeadDriveTabProps) {
     (error.includes("Access Denied") ||
       error.includes("Forbidden") ||
       error.includes("Refresh token"));
+
+  const isStaleFolder = !!error && isStaleDriveFolderError(error);
 
   useEffect(() => {
     setIsMounted(true);
@@ -303,6 +314,27 @@ export function LeadDriveTab({ lead }: LeadDriveTabProps) {
       );
     } finally {
       setIsProvisioning(false);
+    }
+  };
+
+  const handleUnlinkStaleFolder = async () => {
+    setIsUnlinkingFolder(true);
+    try {
+      const ok = await setLeadDriveFolder(lead.id, null);
+      if (!ok) {
+        showToast("Failed to unlink Drive folder", "error");
+        return;
+      }
+      setRootFolderId(null);
+      setCurrentFolderId(null);
+      setBreadcrumbs([]);
+      setItems([]);
+      setError(null);
+      showToast("Stale Drive folder unlinked", "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Unlink failed", "error");
+    } finally {
+      setIsUnlinkingFolder(false);
     }
   };
 
@@ -633,6 +665,45 @@ export function LeadDriveTab({ lead }: LeadDriveTabProps) {
 
   return (
     <div className="w-full max-w-full min-w-0 space-y-6">
+      {isStaleFolder && isAdmin && (
+        <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex gap-3 min-w-0 flex-1">
+            <FaExclamationTriangle className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                Linked folder not found
+              </p>
+              <p className="text-xs text-amber-800 dark:text-amber-200/90 mt-1">
+                This lead&apos;s folder ID may be from a previous Google account. Unlink it in
+                Settings or use the button below, then link or create a new folder.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setLeadDetailTab("settings")}
+              className={DRIVE_BTN_SECONDARY}
+            >
+              Open Settings
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleUnlinkStaleFolder()}
+              disabled={isUnlinkingFolder}
+              className="py-2 px-3.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-semibold text-[11px] transition-all inline-flex items-center gap-2"
+            >
+              {isUnlinkingFolder ? (
+                <FaSpinner className="animate-spin" />
+              ) : (
+                <FaUnlink />
+              )}
+              Unlink folder
+            </button>
+          </div>
+        </div>
+      )}
+
       {isAccessDenied && (
         <div className="p-4 rounded-xl border border-rose-500/30 bg-rose-50 dark:bg-rose-950/20 flex gap-3">
           <FaExclamationTriangle className="text-rose-500 dark:text-rose-400 shrink-0 mt-0.5" />
@@ -676,7 +747,7 @@ export function LeadDriveTab({ lead }: LeadDriveTabProps) {
                 viewMode={viewMode}
                 loading={initialLoading || (loading && !isRefreshing)}
                 refreshing={isRefreshing}
-                error={isAccessDenied ? null : error}
+                error={isAccessDenied || isStaleFolder ? null : error}
                 isAdmin={isAdmin}
                 isUploading={isUploading}
                 isDragOver={isDragOver}

@@ -33,6 +33,10 @@ type DriveListViewProps = {
   onItemClick: (item: DriveItem) => void;
   onContextMenu: (e: React.MouseEvent, item: DriveItem) => void;
   onItemMenu: (item: DriveItem, e?: React.MouseEvent<HTMLButtonElement>) => void;
+  /** When false, omits the status footer (used inside sectioned list layouts). */
+  showFooter?: boolean;
+  /** When false, omits column headers (used for folder-only sections before files). */
+  showTableHeader?: boolean;
 };
 
 export function DriveListView({
@@ -41,6 +45,8 @@ export function DriveListView({
   onItemClick,
   onContextMenu,
   onItemMenu,
+  showFooter = true,
+  showTableHeader = true,
 }: DriveListViewProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
@@ -68,39 +74,43 @@ export function DriveListView({
 
   let folderColorIndex = 0;
 
+  if (items.length === 0) return null;
+
   return (
-    <div className={`${DRIVE_CONTENT_PADDING} pb-2 ${DRIVE_SURFACE}`}>
+    <div className={`${showFooter ? `${DRIVE_CONTENT_PADDING} pb-2` : ""} ${DRIVE_SURFACE}`}>
       <div className="overflow-auto">
         <table className="w-full text-left border-collapse">
-          <thead className={`sticky top-0 z-10 ${DRIVE_SURFACE_SECONDARY}`}>
-            <tr className={`border-b ${DRIVE_BORDER} ${DRIVE_LIST_HEADER_ROW}`}>
-              <th className="w-11 px-4">
-                <input
-                  type="checkbox"
-                  checked={allChecked}
-                  ref={(el) => {
-                    if (el) el.indeterminate = someChecked && !allChecked;
-                  }}
-                  onChange={toggleAll}
-                  aria-label="Select all items"
-                  className={CHECKBOX_CLS}
-                />
-              </th>
-              <th className={`px-4 text-left ${DRIVE_LIST_HEADER}`}>Name</th>
-              <th className={`px-4 text-left hidden lg:table-cell ${DRIVE_LIST_HEADER}`}>
-                Type
-              </th>
-              <th className={`px-4 text-left hidden md:table-cell w-24 ${DRIVE_LIST_HEADER}`}>
-                Size
-              </th>
-              <th className={`px-4 text-left hidden sm:table-cell ${DRIVE_LIST_HEADER}`}>
-                Modified
-              </th>
-              <th className="w-11 px-3">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
+          {showTableHeader ? (
+            <thead className={`sticky top-0 z-10 ${DRIVE_SURFACE_SECONDARY}`}>
+              <tr className={`border-b ${DRIVE_BORDER} ${DRIVE_LIST_HEADER_ROW}`}>
+                <th className="w-11 px-4">
+                  <input
+                    type="checkbox"
+                    checked={allChecked}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someChecked && !allChecked;
+                    }}
+                    onChange={toggleAll}
+                    aria-label="Select all items"
+                    className={CHECKBOX_CLS}
+                  />
+                </th>
+                <th className={`px-4 text-left ${DRIVE_LIST_HEADER}`}>Name</th>
+                <th className={`px-4 text-left hidden lg:table-cell ${DRIVE_LIST_HEADER}`}>
+                  Type
+                </th>
+                <th className={`px-4 text-left hidden md:table-cell w-24 ${DRIVE_LIST_HEADER}`}>
+                  Size
+                </th>
+                <th className={`px-4 text-left hidden sm:table-cell ${DRIVE_LIST_HEADER}`}>
+                  Modified
+                </th>
+                <th className="w-11 px-3">
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+          ) : null}
           <tbody>
             {items.map((item) => {
               const isActive = activeItemId === item.id;
@@ -176,7 +186,7 @@ export function DriveListView({
           </tbody>
         </table>
       </div>
-      <DriveStatusFooter items={items} />
+      {showFooter ? <DriveStatusFooter items={items} /> : null}
     </div>
   );
 }

@@ -707,16 +707,23 @@ export function DriveTab() {
             ) : isAdmin ? (
               <div className={`mx-5 my-5 p-4 flex gap-3 ${DRIVE_WARNING_BANNER}`}>
                 <FaExclamationTriangle className="text-[#C99200] shrink-0 mt-0.5" />
-                <div className="text-sm text-amber-800 dark:text-amber-200/90">
+                <div className="flex-1 min-w-0 text-sm text-amber-800 dark:text-amber-200/90">
                   <p className="font-semibold text-amber-900 dark:text-amber-300 mb-1">
                     Google Drive not linked
                   </p>
-                  <p className="text-xs text-amber-700/90 dark:text-amber-200/70 leading-relaxed">
+                  <p className="text-xs text-amber-700/90 dark:text-amber-200/70 leading-relaxed mb-3">
                     Set OAuth env vars (
                     <code className="text-amber-800 dark:text-amber-300">GOOGLE_OAUTH_*</code>
-                    ), then open link settings and paste your root folder URL. Share the folder
+                    ), then open Link Settings and paste your root folder URL. Share the folder
                     with the Storage Owner Gmail as Editor.
                   </p>
+                  <button
+                    type="button"
+                    onClick={handleOpenLinkSettings}
+                    className={DRIVE_BTN_PRIMARY}
+                  >
+                    Open Link Settings
+                  </button>
                 </div>
               </div>
             ) : null}

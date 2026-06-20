@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { FiGrid, FiLink, FiList, FiRefreshCw } from "react-icons/fi";
+import { FiGrid, FiLink, FiList, FiRefreshCw, FiSettings } from "react-icons/fi";
 import { DriveBreadcrumbs } from "./DriveBreadcrumbs";
 import { DriveFiltersMenu } from "./DriveFiltersMenu";
 import { DriveNewMenu } from "./DriveNewMenu";
@@ -111,6 +111,18 @@ export function DriveToolbar({
               : "flex flex-wrap items-center gap-2 justify-end order-2 lg:order-none"
           }
         >
+          {isAdmin && onOpenLinkSettings ? (
+            <button
+              type="button"
+              onClick={onOpenLinkSettings}
+              className={DRIVE_ICON_SQUARE}
+              title="Drive link settings"
+              aria-label="Drive link settings"
+            >
+              <FiSettings className="text-[14px]" />
+            </button>
+          ) : null}
+
           {isAdmin ? (
             <DriveNewMenu
               isUploading={isUploading}
