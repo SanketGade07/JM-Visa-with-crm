@@ -33,11 +33,12 @@ export function LeadDetailPage() {
     selectedLeadId,
     closeLeadDetail,
     leadDetailTab,
-    canAccessLeadChecklist,
+    canAccessChecklistForLead,
     canViewLeads,
   } = useCrmLayoutContext();
 
   const lead = selectedLeadId ? leads.find((l) => l.id === selectedLeadId) ?? null : null;
+  const canAccessLeadChecklist = canAccessChecklistForLead(lead);
   useEffect(() => {
     if (searchParams.get("created") !== "1" || !selectedLeadId) return;
     if (createdHandledRef.current) return;
@@ -47,18 +48,17 @@ export function LeadDetailPage() {
     setHighlightSummary(true);
 
     const tab = searchParams.get("tab") || leadDetailTab;
-    const stripTimer = window.setTimeout(() => {
-      router.replace(`/leads/${encodeURIComponent(selectedLeadId)}?tab=${tab}`);
-    }, 2800);
+    // Strip the created parameter from the URL immediately
+    router.replace(`/leads/${encodeURIComponent(selectedLeadId)}?tab=${tab}`);
+
     const unhighlightTimer = window.setTimeout(() => {
       setHighlightSummary(false);
     }, 3600);
 
     return () => {
-      window.clearTimeout(stripTimer);
       window.clearTimeout(unhighlightTimer);
     };
-  }, [leadDetailTab, router, searchParams, selectedLeadId]);
+  }, [selectedLeadId, router]);
 
   if (!canViewLeads) {
     return null;

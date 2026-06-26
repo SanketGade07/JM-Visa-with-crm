@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCrm, VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Meeting } from "@/context/CrmContext";
+import { useCrm, VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Lead, Meeting } from "@/context/CrmContext";
 import { ROLE_TABS, userHasPermission } from "@/utils/crmConstants";
 import { LEAD_STATUS_ORDER, getStatusLabel } from "@/utils/leadStatusConfig";
 import { getDepositPickerLeads, getEligibleDepositLeads } from "@/utils/leadPaymentUtils";
@@ -79,6 +79,7 @@ export function useCrmLayoutState() {
     meetings,
     users,
     currentUser,
+    authUser,
     currentRole,
     currentTab,
     setCurrentTab,
@@ -94,6 +95,8 @@ export function useCrmLayoutState() {
     setLeadPackage,
     addMeeting,
     updateMeeting,
+    deleteLead,
+    deleteLeads,
     restoreLead,
     updateLeadNotes,
     updateLeadProfile,
@@ -130,21 +133,33 @@ export function useCrmLayoutState() {
   const userAllowedTabs = currentUser?.allowedTabs ?? allowedTabs;
 
   // Role-based permission checks
+  const isAdmin = currentRole === "ADMIN";
   const canViewLeads = userAllowedTabs.includes("Leads");
   const canModifyLeads = ["ADMIN", "COUNSELOR"].includes(currentRole) || userAllowedTabs.includes("Leads");
-  const canVerifyDocs = ["ADMIN", "DOCUMENT TEAM"].includes(currentRole) || userAllowedTabs.includes("Checklist");
-  const canAccessLeadChecklist = canVerifyDocs;
   const canEditCredentials = userAllowedTabs.includes("USASlots");
   const canSubmitVisa = ["ADMIN", "VISA TEAM"].includes(currentRole) || userAllowedTabs.includes("Submissions");
   const canManagePayments = ["ADMIN", "ACCOUNT TEAM"].includes(currentRole) || userAllowedTabs.includes("Payments");
   const canAssignLeads = userHasPermission(currentUser, "assignLeads");
 
+  // Document checklist access is per-lead: admins have full privilege; any other
+  // staff member can open/verify a lead's checklist only when that lead is
+  // assigned to them. Pass the specific lead you're gating.
+  const isAdminUser = currentRole === "ADMIN";
+  const canAccessChecklistForLead = useCallback(
+    (lead?: Lead | null): boolean => {
+      if (isAdminUser) return true;
+      if (!lead || !currentUser) return false;
+      return isLeadAssignedToCounselor(lead, currentUser.name);
+    },
+    [isAdminUser, currentUser]
+  );
+
   const resolveLeadDetailTab = useCallback(
-    (tab: LeadDetailTab): LeadDetailTab => {
-      if (tab === "checklist" && !canAccessLeadChecklist) return "settings";
+    (tab: LeadDetailTab, lead?: Lead | null): LeadDetailTab => {
+      if (tab === "checklist" && !canAccessChecklistForLead(lead)) return "settings";
       return tab;
     },
-    [canAccessLeadChecklist]
+    [canAccessChecklistForLead]
   );
 
   const handleLogout = async () => {
@@ -154,6 +169,7 @@ export function useCrmLayoutState() {
       console.error("Logout error:", err);
     }
     localStorage.removeItem("visa_crm_user");
+    localStorage.removeItem("visa_crm_auth_user");
     localStorage.removeItem("visa_crm_role");
     setCurrentUser(null);
     window.location.href = "/login";
@@ -257,13 +273,58 @@ export function useCrmLayoutState() {
 
   const [assignmentNotifications, setAssignmentNotifications] = useState<AssignmentNotification[]>([]);
 
+  const [customDialog, setCustomDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "confirm" | "alert";
+    onConfirm?: () => void;
+    onClose?: () => void;
+  } | null>(null);
+
+  const showConfirm = useCallback((title: string, message: string, onConfirm: () => void) => {
+    setCustomDialog({
+      isOpen: true,
+      title,
+      message,
+      type: "confirm",
+      onConfirm,
+    });
+  }, []);
+
+  const showAlert = useCallback((title: string, message: string, onClose?: () => void) => {
+    setCustomDialog({
+      isOpen: true,
+      title,
+      message,
+      type: "alert",
+      onClose,
+    });
+  }, []);
+
+  const closeCustomDialog = useCallback(() => {
+    if (customDialog?.onClose) {
+      customDialog.onClose();
+    }
+    setCustomDialog(null);
+  }, [customDialog]);
+
   useEffect(() => {
     if (!currentUser?.id) {
       setAssignmentNotifications([]);
       return;
     }
-    setAssignmentNotifications(readStoredNotifications(currentUser.id));
-  }, [currentUser?.id]);
+    const stored = readStoredNotifications(currentUser.id);
+    if (leads.length > 0) {
+      const valid = stored.filter((n) => leads.some((l) => l.id === n.leadId && !l.isDeleted && l.status !== "DROPPED"));
+      if (valid.length !== stored.length) {
+        writeStoredNotifications(currentUser.id, valid);
+        setAssignmentNotifications(valid);
+        return;
+      }
+    }
+    setAssignmentNotifications(stored);
+  }, [currentUser?.id, leads]);
 
   const pushAssignmentNotificationForCounselor = useCallback(
     (counselorName: string, leadId: string, leadName?: string) => {
@@ -378,7 +439,8 @@ export function useCrmLayoutState() {
       tab: LeadDetailTab = "details",
       options?: { created?: boolean }
     ) => {
-      const resolvedTab = resolveLeadDetailTab(tab);
+      const lead = leads.find((l) => l.id === leadId) ?? null;
+      const resolvedTab = resolveLeadDetailTab(tab, lead);
       setSelectedLeadId(leadId);
       setLeadDetailTabState(resolvedTab);
       setCurrentTab("Leads");
@@ -387,7 +449,7 @@ export function useCrmLayoutState() {
         `/leads/${encodeURIComponent(leadId)}?tab=${resolvedTab}${createdQuery}`
       );
     },
-    [router, setCurrentTab, resolveLeadDetailTab]
+    [leads, router, setCurrentTab, resolveLeadDetailTab]
   );
 
   const openLeadChecklist = useCallback(
@@ -434,13 +496,16 @@ export function useCrmLayoutState() {
 
   const setLeadDetailTab = useCallback(
     (tab: LeadDetailTab) => {
-      const resolvedTab = resolveLeadDetailTab(tab);
+      const lead = selectedLeadId
+        ? leads.find((l) => l.id === selectedLeadId) ?? null
+        : null;
+      const resolvedTab = resolveLeadDetailTab(tab, lead);
       setLeadDetailTabState(resolvedTab);
       if (!selectedLeadId) return;
       if (!getLeadIdFromPathname(pathname)) return;
       router.push(`/leads/${encodeURIComponent(selectedLeadId)}?tab=${resolvedTab}`);
     },
-    [router, pathname, selectedLeadId, resolveLeadDetailTab]
+    [leads, router, pathname, selectedLeadId, resolveLeadDetailTab]
   );
 
   useEffect(() => {
@@ -448,9 +513,10 @@ export function useCrmLayoutState() {
     if (!match) return;
 
     const leadId = decodeURIComponent(match[1]);
-    const tab = resolveLeadDetailTab("checklist");
+    const lead = leads.find((l) => l.id === leadId) ?? null;
+    const tab = resolveLeadDetailTab("checklist", lead);
     router.replace(`/leads/${encodeURIComponent(leadId)}?tab=${tab}`);
-  }, [pathname, router, resolveLeadDetailTab]);
+  }, [leads, pathname, router, resolveLeadDetailTab]);
 
   useEffect(() => {
     if (pathname === "/leads" || pathname === "/leads/new") {
@@ -474,11 +540,11 @@ export function useCrmLayoutState() {
       return;
     }
 
-    const leadExists = leads.some((l) => l.id === leadId);
-    if (!leadExists) return;
+    const lead = leads.find((l) => l.id === leadId) ?? null;
+    if (!lead) return;
 
     const requestedTab = parseLeadDetailTab(searchParams.get("tab"));
-    const resolvedTab = resolveLeadDetailTab(requestedTab);
+    const resolvedTab = resolveLeadDetailTab(requestedTab, lead);
 
     setSelectedLeadId(leadId);
     setCurrentTab("Leads");
@@ -683,6 +749,12 @@ export function useCrmLayoutState() {
 
   // Active Lead Object
   const selectedLead = leads.find((l) => l.id === selectedLeadId) || leads[0];
+
+  // Checklist access for the lead currently open in the detail view. Drives the
+  // detail tab bars (which always operate on the selected lead). Per-lead/per-row
+  // consumers should call canAccessChecklistForLead(lead) with their own lead.
+  const canAccessLeadChecklist = canAccessChecklistForLead(selectedLead);
+  const canVerifyDocs = canAccessLeadChecklist;
 
   // ── Real dashboard analytics (computed from live leads) ─────────────────────
   const activeLeads = leads.filter((l) => l.status !== "DROPPED");
@@ -1149,9 +1221,10 @@ export function useCrmLayoutState() {
   }, [isMounted, theme, mapZoom, mapCenter, handleCountryMouseEnter, handleCountryMouseMove, handleCountryMouseLeave, setMapCenter]);
 
   return {
-    leads, meetings, users, currentUser, currentRole, currentTab, setCurrentTab,
+    leads, meetings, users, currentUser, authUser, currentRole, currentTab, setCurrentTab,
     setCurrentRole, setCurrentUser, addUser, deleteUser, resetUserPassword, addLead: wrappedAddLead, updateLeadStatus,
-    updateUsaSlots, addPayment, setLeadPackage, addMeeting, updateMeeting, restoreLead, updateLeadNotes,
+    updateUsaSlots, addPayment, setLeadPackage, addMeeting, updateMeeting, deleteLead, deleteLeads, restoreLead, updateLeadNotes,
+    showConfirm, showAlert, closeCustomDialog, customDialog,
     updateLeadProfile, assignCounselor: wrappedAssignCounselor, updateEmploymentCategory, setLeadCredentials, setLeadDriveFolder, patchLeadDriveFolder, uploadDocument, removeDocument, uploadInvoice, getLeadDocuments, getLeadActivities, postLeadDiscussionMessage, toggleChecklistItem,
     assignmentNotifications, dismissAssignmentNotification, clearAssignmentNotifications, assignedLeadCount,
     handleLogout, searchTerm, setSearchTerm, checklistSearch, setChecklistSearch,
@@ -1192,7 +1265,8 @@ export function useCrmLayoutState() {
     openProfileDepositModal, openPickerDepositModal, closeDepositModal,
     tempInvoiceFile, setTempInvoiceFile,
     tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
-    allowedTabs, userAllowedTabs, canViewLeads, canModifyLeads, canAssignLeads, canVerifyDocs, canAccessLeadChecklist,
+    allowedTabs, userAllowedTabs, isAdmin, canViewLeads, canModifyLeads, canAssignLeads, canVerifyDocs, canAccessLeadChecklist,
+    canAccessChecklistForLead,
     canEditCredentials, canSubmitVisa, canManagePayments,
     openSignedUrl, selectedLead, activeLeads, monthlyChart, chartMax, countryColors,
     countryStats, countryTotal, donutSegments, calendarData, filteredLeads,

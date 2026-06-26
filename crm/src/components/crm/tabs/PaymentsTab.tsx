@@ -68,6 +68,11 @@ export function PaymentsTab() {
     showToast,
     openLeadDetail,
     paymentsView,
+    canModifyLeads,
+    deleteLeads,
+    showConfirm,
+    showAlert,
+    isAdmin,
   } = useCrmLayoutContext();
 
   const columnSearch = useColumnSearch();
@@ -440,6 +445,24 @@ export function PaymentsTab() {
             columnSearch={columnSearch}
             rightSlot={toolbarRight}
             columns={ledgerColumns}
+            onBulkDelete={
+              isAdmin
+                ? (ids) => {
+                    showConfirm(
+                      "Delete Multiple Leads",
+                      `Are you sure you want to permanently delete the ${ids.length} selected lead(s) from the database? This action cannot be undone.`,
+                      async () => {
+                        const ok = await deleteLeads(ids);
+                        if (ok) {
+                          showAlert("Delete Success", `${ids.length} lead(s) have been permanently deleted from the database.`);
+                        } else {
+                          showAlert("Delete Failed", "Failed to delete the selected leads.");
+                        }
+                      }
+                    );
+                  }
+                : undefined
+            }
             actions={(lead) => [
               {
                 icon: FaTag,

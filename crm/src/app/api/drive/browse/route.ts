@@ -20,6 +20,7 @@ import {
   forbiddenResponse,
   getSessionRole,
   requireAdmin,
+  requireLoggedIn,
   unauthorizedResponse,
 } from "@/utils/driveAuth";
 
@@ -44,6 +45,15 @@ function assertAdmin(req: NextRequest): NextResponse | null {
   return null;
 }
 
+// Reads only require an authenticated session — needed for Drive-granted staff and
+// for counselors viewing their assigned lead's folder. Writes still call assertAdmin.
+function assertLoggedIn(req: NextRequest): NextResponse | null {
+  if (!requireLoggedIn(req)) {
+    return unauthorizedResponse();
+  }
+  return null;
+}
+
 function assertDriveConfigured(): NextResponse | null {
   if (!isGoogleDriveConfigured()) {
     return NextResponse.json(
@@ -59,7 +69,7 @@ function assertDriveConfigured(): NextResponse | null {
 
 // GET /api/drive/browse?folderId= — list folder contents
 export async function GET(req: NextRequest) {
-  const authError = assertAdmin(req);
+  const authError = assertLoggedIn(req);
   if (authError) return authError;
 
   const configError = assertDriveConfigured();
@@ -80,7 +90,13 @@ export async function GET(req: NextRequest) {
     }
 
     const items = await listFolderContents(folderId);
-    return NextResponse.json(items.map(toDriveItem));
+    return NextResponse.json(items.map(toDriveItem), {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+      },
+    });
   } catch (error) {
     return driveErrorResponse(error, "GET /api/drive/browse");
   }

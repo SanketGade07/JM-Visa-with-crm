@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FaTimes } from "react-icons/fa";
 import { PhoneInput } from "@/components/ui/FormInputs";
 import { useCrmLayoutContext } from "@/components/crm/context/CrmLayoutContext";
-import { useCreateLeadForm } from "@/hooks/useCreateLeadForm";
+import { useCreateLeadFormContext } from "@/components/crm/context/CreateLeadFormContext";
 import { buildCreateLeadPayload } from "@/utils/buildCreateLeadPayload";
 import {
   EMPLOYMENT_CATEGORY_OPTIONS,
@@ -47,7 +47,7 @@ export function CreateLeadWizardPage({
 }: CreateLeadWizardPageProps = {}) {
   const router = useRouter();
   const isInline = variant === "inline";
-  const { addLead, showToast, canModifyLeads, canAssignLeads, openLeadDetail } = useCrmLayoutContext();
+  const { addLead, showToast, canModifyLeads, canAssignLeads, currentUser, openLeadDetail } = useCrmLayoutContext();
   const {
     state,
     currentStep,
@@ -64,9 +64,23 @@ export function CreateLeadWizardPage({
     focusFieldId,
     clearFocusFieldId,
     completedSteps,
-  } = useCreateLeadForm();
+  } = useCreateLeadFormContext();
   const caseOfficerOptions = useCounselorSelectOptions(state.caseOfficer);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Staff who can't assign leads (everyone except admins) always create leads
+  // assigned to themselves — never "Unassigned". The Case Officer field is locked
+  // to the creator, and we force the form value so the saved lead matches.
+  const selfAssign = !canAssignLeads && !!currentUser?.name;
+  const caseOfficerSelectOptions = selfAssign
+    ? [{ value: currentUser!.name, label: `${currentUser!.name} (You)` }]
+    : caseOfficerOptions;
+
+  useEffect(() => {
+    if (selfAssign && state.caseOfficer !== currentUser!.name) {
+      updateField("caseOfficer", currentUser!.name);
+    }
+  }, [selfAssign, currentUser, state.caseOfficer, updateField]);
 
   useEffect(() => {
     if (!canModifyLeads) {
@@ -577,7 +591,7 @@ export function CreateLeadWizardPage({
               >
                 <select
                   id="create-lead-case-officer"
-                  value={state.caseOfficer}
+                  value={selfAssign ? currentUser!.name : state.caseOfficer}
                   onChange={(e) => updateField("caseOfficer", e.target.value)}
                   onBlur={() => markFieldTouched("caseOfficer")}
                   disabled={!canAssignLeads}
@@ -585,7 +599,7 @@ export function CreateLeadWizardPage({
                     caseOfficerError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
                   } disabled:opacity-60 disabled:cursor-not-allowed`}
                 >
-                  {caseOfficerOptions.map((officer) => (
+                  {caseOfficerSelectOptions.map((officer) => (
                     <option key={officer.value} value={officer.value}>
                       {officer.label}
                     </option>

@@ -3,13 +3,14 @@ import { InlineColumnFilterSelect } from "@/components/ui/InlineColumnFilterSele
 import { InlineColumnSearch } from "@/components/ui/InlineColumnSearch";
 import type { ColumnSearchState } from "@/hooks/useColumnSearch";
 import type { IconType } from "react-icons";
-import { 
-  FiSearch, 
-  FiFilter, 
-  FiDownload, 
+import {
+  FiSearch,
+  FiFilter,
+  FiDownload,
   FiInbox,
   FiRefreshCw
 } from "react-icons/fi";
+import { FaTrash } from "react-icons/fa";
 import {
   Pagination,
   resolveEffectivePageSize,
@@ -89,6 +90,10 @@ type DataTableProps<T> = {
   defaultPageSize?: number;
   pageSizeOptions?: PageSizeOption[];
   columnSearch?: ColumnSearchState;
+  /** When set, checkbox selection shows a bottom bar with a bulk delete button. */
+  onBulkDelete?: (ids: string[]) => void;
+  /** Label for the bulk delete button (default "Delete"). */
+  bulkDeleteLabel?: string;
 };
 
 const alignClass = (a?: "left" | "right" | "center") =>
@@ -126,6 +131,9 @@ function getActionIconClasses(title: string): string {
   }
   if (key === "whatsapp" || key === "message") {
     return "text-emerald-500 hover:text-emerald-400";
+  }
+  if (key === "delete" || key === "remove") {
+    return "text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300";
   }
   return "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300";
 }
@@ -225,6 +233,8 @@ export default function DataTable<T>({
   defaultPageSize = 10,
   pageSizeOptions,
   columnSearch,
+  onBulkDelete,
+  bulkDeleteLabel = "Delete",
 }: DataTableProps<T>) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -252,6 +262,13 @@ export default function DataTable<T>({
       else next.add(id);
       return next;
     });
+
+  const handleBulkDelete = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    onBulkDelete?.(ids);
+    setSelectedIds(new Set());
+  };
 
   const totalCols =
     columns.length + (showCheckbox ? 1 : 0) + (showIndex ? 1 : 0) + (actions ? 1 : 0);
@@ -480,6 +497,31 @@ export default function DataTable<T>({
           </tbody>
         </table>
       </div>
+
+      {onBulkDelete && selectedIds.size > 0 && (
+        <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-gray-100 dark:border-slate-800 bg-blue-50/50 dark:bg-slate-800/40">
+          <span className="text-[12px] font-semibold text-gray-600 dark:text-slate-300">
+            {selectedIds.size} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="px-3 py-1.5 text-[12px] font-semibold text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 rounded-lg transition-colors cursor-pointer"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors cursor-pointer"
+            >
+              <FaTrash className="text-[11.5px]" />
+              {bulkDeleteLabel} ({selectedIds.size})
+            </button>
+          </div>
+        </div>
+      )}
 
       {pagination && rows.length > 0 && (
         <Pagination

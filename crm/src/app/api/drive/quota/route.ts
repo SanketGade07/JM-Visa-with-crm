@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDriveStorageQuota, isGoogleDriveConfigured } from "@/lib/googleDrive";
 import {
   driveErrorResponse,
-  forbiddenResponse,
-  getSessionRole,
-  requireAdmin,
+  requireLoggedIn,
   unauthorizedResponse,
 } from "@/utils/driveAuth";
 
@@ -22,9 +20,9 @@ function formatStorageLabel(bytes: number): string {
 
 // GET /api/drive/quota — Google Drive storage usage for the connected account
 export async function GET(req: NextRequest) {
-  const role = requireAdmin(req);
-  if (!role) {
-    return getSessionRole(req) ? forbiddenResponse() : unauthorizedResponse();
+  // Storage usage is a read-only stat shown on the Drive tab's storage card.
+  if (!requireLoggedIn(req)) {
+    return unauthorizedResponse();
   }
 
   if (!isGoogleDriveConfigured()) {

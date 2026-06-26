@@ -305,6 +305,18 @@ export function SubmissionsTab() {
               disabled={!canSubmitVisa}
               onClick={(e) => {
                 e.stopPropagation();
+                updateLeadStatus(lead.id, "IN_PROGRESS");
+              }}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed max-w-full"
+            >
+              <FiRefreshCw className="text-[12px] shrink-0" />
+              <span className="truncate">Revert to Ready</span>
+            </button>
+            <button
+              type="button"
+              disabled={!canSubmitVisa}
+              onClick={(e) => {
+                e.stopPropagation();
                 updateLeadStatus(lead.id, "VISA_APPROVED");
               }}
               className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed max-w-full"

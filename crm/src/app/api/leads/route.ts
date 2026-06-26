@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
     // Pagination (guide §13 rule 7)
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50", 10)));
+    const limit = Math.min(1000, Math.max(1, parseInt(searchParams.get("limit") || "50", 10)));
 
     let leads = await readLeads();
 
@@ -164,11 +164,70 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function DELETE(req: NextRequest) {
+  try {
+    const role = req.cookies.get("crm_role")?.value;
+    if (role !== "ADMIN") {
+      return NextResponse.json({ error: "Only admins are allowed to delete leads" }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const idsParam = searchParams.get("ids");
+    if (!idsParam) {
+      return NextResponse.json({ error: "Missing ids parameter" }, { status: 400 });
+    }
+    const ids = idsParam.split(",");
+
+    const { getSupabase } = await import("@/utils/supabase");
+    const supabase = getSupabase();
+
+    // Get driveFolderIds for matching leads before deleting them
+    const leadsList = await readLeads();
+    const driveFolderIds = leadsList
+      .filter((l) => ids.includes(l.id) && l.driveFolderId)
+      .map((l) => l.driveFolderId) as string[];
+
+    const { error: dbError } = await supabase.from("leads").delete().in("id", ids);
+    if (dbError) {
+      console.error("Error deleting leads from Supabase:", dbError);
+      return NextResponse.json({ error: "Failed to delete leads from database" }, { status: 500 });
+    }
+
+    await supabase.from("activities").delete().in("leadId", ids);
+    await supabase.from("documents").delete().in("leadId", ids);
+
+    // Cascade deletion to Google Drive folders if configured
+    if (driveFolderIds.length > 0) {
+      try {
+        const { isGoogleDriveConfigured, deleteFolderFromDrive } = await import("@/lib/googleDrive");
+        if (isGoogleDriveConfigured()) {
+          await Promise.all(
+            driveFolderIds.map(async (folderId) => {
+              try {
+                await deleteFolderFromDrive(folderId);
+              } catch (err) {
+                console.error(`Failed to delete Google Drive folder ${folderId} during bulk delete:`, err);
+              }
+            })
+          );
+        }
+      } catch (err) {
+        console.error("Failed to process Google Drive deletions during bulk delete:", err);
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("DELETE /api/leads error:", error);
+    return NextResponse.json({ error: "Failed to process request" }, { status: 500 });
+  }
+}
+
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS, DELETE",
       "Access-Control-Allow-Headers": "Content-Type",
     },
   });

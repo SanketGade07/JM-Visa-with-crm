@@ -24,6 +24,7 @@ export function CrmModals() {
     handleLogout, searchTerm, setSearchTerm, checklistSearch, setChecklistSearch,
     isMobileSidebarOpen, setIsMobileSidebarOpen, isMobileDetailOpen, setIsMobileDetailOpen,
     isMobileSlotSettingsOpen, setIsMobileSlotSettingsOpen, isMobileChecklistOpen, setIsMobileChecklistOpen,
+    customDialog, closeCustomDialog,
     theme, setTheme, shouldAnimate, setShouldAnimate, getAnimClass, toggleTheme,
     toast, setToast, showToast, uploadingKey, setUploadingKey,
     urlModalData, setUrlModalData, pastedUrl, setPastedUrl, uploadError, setUploadError,
@@ -1085,6 +1086,51 @@ export function CrmModals() {
                 Save Account Configuration
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM DIALOG MODAL (Alert/Confirm) */}
+      {customDialog && customDialog.isOpen && (
+        <div className="fixed inset-0 z-[100] bg-black/45 dark:bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-white dark:bg-[#0a0a1a] border border-gray-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl relative space-y-4 text-center">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">
+              {customDialog.title}
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-slate-400 whitespace-pre-wrap">
+              {customDialog.message}
+            </p>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              {customDialog.type === "confirm" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={closeCustomDialog}
+                    className="px-4 py-2 text-[11px] font-bold text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      customDialog.onConfirm?.();
+                      closeCustomDialog();
+                    }}
+                    className="px-4 py-2 text-[11px] font-bold text-white bg-rose-600 hover:bg-rose-500 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Delete
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={closeCustomDialog}
+                  className="px-6 py-2 text-[11px] font-bold text-white bg-violet-600 hover:bg-violet-500 rounded-xl transition-colors cursor-pointer"
+                >
+                  OK
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

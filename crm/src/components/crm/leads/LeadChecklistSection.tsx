@@ -29,7 +29,7 @@ export function LeadChecklistSection({
   const {
     updateEmploymentCategory,
     canModifyLeads,
-    canAccessLeadChecklist,
+    canAccessChecklistForLead,
     uploadDocument,
     removeDocument,
     getLeadDocuments,
@@ -40,10 +40,13 @@ export function LeadChecklistSection({
     setPastedUrl,
     uploadError,
     setUploadError,
-    canVerifyDocs,
     openSignedUrl,
     toggleChecklistItem,
   } = useCrmLayoutContext();
+
+  // Gate on THIS lead's assignment (admins always, otherwise the assigned staff).
+  const canAccessLeadChecklist = canAccessChecklistForLead(lead);
+  const canVerifyDocs = canAccessLeadChecklist;
 
   const employmentCategory = lead.employmentCategory ?? DEFAULT_EMPLOYMENT_CATEGORY;
   const activeKeys = getChecklistKeysForLead(employmentCategory);

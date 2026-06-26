@@ -49,7 +49,11 @@ export function DriveStorageCard() {
         ? `${quota.usedLabel} used`
         : null;
 
-  const progressPercent = quota?.limitBytes ? quota.percent : 0;
+  const progressPercent = quota?.limitBytes
+    ? quota.usedBytes > 0
+      ? Math.max(1.5, quota.percent)
+      : quota.percent
+    : 0;
 
   return (
     <div
@@ -73,7 +77,7 @@ export function DriveStorageCard() {
         <>
           <p className={`text-[11px] font-medium mb-2 ${DRIVE_TEXT_SECONDARY}`}>{usageText}</p>
           {quota.limitBytes > 0 && (
-            <div className="h-1.5 rounded-full bg-gray-200 dark:bg-slate-700/60 mb-3 overflow-hidden">
+            <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800/40 border border-gray-200/30 dark:border-slate-800 mb-3 overflow-hidden">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}

@@ -193,7 +193,8 @@ export function LeadDriveTab({ lead }: LeadDriveTabProps) {
       setError(null);
       try {
         const res = await fetch(
-          `/api/drive/browse?folderId=${encodeURIComponent(folderId)}`
+          `/api/drive/browse?folderId=${encodeURIComponent(folderId)}`,
+          { cache: "no-store" }
         );
         if (requestId !== browseRequestIdRef.current) return;
 

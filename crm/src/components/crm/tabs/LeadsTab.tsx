@@ -51,7 +51,7 @@ export function LeadsTab() {
   const {
     leads, meetings, users, currentUser, currentRole, currentTab, setCurrentTab,
     setCurrentRole, setCurrentUser, addUser, deleteUser, addLead, updateLeadStatus,
-    updateUsaSlots, addPayment, addMeeting, updateMeeting, restoreLead, updateLeadNotes,
+    updateUsaSlots, addPayment, addMeeting, updateMeeting, deleteLead, deleteLeads, restoreLead, updateLeadNotes, showConfirm, showAlert,
     assignCounselor, uploadDocument, uploadInvoice, getLeadDocuments,
     handleLogout, checklistSearch, setChecklistSearch,
     isMobileSidebarOpen, setIsMobileSidebarOpen, isMobileDetailOpen, setIsMobileDetailOpen,
@@ -82,7 +82,7 @@ export function LeadsTab() {
     handleCountryClick, resetMap, startDate, setStartDate, endDate, setEndDate,
     tempInvoiceFile, setTempInvoiceFile,
     tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
-    allowedTabs, userAllowedTabs, canModifyLeads, canAssignLeads, canVerifyDocs, canAccessLeadChecklist, canSubmitVisa, canManagePayments,
+    allowedTabs, userAllowedTabs, isAdmin, canModifyLeads, canAssignLeads, canVerifyDocs, canAccessChecklistForLead, canSubmitVisa, canManagePayments,
     openSignedUrl, selectedLead, activeLeads, monthlyChart, chartMax, countryColors,
     countryStats, countryTotal, donutSegments, calendarData, filteredLeads,
     countryBarChartData, maxLeadsCount, yLabels, getCountryAbbreviation,
@@ -495,7 +495,7 @@ export function LeadsTab() {
                         render: (lead) => {
                           const pct = docProgress(lead.checklist, lead.employmentCategory);
                           const filledCount = pct === 0 ? 0 : Math.ceil(pct / 25);
-                          const canOpenChecklist = canAccessLeadChecklist;
+                          const canOpenChecklist = canAccessChecklistForLead(lead);
 
                           return (
                             <div className="min-w-[120px] flex items-center justify-start h-full">
@@ -651,7 +651,44 @@ export function LeadsTab() {
                         title: "Email",
                         onClick: (l) => window.open(`mailto:${l.email}`),
                       },
+                      {
+                        icon: FaTrash,
+                        title: "Delete",
+                        hidden: () => !isAdmin,
+                        onClick: (l) => {
+                          showConfirm(
+                            "Delete Lead",
+                            `Are you sure you want to permanently delete "${l.name}" from the database? This action cannot be undone.`,
+                            async () => {
+                              const ok = await deleteLead(l.id);
+                              if (ok) {
+                                showAlert("Delete Success", `"${l.name}" has been permanently deleted from the database.`);
+                              } else {
+                                showAlert("Delete Failed", "Failed to delete the lead from the database.");
+                              }
+                            }
+                          );
+                        },
+                      },
                     ]}
+                    onBulkDelete={
+                      isAdmin
+                        ? (ids) => {
+                            showConfirm(
+                              "Delete Multiple Leads",
+                              `Are you sure you want to permanently delete the ${ids.length} selected lead(s) from the database? This action cannot be undone.`,
+                              async () => {
+                                const ok = await deleteLeads(ids);
+                                if (ok) {
+                                  showAlert("Delete Success", `${ids.length} lead(s) have been permanently deleted from the database.`);
+                                } else {
+                                  showAlert("Delete Failed", "Failed to delete the selected leads.");
+                                }
+                              }
+                            );
+                          }
+                        : undefined
+                    }
                     emptyText="No leads match your filters."
                   />
                 </div>

@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { FaLock, FaEnvelope, FaSignInAlt, FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -35,9 +33,15 @@ export default function LoginPage() {
       localStorage.setItem("visa_crm_role", data.role);
       if (data.user) {
         localStorage.setItem("visa_crm_user", JSON.stringify(data.user));
+        // The authenticated identity — used to gate admin-only UI like the sandbox
+        // switcher. Never overwritten when impersonating another account.
+        localStorage.setItem("visa_crm_auth_user", JSON.stringify(data.user));
       }
-      router.push("/");
-      router.refresh();
+      // Full-page load (not router.push) so the root-level CrmProvider remounts and
+      // its loadData re-reads the freshly written session from localStorage. A
+      // client-side push leaves the provider mounted, so currentUser/authUser would
+      // stay stale until a manual refresh.
+      window.location.href = "/";
     } catch {
       setError("Network error — please try again.");
     } finally {

@@ -13,7 +13,7 @@ import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 
 export function CrmSidebar() {
   const {
-    leads, meetings, users, currentUser, currentRole, currentTab, setCurrentTab,
+    leads, meetings, users, currentUser, authUser, currentRole, currentTab, setCurrentTab,
     setCurrentRole, setCurrentUser, addUser, deleteUser, addLead, updateLeadStatus,
     updateUsaSlots, addPayment, addMeeting, updateMeeting, restoreLead, updateLeadNotes,
     assignCounselor, uploadDocument, uploadInvoice, getLeadDocuments,
@@ -132,26 +132,33 @@ export function CrmSidebar() {
 
         {/* Sidebar Footer - Role Switcher */}
         <div className="p-4 border-t border-slate-800/60 bg-[#070714] space-y-3">
-          {/* Current Role switcher preview */}
-          <div className="text-[10px] text-slate-500 font-bold px-1 uppercase tracking-wider block">
-            Switch Sandbox Account:
-          </div>
-          <select
-            value={currentUser?.id || "user-admin"}
-            onChange={(e) => {
-              const selectedUser = users.find((u) => u.id === e.target.value);
-              if (selectedUser) {
-                setCurrentUser(selectedUser);
-              }
-            }}
-            className="w-full bg-slate-900/80 border border-slate-800 text-violet-400 font-bold text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500"
-          >
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name} ({u.role})
-              </option>
-            ))}
-          </select>
+          {/* Sandbox account switcher — admin-only dev affordance for impersonating
+              other staff accounts. Gated on the real authenticated identity so a
+              non-admin can never see it (and an admin who impersonates a counselor
+              keeps access to switch back). */}
+          {authUser?.role === "ADMIN" && (
+            <>
+              <div className="text-[10px] text-slate-500 font-bold px-1 uppercase tracking-wider block">
+                Switch Sandbox Account:
+              </div>
+              <select
+                value={currentUser?.id || "user-admin"}
+                onChange={(e) => {
+                  const selectedUser = users.find((u) => u.id === e.target.value);
+                  if (selectedUser) {
+                    setCurrentUser(selectedUser);
+                  }
+                }}
+                className="w-full bg-slate-900/80 border border-slate-800 text-violet-400 font-bold text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500"
+              >
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.role})
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
 
           <button
             onClick={handleLogout}

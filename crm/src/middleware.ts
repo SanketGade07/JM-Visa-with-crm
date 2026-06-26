@@ -34,17 +34,31 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  if (
-    pathname.startsWith("/api/drive/browse") ||
-    pathname.startsWith("/api/drive/discover") ||
-    pathname.startsWith("/api/drive/quota")
-  ) {
+  // Full-drive root discovery stays admin-only.
+  if (pathname.startsWith("/api/drive/discover")) {
     if (!role || role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
 
-  if (pathname.startsWith("/api/drive/view")) {
+  // Browsing folder contents (GET) is open to any authenticated user: staff with a
+  // Drive tab grant need the main Drive view, and counselors need to read their
+  // assigned lead's folder even without a Drive grant. Mutations (create/upload/
+  // rename/delete) remain admin-only — the Drive UIs only expose them to admins.
+  if (pathname.startsWith("/api/drive/browse")) {
+    if (!role) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (req.method !== "GET" && role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
+  // Read-only endpoints — any authenticated user.
+  if (
+    pathname.startsWith("/api/drive/quota") ||
+    pathname.startsWith("/api/drive/view")
+  ) {
     if (!role) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

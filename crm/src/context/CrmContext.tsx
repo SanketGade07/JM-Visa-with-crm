@@ -163,6 +163,8 @@ interface CrmContextType {
   documents: Document[];
   users: CrmUser[];
   currentUser: CrmUser | null;
+  /** The actually authenticated account (never changed by the sandbox switcher). */
+  authUser: CrmUser | null;
   currentRole: StaffRole | string;
   currentTab: string;
   setCurrentTab: (tab: string) => void;
@@ -180,7 +182,8 @@ interface CrmContextType {
   setLeadPackage: (leadId: string, totalPackage: number) => void;
   addMeeting: (meeting: Omit<Meeting, "id">) => void;
   updateMeeting: (meeting: Meeting) => void;
-  deleteLead: (leadId: string) => void;
+  deleteLead: (leadId: string) => Promise<boolean>;
+  deleteLeads: (leadIds: string[]) => Promise<boolean>;
   restoreLead: (leadId: string) => void;
   updateLeadNotes: (leadId: string, notes: string) => void;
   updateLeadProfile: (
@@ -242,6 +245,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [users, setUsers] = useState<CrmUser[]>([]);
   const [currentUser, setCurrentUser] = useState<CrmUser | null>(null);
+  const [authUser, setAuthUser] = useState<CrmUser | null>(null);
   const [currentRole, setCurrentRole] = useState<StaffRole | string>("ADMIN");
   const [currentTab, setCurrentTab] = useState<string>("Dashboard");
   const leadsRef = useRef(leads);
@@ -252,7 +256,10 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Restore the persisted user & role first
       const savedUserStr = localStorage.getItem("visa_crm_user");
       const savedRole = localStorage.getItem("visa_crm_role");
-      
+      // The real authenticated identity — set at login, untouched by the sandbox switcher.
+      // Fall back to the active user for sessions created before this key existed.
+      const savedAuthUserStr = localStorage.getItem("visa_crm_auth_user") ?? savedUserStr;
+
       if (savedUserStr) {
         try {
           const parsed = JSON.parse(savedUserStr);
@@ -263,13 +270,19 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCurrentRole(savedRole as StaffRole);
       }
 
+      if (savedAuthUserStr) {
+        try {
+          setAuthUser(JSON.parse(savedAuthUserStr));
+        } catch {}
+      }
+
       try {
         const [leadsRes, meetingsRes, activitiesRes, documentsRes, usersRes] = await Promise.all([
-          fetch("/api/leads?limit=1000&includeDeleted=true"),
-          fetch("/api/meetings"),
-          fetch("/api/activities"),
-          fetch("/api/documents"),
-          fetch("/api/users"),
+          fetch("/api/leads?limit=1000&includeDeleted=true", { cache: "no-store" }),
+          fetch("/api/meetings", { cache: "no-store" }),
+          fetch("/api/activities", { cache: "no-store" }),
+          fetch("/api/documents", { cache: "no-store" }),
+          fetch("/api/users", { cache: "no-store" }),
         ]);
 
         if (leadsRes.ok) {
@@ -299,6 +312,18 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 setCurrentUser(matched);
                 setCurrentRole(matched.role);
               }
+            } catch {}
+          }
+
+          // Re-match the authenticated identity against the live directory so its
+          // role/permissions reflect the latest staff record (admin gate source of truth).
+          if (savedAuthUserStr) {
+            try {
+              const parsedAuth = JSON.parse(savedAuthUserStr);
+              const matchedAuth = normalizedUsers.find(
+                (u: CrmUser) => u.id === parsedAuth.id || u.email === parsedAuth.email
+              );
+              if (matchedAuth) setAuthUser(matchedAuth);
             } catch {}
           }
         }
@@ -720,20 +745,36 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Soft delete — never permanently removes a lead (guide §13 rule 5)
-  const deleteLead = (leadId: string) => {
-    const today = new Date().toISOString().split("T")[0];
-    const updated = leads.map((lead) =>
-      lead.id === leadId
-        ? { ...lead, status: "DROPPED" as VisaStatus, isDeleted: true, lastUpdated: today }
-        : lead
-    );
-    syncLeads(updated);
-    logActivity({
-      leadId,
-      type: "status_change",
-      content: "Lead marked as Dropped (soft-deleted)",
-      createdBy: currentRole,
-    });
+  const deleteLead = async (leadId: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/leads/${leadId}?permanent=true`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setLeads((prev) => prev.filter((l) => l.id !== leadId));
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("Failed to delete lead:", err);
+      return false;
+    }
+  };
+
+  const deleteLeads = async (leadIds: string[]): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/leads?ids=${encodeURIComponent(leadIds.join(","))}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setLeads((prev) => prev.filter((l) => !leadIds.includes(l.id)));
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("Failed to bulk delete leads:", err);
+      return false;
+    }
   };
 
   const restoreLead = (leadId: string) => {
@@ -1097,11 +1138,16 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleSetCurrentUser = (user: CrmUser | null) => {
     setCurrentUser(user);
     if (user) {
+      // Sandbox impersonation only changes the active user, never the real
+      // authenticated identity (authUser), so the admin-only gate stays correct.
       localStorage.setItem("visa_crm_user", JSON.stringify(user));
       setCurrentRole(user.role);
       localStorage.setItem("visa_crm_role", user.role);
     } else {
+      // null === logout: clear the authenticated identity too.
+      setAuthUser(null);
       localStorage.removeItem("visa_crm_user");
+      localStorage.removeItem("visa_crm_auth_user");
     }
   };
 
@@ -1203,7 +1249,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const refreshLeads = async (): Promise<void> => {
     try {
-      const leadsRes = await fetch("/api/leads?limit=1000");
+      const leadsRes = await fetch("/api/leads?limit=1000&includeDeleted=true", { cache: "no-store" });
       if (leadsRes.ok) {
         const data = await leadsRes.json();
         const leadsData = Array.isArray(data.leads) ? data.leads : (data.leads ?? []);
@@ -1224,6 +1270,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         documents,
         users,
         currentUser,
+        authUser,
         currentRole,
         currentTab,
         setCurrentTab,
@@ -1242,6 +1289,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addMeeting,
         updateMeeting,
         deleteLead,
+        deleteLeads,
         restoreLead,
         updateLeadNotes,
         updateLeadProfile,

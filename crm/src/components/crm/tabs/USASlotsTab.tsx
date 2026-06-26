@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import type { Lead } from "@/context/CrmContext";
-import { FaTimes } from "react-icons/fa";
+import { FaTimes, FaTrash } from "react-icons/fa";
 import { FiSettings, FiPhone, FiMail, FiCopy } from "react-icons/fi";
 import DataTable, { exportRowsToCsv } from "@/components/ui/DataTable";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
@@ -387,6 +387,12 @@ export function USASlotsTab() {
     showToast,
     openLeadDetail,
     registerUsaSlotsExport,
+    canModifyLeads,
+    deleteLead,
+    deleteLeads,
+    showConfirm,
+    showAlert,
+    isAdmin,
   } = useCrmLayoutContext();
 
   const { filteredUsaLeads } = useUsaSlotTabs();
@@ -574,7 +580,44 @@ export function USASlotsTab() {
           },
           { icon: FiPhone, title: "Call", onClick: (l) => window.open(`tel:${l.phone}`) },
           { icon: FiMail, title: "Email", onClick: (l) => window.open(`mailto:${l.email}`) },
+          {
+            icon: FaTrash,
+            title: "Delete",
+            hidden: () => !isAdmin,
+            onClick: (l) => {
+              showConfirm(
+                "Delete Lead",
+                `Are you sure you want to permanently delete "${l.name}" from the database? This action cannot be undone.`,
+                async () => {
+                  const ok = await deleteLead(l.id);
+                  if (ok) {
+                    showAlert("Delete Success", `"${l.name}" has been permanently deleted from the database.`);
+                  } else {
+                    showAlert("Delete Failed", "Failed to delete the lead from the database.");
+                  }
+                }
+              );
+            },
+          },
         ]}
+        onBulkDelete={
+          isAdmin
+            ? (ids) => {
+                showConfirm(
+                  "Delete Multiple Leads",
+                  `Are you sure you want to permanently delete the ${ids.length} selected lead(s) from the database? This action cannot be undone.`,
+                  async () => {
+                    const ok = await deleteLeads(ids);
+                    if (ok) {
+                      showAlert("Delete Success", `${ids.length} lead(s) have been permanently deleted from the database.`);
+                    } else {
+                      showAlert("Delete Failed", "Failed to delete the selected leads.");
+                    }
+                  }
+                );
+              }
+            : undefined
+        }
         emptyText="No USA leads yet."
       />
 

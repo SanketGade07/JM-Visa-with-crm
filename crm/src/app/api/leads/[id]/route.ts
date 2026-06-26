@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readLeads, writeLeads, readActivities, appendActivity } from "@/utils/db";
 import { Activity, VisaStatus } from "@/context/CrmContext";
 import { normalizeLeadStatus } from "@/utils/leadStatusConfig";
+import { getSupabase } from "@/utils/supabase";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -70,8 +71,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
   return NextResponse.json({ success: true, lead: updated });
 }
 
-// DELETE /api/leads/:id — soft delete only (guide §13 rule 5)
+// DELETE /api/leads/:id — hard delete lead completely from database (restricted to ADMIN)
 export async function DELETE(req: NextRequest, { params }: Params) {
+  const role = req.cookies.get("crm_role")?.value;
+  if (role !== "ADMIN") {
+    return NextResponse.json({ error: "Only admins are allowed to delete leads" }, { status: 403 });
+  }
+
   const { id } = await params;
   const leads = await readLeads();
   const index = leads.findIndex((l) => l.id === id);
@@ -80,25 +86,32 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
-  leads[index] = {
-    ...leads[index],
-    status: "DROPPED",
-    isDeleted: true,
-    lastUpdated: new Date().toISOString().split("T")[0],
-  };
+  const lead = leads[index];
+  const driveFolderId = lead.driveFolderId;
 
-  const ok = await writeLeads(leads);
-  if (!ok) return NextResponse.json({ error: "Failed to delete lead" }, { status: 500 });
+  // Hard delete from database
+  const supabase = getSupabase();
+  const { error: dbError } = await supabase.from("leads").delete().eq("id", id);
+  if (dbError) {
+    console.error("Error deleting lead from Supabase:", dbError);
+    return NextResponse.json({ error: "Failed to delete lead from database" }, { status: 500 });
+  }
 
-  const activity: Activity = {
-    id: `act-${Date.now()}`,
-    leadId: id,
-    type: "status_change",
-    content: "Lead soft-deleted (Dropped)",
-    createdAt: new Date().toISOString(),
-    createdBy: "SYSTEM",
-  };
-  await appendActivity(activity);
+  // Also clean up related activities and documents
+  await supabase.from("activities").delete().eq("leadId", id);
+  await supabase.from("documents").delete().eq("leadId", id);
+
+  // Clean up Google Drive folder if exists
+  if (driveFolderId) {
+    try {
+      const { isGoogleDriveConfigured, deleteFolderFromDrive } = await import("@/lib/googleDrive");
+      if (isGoogleDriveConfigured()) {
+        await deleteFolderFromDrive(driveFolderId);
+      }
+    } catch (err) {
+      console.error(`Failed to delete Google Drive folder ${driveFolderId} for lead ${id}:`, err);
+    }
+  }
 
   return NextResponse.json({ success: true });
 }

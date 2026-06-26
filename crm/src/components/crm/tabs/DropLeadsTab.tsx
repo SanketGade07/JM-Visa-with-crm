@@ -29,7 +29,7 @@ export function DropLeadsTab() {
   const {
     leads, meetings, users, currentUser, currentRole, currentTab, setCurrentTab,
     setCurrentRole, setCurrentUser, addUser, deleteUser, addLead, updateLeadStatus,
-    updateUsaSlots, addPayment, addMeeting, updateMeeting, restoreLead, updateLeadNotes,
+    updateUsaSlots, addPayment, addMeeting, updateMeeting, restoreLead, deleteLead, deleteLeads, showConfirm, showAlert, updateLeadNotes, isAdmin,
     assignCounselor, uploadDocument, uploadInvoice, getLeadDocuments,
     handleLogout, searchTerm, setSearchTerm, checklistSearch, setChecklistSearch,
     isMobileSidebarOpen, setIsMobileSidebarOpen, isMobileDetailOpen, setIsMobileDetailOpen,
@@ -128,8 +128,45 @@ export function DropLeadsTab() {
           ]}
           actions={(lead) => [
             { icon: FaUndo, title: "Re-activate lead", disabled: () => !canModifyLeads, onClick: (l) => restoreLead(l.id) },
+            {
+              icon: FaTrash,
+              title: "Delete permanently",
+              hidden: () => !isAdmin,
+              onClick: (l) => {
+                showConfirm(
+                  "Delete Lead",
+                  `Are you sure you want to permanently delete "${l.name}" from the database? This action cannot be undone.`,
+                  async () => {
+                    const ok = await deleteLead(l.id);
+                    if (ok) {
+                      showAlert("Delete Success", `"${l.name}" has been permanently deleted from the database.`);
+                    } else {
+                      showAlert("Delete Failed", "Failed to delete the lead from the database.");
+                    }
+                  }
+                );
+              }
+            }
           ]}
-          actionsHeader="Restore"
+          onBulkDelete={
+            isAdmin
+              ? (ids) => {
+                  showConfirm(
+                    "Delete Multiple Leads",
+                    `Are you sure you want to permanently delete the ${ids.length} selected lead(s) from the database? This action cannot be undone.`,
+                    async () => {
+                      const ok = await deleteLeads(ids);
+                      if (ok) {
+                        showAlert("Delete Success", `${ids.length} lead(s) have been permanently deleted from the database.`);
+                      } else {
+                        showAlert("Delete Failed", "Failed to delete the selected leads.");
+                      }
+                    }
+                  );
+                }
+              : undefined
+          }
+          actionsHeader="Actions"
           emptyText="Archive log is currently empty."
         />
       </div>
