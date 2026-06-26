@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useCrmLayoutContext } from "@/components/crm/context/CrmLayoutContext";
-import { scopeLeadsForUser } from "@/utils/leadHelpers";
+import { scopeLeadsForUser, getLeadCreatedTimestamp } from "@/utils/leadHelpers";
 
 export function useUsaSlotTabs() {
   const { leads, currentUser, usaSlotView } = useCrmLayoutContext();
@@ -27,13 +27,14 @@ export function useUsaSlotTabs() {
     [usaLeads]
   );
 
-  const filteredUsaLeads = useMemo(
-    () =>
+  const filteredUsaLeads = useMemo(() => {
+    const list =
       usaSlotView === "paid"
         ? usaLeads.filter((l) => l.usaSlots?.slotsPaid === true)
-        : usaLeads.filter((l) => !l.usaSlots?.slotsPaid),
-    [usaLeads, usaSlotView]
-  );
+        : usaLeads.filter((l) => !l.usaSlots?.slotsPaid);
+    
+    return [...list].sort((a, b) => getLeadCreatedTimestamp(b) - getLeadCreatedTimestamp(a));
+  }, [usaLeads, usaSlotView]);
 
   const usaSlotTabs = useMemo(
     () => [
