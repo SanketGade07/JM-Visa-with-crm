@@ -709,15 +709,17 @@ export function CreateLeadWizardPage({
     <div
       className={
         isInline
-          ? "w-full"
+          ? "w-full px-6 py-4"
           : `mx-auto w-full pb-2 ${
               isLastStep ? "max-w-[1350px]" : "max-w-2xl lg:max-w-3xl"
             }`
       }
     >
       <div
-        className={`bg-white dark:bg-[#0a0a1a] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden ${
-          isInline ? "shadow-none" : "shadow-xl"
+        className={`bg-white dark:bg-[#0a0a1a] border rounded-2xl overflow-hidden ${
+          isInline
+            ? "create-lead-glow border-blue-500/70"
+            : "border-slate-200 dark:border-slate-800 shadow-xl"
         }`}
       >
         <div

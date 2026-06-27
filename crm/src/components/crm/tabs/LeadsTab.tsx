@@ -13,7 +13,8 @@ import {
   FaInfoCircle, FaFileDownload, FaFileUpload, FaPaperPlane,
   FaSun, FaMoon, FaEllipsisV, FaChevronLeft, FaChevronRight,
   FaMinus, FaExpand, FaEye, FaPhone, FaCommentDots, FaCog, FaEnvelope,
-  FaWhatsapp, FaExternalLinkAlt, FaSignOutAlt, FaKey, FaClipboard, FaEdit, FaSave
+  FaWhatsapp, FaExternalLinkAlt, FaSignOutAlt, FaKey, FaClipboard, FaEdit, FaSave,
+  FaCar, FaUtensils, FaCity
 } from "react-icons/fa";
 import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiCheckCircle, FiEye, FiSettings, FiGlobe, FiMenu, FiUser, FiLock } from "react-icons/fi";
 import DataTable, { exportRowsToCsv, StatusPill, getPillClasses, ProgressBar } from "@/components/ui/DataTable";
@@ -531,8 +532,13 @@ export function LeadsTab() {
                         render: (lead) => {
                           const hasStandard = lead.visaCredentials?.username || lead.visaCredentials?.password;
                           const hasSlots = lead.country === "USA" && (lead.usaSlots?.slotPortalUsername || lead.usaSlots?.slotPortalPassword);
+                          const hasSecurity = lead.country === "USA" && (
+                            lead.usaSlots?.securityCar ||
+                            lead.usaSlots?.securityFood ||
+                            lead.usaSlots?.securityCity
+                          );
 
-                          if (!hasStandard && !hasSlots) {
+                          if (!hasStandard && !hasSlots && !hasSecurity) {
                             return <span className="text-gray-400 dark:text-slate-500 text-[11px]">—</span>;
                           }
 
@@ -622,6 +628,71 @@ export function LeadsTab() {
                                       className="w-8 h-8 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
                                     >
                                       <FiLock className="text-[13.5px]" />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Separator if both exist */}
+                              {(hasStandard || hasSlots) && hasSecurity && (
+                                <span className="h-4 w-px bg-gray-200 dark:bg-slate-800" />
+                              )}
+
+                              {/* USA Security Qs */}
+                              {hasSecurity && (
+                                <div className="flex items-center gap-1">
+                                  {lead.usaSlots?.securityCar && (
+                                    <button
+                                      type="button"
+                                      data-tooltip={`Copy Car: ${lead.usaSlots.securityCar}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          navigator.clipboard.writeText(lead.usaSlots?.securityCar || "");
+                                          showToast(`Car: ${lead.usaSlots?.securityCar}`);
+                                        } catch {
+                                          showToast("Copied", "success");
+                                        }
+                                      }}
+                                      className="w-8 h-8 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                                    >
+                                      <FaCar className="text-[12.5px]" />
+                                    </button>
+                                  )}
+                                  {lead.usaSlots?.securityFood && (
+                                    <button
+                                      type="button"
+                                      data-tooltip={`Copy Food: ${lead.usaSlots.securityFood}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          navigator.clipboard.writeText(lead.usaSlots?.securityFood || "");
+                                          showToast(`Food: ${lead.usaSlots?.securityFood}`);
+                                        } catch {
+                                          showToast("Copied", "success");
+                                        }
+                                      }}
+                                      className="w-8 h-8 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                                    >
+                                      <FaUtensils className="text-[12px]" />
+                                    </button>
+                                  )}
+                                  {lead.usaSlots?.securityCity && (
+                                    <button
+                                      type="button"
+                                      data-tooltip={`Copy City: ${lead.usaSlots.securityCity}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          navigator.clipboard.writeText(lead.usaSlots?.securityCity || "");
+                                          showToast(`City: ${lead.usaSlots?.securityCity}`);
+                                        } catch {
+                                          showToast("Copied", "success");
+                                        }
+                                      }}
+                                      className="w-8 h-8 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                                    >
+                                      <FaCity className="text-[12px]" />
                                     </button>
                                   )}
                                 </div>

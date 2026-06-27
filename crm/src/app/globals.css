@@ -618,6 +618,37 @@ textarea {
   animation: leadCreatedHighlight 1.2s ease-in-out 2;
 }
 
+/* Glowing blue border for the inline "Create Lead" wizard so it reads as a
+   distinct, active panel above the leads table. Uses a tight ring + inset glow
+   (not just an outer blur) so it stays visible even though the surrounding
+   CollapsiblePanel clips outset shadows. */
+@keyframes createLeadGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.45),
+      inset 0 0 8px 0 rgba(59, 130, 246, 0.18),
+      0 0 16px 1px rgba(59, 130, 246, 0.22);
+  }
+
+  50% {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.9),
+      inset 0 0 16px 1px rgba(59, 130, 246, 0.38),
+      0 0 28px 5px rgba(59, 130, 246, 0.45);
+  }
+}
+
+.create-lead-glow {
+  animation: createLeadGlow 2.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .create-lead-glow {
+    animation: none;
+    box-shadow: 0 0 0 1.5px rgba(59, 130, 246, 0.8),
+      inset 0 0 12px 0 rgba(59, 130, 246, 0.3);
+  }
+}
+
 @keyframes toastSlideDown {
   0% {
     opacity: 0;
@@ -2195,4 +2226,20 @@ html.dark .discussion-rich-editor a {
 
 html.dark .discussion-message-content a {
   color: #a78bfa;
+}
+
+/* ── Create Lead Panel Glow ────────────────────────────────────────────── */
+html.light div.create-lead-glow[class*="bg-[#0a0a1a]"],
+html.light .create-lead-glow,
+.create-lead-glow {
+  border-width: 2px !important;
+  border-style: solid !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 0 16px rgba(37, 99, 235, 0.4), inset 0 0 4px rgba(37, 99, 235, 0.05) !important;
+}
+
+html.dark div.create-lead-glow[class*="bg-[#0a0a1a]"],
+html.dark .create-lead-glow {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 24px rgba(59, 130, 246, 0.6), inset 0 0 12px rgba(59, 130, 246, 0.15) !important;
 }
