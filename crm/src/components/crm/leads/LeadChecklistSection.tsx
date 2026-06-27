@@ -159,8 +159,8 @@ export function LeadChecklistSection({
         <FaInfoCircle className="text-xs shrink-0" />
         <span>
           Staff uploads each document manually (received via WhatsApp/email). Files are stored in
-          Supabase. Once all required docs are uploaded, status auto-updates to{" "}
-          <strong>READY FOR SUBMISSION</strong>.
+          Google Drive (only metadata is kept in Supabase). Once all required docs are uploaded,
+          status auto-updates to <strong>READY FOR SUBMISSION</strong>.
         </span>
       </div>
     </div>

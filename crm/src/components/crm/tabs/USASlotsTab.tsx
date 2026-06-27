@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import type { Lead } from "@/context/CrmContext";
 import { FaTimes, FaTrash, FaCar, FaUtensils, FaCity } from "react-icons/fa";
-import { FiSettings, FiPhone, FiMail, FiCopy, FiUser, FiLock } from "react-icons/fi";
+import { FiSettings, FiPhone, FiMail, FiCopy, FiUser, FiLock, FiSmartphone } from "react-icons/fi";
 import DataTable, { exportRowsToCsv } from "@/components/ui/DataTable";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { useUsaSlotTabs } from "@/hooks/useUsaSlotTabs";
@@ -109,6 +109,7 @@ function UsaSlotSettingsModal({
   const [securityCar, setSecurityCar] = useState(lead.usaSlots?.securityCar ?? "");
   const [securityFood, setSecurityFood] = useState(lead.usaSlots?.securityFood ?? "");
   const [securityCity, setSecurityCity] = useState(lead.usaSlots?.securityCity ?? "");
+  const [trackingMobile, setTrackingMobile] = useState(lead.usaSlots?.trackingMobile ?? "");
 
   useEffect(() => {
     setCredUsername(lead.visaCredentials?.username ?? "");
@@ -116,6 +117,7 @@ function UsaSlotSettingsModal({
     setSecurityCar(lead.usaSlots?.securityCar ?? "");
     setSecurityFood(lead.usaSlots?.securityFood ?? "");
     setSecurityCity(lead.usaSlots?.securityCity ?? "");
+    setTrackingMobile(lead.usaSlots?.trackingMobile ?? "");
   }, [lead.id, lead.visaCredentials, lead.usaSlots]);
 
   useEffect(() => {
@@ -149,8 +151,9 @@ function UsaSlotSettingsModal({
       securityCar: securityCar.trim(),
       securityFood: securityFood.trim(),
       securityCity: securityCity.trim(),
+      trackingMobile: trackingMobile.trim(),
     });
-    showToast("Security answers saved", "success");
+    showToast("Security answers & mobile saved", "success");
   };
 
   return (
@@ -272,41 +275,53 @@ function UsaSlotSettingsModal({
           </button>
         </section>
 
-        {/* DS-160 security answers */}
-        <section className="space-y-3 border-t border-slate-800 pt-4">
+        {/* DS-160 security answers & mobile */}
+        <section className="space-y-4 border-t border-slate-800 pt-4">
           <h4 className="text-[10px] font-bold uppercase tracking-wider text-violet-400">
-            DS-160 Security Answers
+            DS-160 Security & Mobile
           </h4>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-3">
             <div className="space-y-1.5">
-              <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">Car</label>
+              <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">Tracking Mobile</label>
               <input
                 type="text"
-                value={securityCar}
-                onChange={(e) => setSecurityCar(e.target.value)}
-                placeholder="e.g. BMW"
-                className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none"
+                value={trackingMobile}
+                onChange={(e) => setTrackingMobile(e.target.value)}
+                placeholder="e.g. 9876543210"
+                className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none focus:ring-1 focus:ring-violet-500"
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">Food</label>
-              <input
-                type="text"
-                value={securityFood}
-                onChange={(e) => setSecurityFood(e.target.value)}
-                placeholder="e.g. FISH"
-                className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">City</label>
-              <input
-                type="text"
-                value={securityCity}
-                onChange={(e) => setSecurityCity(e.target.value)}
-                placeholder="e.g. MUMBAI"
-                className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none"
-              />
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">Car</label>
+                <input
+                  type="text"
+                  value={securityCar}
+                  onChange={(e) => setSecurityCar(e.target.value)}
+                  placeholder="e.g. BMW"
+                  className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">Food</label>
+                <input
+                  type="text"
+                  value={securityFood}
+                  onChange={(e) => setSecurityFood(e.target.value)}
+                  placeholder="e.g. FISH"
+                  className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">City</label>
+                <input
+                  type="text"
+                  value={securityCity}
+                  onChange={(e) => setSecurityCity(e.target.value)}
+                  placeholder="e.g. MUMBAI"
+                  className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none"
+                />
+              </div>
             </div>
           </div>
           <button
@@ -314,7 +329,7 @@ function UsaSlotSettingsModal({
             onClick={handleSaveSecurity}
             className="w-full py-2 bg-slate-800 hover:bg-slate-700 font-bold text-slate-200 text-xs rounded-xl cursor-pointer transition-colors"
           >
-            Save Security Answers
+            Save Security & Mobile
           </button>
         </section>
 
@@ -426,7 +441,7 @@ export function USASlotsTab() {
     registerUsaSlotsExport(() =>
       exportRowsToCsv(
         "usa-slots",
-        ["Client", "Phone", "Visa User", "Visa Pass", "Slot User", "Slot Pass", "Car", "Food", "City"],
+        ["Client", "Phone", "Visa User", "Visa Pass", "Slot User", "Slot Pass", "Mobile", "Car", "Food", "City"],
         tableRows.map((l) => [
           l.name,
           l.phone ?? "",
@@ -434,6 +449,7 @@ export function USASlotsTab() {
           l.visaCredentials?.password ?? "",
           l.usaSlots?.slotPortalUsername ?? "",
           l.usaSlots?.slotPortalPassword ?? "",
+          l.usaSlots?.trackingMobile ?? "",
           l.usaSlots?.securityCar ?? "",
           l.usaSlots?.securityFood ?? "",
           l.usaSlots?.securityCity ?? "",
@@ -520,6 +536,18 @@ export function USASlotsTab() {
                 label="Slot password"
                 showToast={showToast}
                 icon={<FiLock className="text-[13.5px]" />}
+                variant="blue"
+              />
+            ),
+          },
+          {
+            header: "Mobile",
+            render: (lead) => (
+              <CopyableCredentialCell
+                value={lead.usaSlots?.trackingMobile}
+                label="Tracking mobile"
+                showToast={showToast}
+                icon={<FiSmartphone className="text-[13.5px]" />}
                 variant="blue"
               />
             ),

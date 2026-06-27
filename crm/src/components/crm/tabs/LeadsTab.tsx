@@ -16,7 +16,7 @@ import {
   FaWhatsapp, FaExternalLinkAlt, FaSignOutAlt, FaKey, FaClipboard, FaEdit, FaSave,
   FaCar, FaUtensils, FaCity
 } from "react-icons/fa";
-import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiCheckCircle, FiEye, FiSettings, FiGlobe, FiMenu, FiUser, FiLock } from "react-icons/fi";
+import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiCheckCircle, FiEye, FiSettings, FiGlobe, FiMenu, FiUser, FiLock, FiSmartphone } from "react-icons/fi";
 import DataTable, { exportRowsToCsv, StatusPill, getPillClasses, ProgressBar } from "@/components/ui/DataTable";
 import { CollapsiblePanel } from "@/components/ui/CollapsiblePanel";
 import { CreateLeadWizardPage } from "@/components/crm/leads/create/CreateLeadWizardPage";
@@ -360,7 +360,7 @@ export function LeadsTab() {
               </div>
               )}
 
-              <div className="flex flex-col">
+              <div className="flex flex-col min-w-0">
                 <CollapsiblePanel open={isCreateLeadOpen && canModifyLeads}>
                   <CreateLeadWizardPage
                     key={createLeadSession}
@@ -370,10 +370,11 @@ export function LeadsTab() {
                 </CollapsiblePanel>
 
                 {/* Lead detail split-screen */}
-                <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-stretch h-auto xl:h-[600px]">
-                
-                {/* Leads list (reusable DataTable) */}
-                <div className="xl:col-span-4 flex flex-col h-full">
+                <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-stretch h-auto xl:h-[600px] min-w-0">
+
+                {/* Leads list (reusable DataTable) — min-w-0 lets the table's
+                    internal horizontal scroll engage instead of overflowing. */}
+                <div className="xl:col-span-4 flex flex-col h-full min-w-0">
                   <DataTable
                     className="h-full flex flex-col"
                     pagination={true}
@@ -499,30 +500,28 @@ export function LeadsTab() {
                           const canOpenChecklist = canAccessChecklistForLead(lead);
 
                           return (
-                            <div className="min-w-[120px] flex items-center justify-start h-full">
+                            <div className="min-w-[120px] flex items-center justify-start gap-2 h-full">
                               <HoverHint
                                 label="Open checklist"
                                 disabled={!canOpenChecklist}
                                 onClick={() => openLeadChecklist(lead.id)}
                               >
-                                <div className="inline-flex items-center gap-2">
-                                  <div className="flex gap-1 w-[76px]">
-                                    {[1, 2, 3, 4].map((seg) => (
-                                      <div
-                                        key={seg}
-                                        className={`h-2 flex-1 rounded-[1.5px] ${
-                                          seg <= filledCount
-                                            ? "bg-emerald-500"
-                                            : "bg-gray-200 dark:bg-slate-800"
-                                        }`}
-                                      />
-                                    ))}
-                                  </div>
-                                  <span className="text-[12px] font-bold text-gray-500 dark:text-slate-400 tabular-nums">
-                                    {Math.round(pct)}%
-                                  </span>
+                                <div className="flex gap-1 w-[76px]">
+                                  {[1, 2, 3, 4].map((seg) => (
+                                    <div
+                                      key={seg}
+                                      className={`h-2 flex-1 rounded-[1.5px] ${
+                                        seg <= filledCount
+                                          ? "bg-emerald-500"
+                                          : "bg-gray-200 dark:bg-slate-800"
+                                      }`}
+                                    />
+                                  ))}
                                 </div>
                               </HoverHint>
+                              <span className="text-[12px] font-bold text-gray-500 dark:text-slate-400 tabular-nums">
+                                {Math.round(pct)}%
+                              </span>
                             </div>
                           );
                         },
@@ -531,7 +530,11 @@ export function LeadsTab() {
                         header: "Credentials",
                         render: (lead) => {
                           const hasStandard = lead.visaCredentials?.username || lead.visaCredentials?.password;
-                          const hasSlots = lead.country === "USA" && (lead.usaSlots?.slotPortalUsername || lead.usaSlots?.slotPortalPassword);
+                          const hasSlots = lead.country === "USA" && (
+                            lead.usaSlots?.slotPortalUsername ||
+                            lead.usaSlots?.slotPortalPassword ||
+                            lead.usaSlots?.trackingMobile
+                          );
                           const hasSecurity = lead.country === "USA" && (
                             lead.usaSlots?.securityCar ||
                             lead.usaSlots?.securityFood ||
@@ -543,10 +546,10 @@ export function LeadsTab() {
                           }
 
                           return (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                               {/* Standard Visa Credentials */}
                               {hasStandard && (
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-0.5">
                                   {lead.visaCredentials?.username && (
                                     <button
                                       type="button"
@@ -560,7 +563,7 @@ export function LeadsTab() {
                                           showToast("Copied", "success");
                                         }
                                       }}
-                                      className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
+                                      className="w-7 h-7 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
                                     >
                                       <FiUser className="text-[13.5px]" />
                                     </button>
@@ -578,7 +581,7 @@ export function LeadsTab() {
                                           showToast("Copied", "success");
                                         }
                                       }}
-                                      className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
+                                      className="w-7 h-7 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
                                     >
                                       <FiLock className="text-[13.5px]" />
                                     </button>
@@ -593,7 +596,7 @@ export function LeadsTab() {
 
                               {/* USA Slots Portal Credentials */}
                               {hasSlots && (
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-0.5">
                                   {lead.usaSlots?.slotPortalUsername && (
                                     <button
                                       type="button"
@@ -607,7 +610,7 @@ export function LeadsTab() {
                                           showToast("Copied", "success");
                                         }
                                       }}
-                                      className="w-8 h-8 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                                      className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
                                     >
                                       <FiUser className="text-[13.5px]" />
                                     </button>
@@ -625,9 +628,27 @@ export function LeadsTab() {
                                           showToast("Copied", "success");
                                         }
                                       }}
-                                      className="w-8 h-8 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                                      className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
                                     >
                                       <FiLock className="text-[13.5px]" />
+                                    </button>
+                                  )}
+                                  {lead.usaSlots?.trackingMobile && (
+                                    <button
+                                      type="button"
+                                      data-tooltip="Copy slots mobile number"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          navigator.clipboard.writeText(lead.usaSlots?.trackingMobile || "");
+                                          showToast("Slots tracking mobile number copied");
+                                        } catch {
+                                          showToast("Copied", "success");
+                                        }
+                                      }}
+                                      className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                                    >
+                                      <FiSmartphone className="text-[13.5px]" />
                                     </button>
                                   )}
                                 </div>
@@ -640,7 +661,7 @@ export function LeadsTab() {
 
                               {/* USA Security Qs */}
                               {hasSecurity && (
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-0.5">
                                   {lead.usaSlots?.securityCar && (
                                     <button
                                       type="button"
@@ -654,7 +675,7 @@ export function LeadsTab() {
                                           showToast("Copied", "success");
                                         }
                                       }}
-                                      className="w-8 h-8 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                                      className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
                                     >
                                       <FaCar className="text-[12.5px]" />
                                     </button>
@@ -672,7 +693,7 @@ export function LeadsTab() {
                                           showToast("Copied", "success");
                                         }
                                       }}
-                                      className="w-8 h-8 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                                      className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
                                     >
                                       <FaUtensils className="text-[12px]" />
                                     </button>
@@ -690,7 +711,7 @@ export function LeadsTab() {
                                           showToast("Copied", "success");
                                         }
                                       }}
-                                      className="w-8 h-8 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                                      className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
                                     >
                                       <FaCity className="text-[12px]" />
                                     </button>

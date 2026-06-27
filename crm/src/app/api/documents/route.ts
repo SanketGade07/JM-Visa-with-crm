@@ -1,7 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readDocuments, appendDocument, appendActivity, deleteDocument } from "@/utils/db";
 import { getSupabase, isSupabaseConfigured, DOCUMENTS_BUCKET } from "@/utils/supabase";
+import {
+  deleteFileFromDrive,
+  getOrCreateFolder,
+  isGoogleDriveConfigured,
+  uploadFileToDrive,
+} from "@/lib/googleDrive";
+import { provisionLeadDriveFolder } from "@/lib/provisionLeadDriveFolder";
 import { Document, Activity } from "@/context/CrmContext";
+
+// Drive subfolders (under Clients/{leadFolder}) the uploaded file is filed into.
+const CHECKLIST_SUBFOLDER = "document-checklist";
+const INVOICE_SUBFOLDER = "invoice";
+
+// Invoice uploads use docTypes like "invoice-<number>" / "invoice-deposit";
+// everything else is a checklist document.
+function driveSubfolderForDocType(docType: string): string {
+  return docType.toLowerCase().startsWith("invoice")
+    ? INVOICE_SUBFOLDER
+    : CHECKLIST_SUBFOLDER;
+}
 
 // GET /api/documents — list all, or ?leadId=xxx for one lead's files
 export async function GET(req: NextRequest) {
@@ -20,7 +39,9 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/documents — staff uploads a file (multipart), stored in Supabase Storage
+// POST /api/documents — staff uploads a file (multipart). The binary goes to
+// Google Drive under Clients/{leadFolder}/{document-checklist|invoice}/; only
+// textual metadata is persisted in Supabase. No file is stored in Supabase Storage.
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -37,8 +58,10 @@ export async function POST(req: NextRequest) {
 
     let finalFileUrl = "";
     let finalFileName = "";
+    let driveFileId: string | undefined;
 
     if (fileUrl) {
+      // External link (e.g. Google Drive / Dropbox URL) — store metadata only.
       finalFileUrl = fileUrl;
       finalFileName = fileName || "Linked Document";
     } else {
@@ -46,34 +69,53 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "file or fileUrl is required" }, { status: 400 });
       }
 
-      if (!isSupabaseConfigured()) {
+      if (!isGoogleDriveConfigured()) {
         return NextResponse.json(
-          { error: "Supabase storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env" },
+          {
+            error:
+              "Google Drive is not configured. Set GOOGLE_OAUTH_* env vars or GOOGLE_SERVICE_ACCOUNT_KEY.",
+          },
           { status: 503 }
         );
       }
 
-      const supabase = getSupabase();
-
-      // Build a unique storage path: leads/<leadId>/<docType>-<timestamp>.<ext>
-      const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
-      const objectPath = `leads/${leadId}/${docType}-${Date.now()}.${ext}`;
-
-      const arrayBuffer = await file.arrayBuffer();
-      const { error: uploadError } = await supabase.storage
-        .from(DOCUMENTS_BUCKET)
-        .upload(objectPath, arrayBuffer, {
-          contentType: file.type || "application/octet-stream",
-          upsert: false,
-        });
-
-      if (uploadError) {
-        console.error("Supabase upload error:", uploadError);
-        return NextResponse.json({ error: `Storage upload failed: ${uploadError.message}` }, { status: 500 });
+      // Resolve (and provision when missing) the lead's client folder under Clients/.
+      const provision = await provisionLeadDriveFolder(leadId);
+      if (!provision.ok) {
+        if (provision.code === "not_configured") {
+          return NextResponse.json(
+            { error: "Google Drive is not configured." },
+            { status: 503 }
+          );
+        }
+        if (provision.code === "lead_not_found") {
+          return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+        }
+        return NextResponse.json(
+          { error: "Failed to resolve client Drive folder" },
+          { status: 500 }
+        );
       }
 
-      // Store the storage path (not a public URL) so we can generate signed URLs on demand
-      finalFileUrl = `storage://${objectPath}`;
+      // File into Clients/{leadFolder}/document-checklist or .../invoice.
+      const subfolderName = driveSubfolderForDocType(docType);
+      const subfolderId = await getOrCreateFolder(
+        provision.driveFolderId,
+        subfolderName
+      );
+
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const uploaded = await uploadFileToDrive(
+        subfolderId,
+        file.name,
+        buffer,
+        file.type || "application/octet-stream"
+      );
+
+      driveFileId = uploaded.id;
+      finalFileUrl =
+        uploaded.webViewLink ||
+        `https://drive.google.com/file/d/${uploaded.id}/view`;
       finalFileName = file.name;
     }
 
@@ -83,12 +125,19 @@ export async function POST(req: NextRequest) {
       docType,
       fileName: finalFileName,
       fileUrl: finalFileUrl,
+      ...(driveFileId ? { driveFileId } : {}),
       status: "VERIFIED",
       uploadedBy,
       uploadedAt: new Date().toISOString(),
     };
 
-    await appendDocument(document);
+    const saved = await appendDocument(document);
+    if (!saved) {
+      return NextResponse.json(
+        { error: "Failed to save document metadata" },
+        { status: 500 }
+      );
+    }
 
     const activity: Activity = {
       id: `act-${Date.now()}`,
@@ -123,6 +172,18 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
+    // New flow: trash the backing Google Drive file (best-effort — never block
+    // the metadata delete if Drive trashing fails).
+    if (doc.driveFileId && isGoogleDriveConfigured()) {
+      try {
+        await deleteFileFromDrive(doc.driveFileId);
+      } catch (driveError) {
+        console.error("Google Drive trash error:", driveError);
+      }
+    }
+
+    // Legacy flow: clean up any file that still lives in Supabase Storage
+    // (documents uploaded before the Drive migration).
     if (doc.fileUrl.startsWith("storage://") && isSupabaseConfigured()) {
       const objectPath = doc.fileUrl.replace("storage://", "");
       const supabase = getSupabase();

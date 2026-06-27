@@ -277,7 +277,7 @@ export default function DataTable<T>({
     `bg-white dark:bg-slate-900/50 rounded-2xl border border-gray-200/70 dark:border-slate-800 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-16px_rgba(16,24,40,0.12)] dark:shadow-none ${className}`;
 
   return (
-    <div className={`${cardCls} overflow-visible`}>
+    <div className={`${cardCls} w-full min-w-0 overflow-visible`}>
       {/* ── Toolbar: filters (left) + circular buttons (right) ────────── */}
       {showToolbar && (
         <>
@@ -334,8 +334,8 @@ export default function DataTable<T>({
       )}
 
       {/* ── Table ───────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-visible">
-        <table className="w-full text-left border-collapse">
+      <div className="flex-1 crm-x-scroll">
+        <table className="w-full text-left border-collapse min-w-[1000px]">
           <thead>
             <tr className="bg-gray-50/70 dark:bg-slate-800/30 border-y border-gray-100 dark:border-slate-800 text-[13px] font-semibold text-slate-500 dark:text-slate-400">
               {showCheckbox && (
@@ -407,7 +407,7 @@ export default function DataTable<T>({
                 );
               })}
               {actions && (
-                <th className="px-5 py-5 text-[13px] font-semibold tracking-normal text-slate-500 dark:text-slate-400 text-right whitespace-nowrap">
+                <th className="px-5 py-5 text-[13px] font-semibold tracking-normal text-slate-500 dark:text-slate-400 text-left whitespace-nowrap">
                   {actionsHeader}
                 </th>
               )}
@@ -459,7 +459,7 @@ export default function DataTable<T>({
                   ))}
                   {actions && (
                     <td className="px-5 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-2.5">
+                      <div className="flex items-center justify-start gap-2.5">
                         {rowActions.map((action, ai) => {
                           const Icon = resolveActionIcon(action);
                           const disabled = action.disabled?.(row) ?? false;

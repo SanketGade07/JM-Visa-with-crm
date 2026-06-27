@@ -12,11 +12,11 @@ const ACTIVE_PIPELINE_STATUSES: LeadStatus[] = [
 export type QuickTabFilter = {
   id: string;
   label: string;
-  statuses: VisaStatus[] | "all-non-dropped";
+  statuses: VisaStatus[] | "all";
 };
 
 export const QUICK_TAB_FILTERS: QuickTabFilter[] = [
-  { id: "All", label: "All", statuses: "all-non-dropped" },
+  { id: "All", label: "All", statuses: "all" },
   ...ACTIVE_PIPELINE_STATUSES.map((status) => ({
     id: status,
     label: getStatusLabel(status),
@@ -28,7 +28,7 @@ export const QUICK_TAB_FILTERS: QuickTabFilter[] = [
 export function matchesQuickTab(lead: Lead, tabId: string): boolean {
   const tab = QUICK_TAB_FILTERS.find((item) => item.id === tabId);
   if (!tab) return true;
-  if (tab.statuses === "all-non-dropped") return lead.status !== "DROPPED";
+  if (tab.statuses === "all") return true;
   return tab.statuses.includes(lead.status);
 }
 

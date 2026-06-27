@@ -49,7 +49,7 @@ export function HoverHint({ label, onClick, disabled, children }: HoverHintProps
       >
         {label}
         <span
-          className="absolute left-1/2 top-full -translate-x-1/2 border-x-[5px] border-x-transparent border-t-[5px] border-t-white dark:border-t-slate-800"
+          className="absolute left-1/2 top-full -translate-x-1/2 block w-0 h-0 border-x-[5px] border-x-transparent border-t-[5px] border-t-white dark:border-t-slate-800"
           aria-hidden
         />
       </div>
@@ -66,7 +66,7 @@ export function HoverHint({ label, onClick, disabled, children }: HoverHintProps
         }}
         onMouseLeave={() => setVisible(false)}
         onClick={handleClick}
-        className={disabled ? "cursor-default" : "cursor-pointer"}
+        className={`inline-block ${disabled ? "cursor-default" : "cursor-pointer"}`}
       >
         {children}
       </div>

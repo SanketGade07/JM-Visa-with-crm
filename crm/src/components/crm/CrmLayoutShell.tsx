@@ -9,6 +9,7 @@ import { CrmHeader } from "./layout/CrmHeader";
 import { CrmToast } from "./layout/CrmToast";
 import { CrmTabViews } from "./CrmTabViews";
 import { CrmModals } from "./modals/CrmModals";
+import { TooltipLayer } from "@/components/ui/TooltipLayer";
 
 function CrmLayoutContent() {
   const { isMounted, isMobileSidebarOpen, setIsMobileSidebarOpen } = useCrmLayoutContext();
@@ -35,6 +36,7 @@ function CrmLayoutContent() {
 
       <CrmModals />
       <CrmToast />
+      <TooltipLayer />
     </div>
   );
 }

@@ -7,6 +7,8 @@ import { StatusSelectPill } from "@/components/ui/StatusSelectPill";
 import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
 import { isUsaCountry } from "@/utils/countryUtils";
 import { canRecordLeadDeposit, getLeadPaymentSummary } from "@/utils/leadPaymentUtils";
+import { FiUser, FiLock, FiPhone } from "react-icons/fi";
+import { FaCar, FaUtensils, FaCity } from "react-icons/fa";
 
 type LeadManagementCardProps = {
   lead: Lead;
@@ -39,6 +41,46 @@ function InfoField({ label, value }: { label: string; value: string }) {
         {value || "—"}
       </span>
     </div>
+  );
+}
+
+function CredentialField({
+  value,
+  icon: Icon,
+  iconColorClass = "text-slate-500 dark:text-slate-400",
+  tooltipText,
+  toastMessage,
+  showToast,
+}: {
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconColorClass?: string;
+  tooltipText: string;
+  toastMessage: string;
+  showToast: (message: string, type?: "success" | "error") => void;
+}) {
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!value) return;
+    try {
+      navigator.clipboard.writeText(value);
+      showToast(toastMessage, "success");
+    } catch {
+      showToast("Failed to copy", "error");
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      data-tooltip={value ? tooltipText : undefined}
+      onClick={handleCopy}
+      disabled={!value}
+      className="flex items-center gap-2.5 text-[13px] font-semibold text-gray-800 dark:text-slate-100 rounded-xl py-2 px-3 bg-slate-50 dark:bg-slate-800/10 border border-gray-100 dark:border-slate-800/30 hover:bg-slate-100/80 dark:hover:bg-slate-800/40 hover:border-gray-200 dark:hover:border-slate-700/50 cursor-pointer transition-all w-full text-left focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed select-text"
+    >
+      <Icon className={`text-[14px] shrink-0 ${iconColorClass}`} />
+      <span className="truncate block flex-1">{value || "—"}</span>
+    </button>
   );
 }
 
@@ -83,93 +125,160 @@ export function LeadManagementCard({
     openProfileDepositModal(lead.id);
   };
 
-  const fields = (
-    <div className="space-y-4">
-        <div className="space-y-1.5">
-          <label className={fieldLabelCls} htmlFor={`lead-status-${lead.id}`}>
-            Status
-          </label>
-          <StatusSelectPill
-            variant="field"
-            value={lead.status}
-            disabled={!canModifyLeads}
-            portalId={`mgmt-status-${lead.id}`}
-            onChange={(status) => updateLeadStatus(lead.id, status)}
-          />
+  const cardCls =
+    "w-full rounded-2xl border border-gray-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/60 p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(148,163,184,0.08)] transition-all duration-300";
+
+  const highlightRingCls = highlighted
+    ? "ring-2 ring-violet-500/70 ring-offset-2 ring-offset-white dark:ring-offset-slate-950 animate-lead-created-highlight"
+    : "";
+
+  return (
+    <div className={`space-y-4 ${className}`}>
+      {/* Section 1: Lead Management */}
+      <section className={`${cardCls} ${highlightRingCls}`}>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h2 className={sectionTitleCls}>
+            Lead Management
+          </h2>
         </div>
 
-        <div className="space-y-1.5">
-          <label className={fieldLabelCls} htmlFor={`lead-counselor-${lead.id}`}>
-            Assigned To
-          </label>
-          <CounselorSelectPill
-            variant="field"
-            value={lead.counselor}
-            disabled={!canModifyLeads || !canAssignLeads}
-            portalId={`mgmt-counselor-${lead.id}`}
-            onChange={(counselor) => assignCounselor(lead.id, counselor)}
-          />
-        </div>
-
-        <div className={sectionDividerCls}>
-          <h3 className={sectionTitleCls}>Visa Portal</h3>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-3">
-            <InfoField
-              label="Username"
-              value={lead.visaCredentials?.username?.trim() ?? ""}
-            />
-            <InfoField
-              label="Password"
-              value={lead.visaCredentials?.password?.trim() ?? ""}
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className={fieldLabelCls} htmlFor={`lead-status-${lead.id}`}>
+              Status
+            </label>
+            <StatusSelectPill
+              variant="field"
+              value={lead.status}
+              disabled={!canModifyLeads}
+              portalId={`mgmt-status-${lead.id}`}
+              onChange={(status) => updateLeadStatus(lead.id, status)}
             />
           </div>
-          <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-relaxed">
-            Edit visa portal credentials in the Settings tab.
-          </p>
+
+          <div className="space-y-1.5">
+            <label className={fieldLabelCls} htmlFor={`lead-counselor-${lead.id}`}>
+              Assigned To
+            </label>
+            <CounselorSelectPill
+              variant="field"
+              value={lead.counselor}
+              disabled={!canModifyLeads || !canAssignLeads}
+              portalId={`mgmt-counselor-${lead.id}`}
+              onChange={(counselor) => assignCounselor(lead.id, counselor)}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Section 2: Visa Portal / US Slot Portal */}
+      <section className={`${cardCls} ${highlightRingCls}`}>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h2 className={sectionTitleCls}>
+            Visa Portal
+          </h2>
+        </div>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+            <CredentialField
+              value={lead.visaCredentials?.username?.trim() ?? ""}
+              icon={FiUser}
+              iconColorClass="text-slate-500 dark:text-slate-400"
+              tooltipText="Copy visa username"
+              toastMessage="Visa username copied"
+              showToast={showToast}
+            />
+            <CredentialField
+              value={lead.visaCredentials?.password?.trim() ?? ""}
+              icon={FiLock}
+              iconColorClass="text-slate-500 dark:text-slate-400"
+              tooltipText="Copy visa password"
+              toastMessage="Visa password copied"
+              showToast={showToast}
+            />
+          </div>
         </div>
 
         {isUsa ? (
-          <div className={sectionDividerCls}>
+          <div className="border-t border-gray-200 dark:border-slate-800/80 pt-4 mt-4 space-y-4">
             <h3 className={sectionTitleCls}>USA Slot Portal</h3>
             <div className="space-y-4">
-              <InfoField label="US Slot Tracking" value={deriveSlotStatusLabel(lead)} />
-
-              <div className="space-y-3">
-                <span className={fieldLabelCls}>Slot Portal</span>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-3">
-                  <InfoField
-                    label="User ID"
-                    value={lead.usaSlots?.slotPortalUsername?.trim() ?? ""}
-                  />
-                  <InfoField
-                    label="Password"
-                    value={lead.usaSlots?.slotPortalPassword?.trim() ?? ""}
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+                <CredentialField
+                  value={lead.usaSlots?.slotPortalUsername?.trim() ?? ""}
+                  icon={FiUser}
+                  iconColorClass="text-blue-500 dark:text-blue-400"
+                  tooltipText="Copy slots username"
+                  toastMessage="Slots portal username copied"
+                  showToast={showToast}
+                />
+                <CredentialField
+                  value={lead.usaSlots?.slotPortalPassword?.trim() ?? ""}
+                  icon={FiLock}
+                  iconColorClass="text-blue-500 dark:text-blue-400"
+                  tooltipText="Copy slots password"
+                  toastMessage="Slots portal password copied"
+                  showToast={showToast}
+                />
+                <CredentialField
+                  value={lead.usaSlots?.trackingMobile?.trim() ?? ""}
+                  icon={FiPhone}
+                  iconColorClass="text-blue-500 dark:text-blue-400"
+                  tooltipText="Copy slots mobile number"
+                  toastMessage="Slots tracking mobile number copied"
+                  showToast={showToast}
+                />
+                <CredentialField
+                  value={lead.usaSlots?.securityCar?.trim() ?? ""}
+                  icon={FaCar}
+                  iconColorClass="text-blue-500 dark:text-blue-400"
+                  tooltipText="Copy slots car security answer"
+                  toastMessage="Car security answer copied"
+                  showToast={showToast}
+                />
+                <CredentialField
+                  value={lead.usaSlots?.securityFood?.trim() ?? ""}
+                  icon={FaUtensils}
+                  iconColorClass="text-blue-500 dark:text-blue-400"
+                  tooltipText="Copy slots food security answer"
+                  toastMessage="Food security answer copied"
+                  showToast={showToast}
+                />
+                <CredentialField
+                  value={lead.usaSlots?.securityCity?.trim() ?? ""}
+                  icon={FaCity}
+                  iconColorClass="text-blue-500 dark:text-blue-400"
+                  tooltipText="Copy slots city security answer"
+                  toastMessage="City security answer copied"
+                  showToast={showToast}
+                />
               </div>
-
-              <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-relaxed">
-                Edit slot portal details in the Settings tab.
-              </p>
             </div>
           </div>
         ) : null}
+      </section>
 
-        <div className={sectionDividerCls}>
-          <div className="flex items-center justify-between gap-2">
-            <h3 className={sectionTitleCls}>Payments</h3>
-            {paymentSummary.status ? (
-              <span
-                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
-                  paymentSummary.status === "pending"
-                    ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
-                    : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
-                }`}
-              >
-                {paymentSummary.status === "pending" ? "Pending" : "Received"}
-              </span>
-            ) : null}
-          </div>
+      {/* Section 3: Payments */}
+      <section className={`${cardCls} ${highlightRingCls}`}>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h2 className={sectionTitleCls}>
+            Payments
+          </h2>
+          {paymentSummary.status ? (
+            <span
+              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                paymentSummary.status === "pending"
+                  ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+              }`}
+            >
+              {paymentSummary.status === "pending" ? "Pending" : "Received"}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="space-y-4">
           <div className="grid grid-cols-1 gap-2.5">
             <div className="flex items-center justify-between gap-3 text-xs">
               <span className="text-gray-500 dark:text-slate-400 font-semibold">Total package</span>
@@ -236,24 +345,7 @@ export function LeadManagementCard({
             </button>
           ) : null}
         </div>
+      </section>
     </div>
-  );
-
-  return (
-    <section
-      className={`w-full rounded-2xl border border-gray-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/60 p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(148,163,184,0.08)] transition-shadow duration-300 ${
-        highlighted
-          ? "ring-2 ring-violet-500/70 ring-offset-2 ring-offset-white dark:ring-offset-slate-950 animate-lead-created-highlight"
-          : ""
-      } ${className}`}
-    >
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <h2 className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">
-          Lead Management
-        </h2>
-      </div>
-
-      {fields}
-    </section>
   );
 }

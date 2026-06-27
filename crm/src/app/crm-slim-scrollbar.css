@@ -6,6 +6,33 @@
   scrollbar-gutter: auto !important;
 }
 
+/* Horizontal scroll variant — for wide tables that need to scroll sideways.
+   .crm-slim-scrollbar above force-hides overflow-x (it's a vertical scroller),
+   so a separate class is required to actually scroll horizontally. Vertical
+   overflow is hidden because pills/tooltips render via portals. */
+.crm-x-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.crm-x-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.crm-x-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.crm-x-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.45);
+  border-radius: 999px;
+}
+
+html.light .crm-x-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.55);
+}
+
 html.dark .crm-slim-scrollbar {
   scrollbar-color: rgba(100, 116, 139, 0.55) transparent !important;
 }

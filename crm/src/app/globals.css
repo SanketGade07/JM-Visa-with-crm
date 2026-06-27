@@ -1202,6 +1202,15 @@ button.audit-list-item:hover div.bg-emerald-500 {
   position: relative;
 }
 
+/* When the JS TooltipLayer is mounted it renders tooltips into <body> (so they
+   escape scrollable/overflow-clipped containers like the horizontally-scrolling
+   data table). Suppress the pseudo-element tooltips in that case to avoid
+   showing two. The CSS tooltips below remain as a no-JS fallback. */
+html.js-tooltips [data-tooltip]::before,
+html.js-tooltips [data-tooltip]::after {
+  display: none !important;
+}
+
 [data-tooltip]::before {
   content: attr(data-tooltip);
   position: absolute;
@@ -1286,6 +1295,29 @@ html.dark [data-tooltip][data-tooltip-position="bottom"]::after {
 
 [data-tooltip][data-tooltip-position="bottom"]:hover::after {
   transform: translate(-50%, -4px) !important;
+}
+
+/* Tooltips positioned to the top-left (extends leftward, arrow aligns to the right) */
+[data-tooltip][data-tooltip-position="top-left"]::before {
+  bottom: 125% !important;
+  left: auto !important;
+  right: 0 !important;
+  transform: translate(0, 4px) !important;
+}
+
+[data-tooltip][data-tooltip-position="top-left"]::after {
+  bottom: 125% !important;
+  left: auto !important;
+  right: 10px !important;
+  transform: translate(0, 8px) !important;
+}
+
+[data-tooltip][data-tooltip-position="top-left"]:hover::before {
+  transform: translate(0, 0) !important;
+}
+
+[data-tooltip][data-tooltip-position="top-left"]:hover::after {
+  transform: translate(0, 4px) !important;
 }
 
 /* Compact tooltips (table cells, icon buttons) */

@@ -563,116 +563,123 @@ export function CrmModals() {
                   )}
 
                   <div className="max-h-80 overflow-y-auto space-y-3 pr-1">
-                    {lead.payments.length === 0 ? (
-                      <p className="text-center py-6 text-slate-500 font-semibold text-xs">
-                        No transactions recorded for this client. Log a deposit first.
-                      </p>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs border-collapse min-w-[500px]">
-                        <thead>
-                          <tr className="border-b border-slate-800/60 text-slate-500 font-bold">
-                            <th className="pb-2">Invoice #</th>
-                            <th className="pb-2">Date</th>
-                            <th className="pb-2">Amount</th>
-                            <th className="pb-2">Method</th>
-                            <th className="pb-2 text-right">Invoice Document</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {lead.payments.map((pay) => {
-                            const isUploading = uploadingInvoiceKey === `${lead.id}-${pay.invoiceNumber}`;
-                            return (
-                              <tr key={pay.invoiceNumber} className="border-b border-slate-900 last:border-0 text-slate-300">
-                                <td className="py-3 font-semibold text-slate-100">{pay.invoiceNumber}</td>
-                                <td className="py-3 text-slate-400">{pay.date}</td>
-                                <td className="py-3 text-emerald-400 font-bold">₹{pay.amountPaid.toLocaleString()}</td>
-                                <td className="py-3 font-medium text-slate-400">{pay.paymentMethod}</td>
-                                <td className="py-3 text-right">
-                                  {pay.invoiceUrl ? (
-                                    <div className="flex items-center justify-end space-x-2">
-                                      <button
-                                        onClick={() => openSignedUrl(pay.invoiceUrl!)}
-                                        className="inline-flex items-center space-x-1 text-[10px] font-bold text-violet-400 hover:text-violet-300 hover:underline cursor-pointer"
-                                      >
-                                        <FaFileDownload className="text-[9px]" />
-                                        <span className="truncate max-w-[120px]">{pay.invoiceFile || "Open"}</span>
-                                      </button>
-                                      <button
-                                        onClick={async () => {
-                                          if (isUploading) return;
-                                          setUploadInvoiceError("");
-                                          const key = `${lead.id}-${pay.invoiceNumber}`;
-                                          setUploadingInvoiceKey(key);
-                                          const res = await uploadInvoice(lead.id, pay.invoiceNumber, "");
-                                          setUploadingInvoiceKey(null);
-                                          if (res.ok) {
-                                            showToast("Invoice attachment removed successfully!");
-                                          } else {
-                                            setUploadInvoiceError(res.error || "Removal failed");
-                                            showToast(res.error || "Removal failed", "error");
-                                          }
-                                        }}
-                                        className="p-1 text-slate-500 hover:text-rose-400 cursor-pointer"
-
-                                      >
-                                        <FaTrash className="text-[10px]" />
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center justify-end space-x-1.5">
-                                      <label
-                                        className="inline-flex items-center space-x-1 text-[10px] font-bold rounded-lg px-2 py-1 bg-slate-900 border border-slate-800 text-slate-300 hover:text-violet-400 hover:border-violet-500/30 cursor-pointer transition-all"
-                                      >
-                                        <FaFileUpload className="text-[9px]" />
-                                        <span>{isUploading ? "..." : "File"}</span>
-                                        <input
-                                          type="file"
-                                          className="hidden"
-                                          disabled={isUploading}
-                                          onChange={async (e) => {
-                                            const file = e.target.files?.[0];
-                                            if (!file) return;
+                    {(() => {
+                      const activePayments = lead.payments.filter((pay) => pay.amountPaid > 0);
+                      if (activePayments.length === 0) {
+                        return (
+                          <p className="text-center py-6 text-slate-500 font-semibold text-xs">
+                            No transactions recorded for this client. Log a deposit first.
+                          </p>
+                        );
+                      }
+                      return (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs border-collapse min-w-[500px]">
+                          <thead>
+                            <tr className="border-b border-slate-800/60 text-slate-500 font-bold">
+                              <th className="pb-2">Invoice #</th>
+                              <th className="pb-2">Date</th>
+                              <th className="pb-2">Amount</th>
+                              <th className="pb-2">Remaining</th>
+                              <th className="pb-2">Method</th>
+                              <th className="pb-2 text-right">Invoice Document</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {activePayments.map((pay) => {
+                              const isUploading = uploadingInvoiceKey === `${lead.id}-${pay.invoiceNumber}`;
+                              return (
+                                <tr key={pay.invoiceNumber} className="border-b border-slate-900 last:border-0 text-slate-300">
+                                  <td className="py-3 font-semibold text-slate-100">{pay.invoiceNumber}</td>
+                                  <td className="py-3 text-slate-400">{pay.date}</td>
+                                  <td className="py-3 text-emerald-400 font-bold">₹{pay.amountPaid.toLocaleString()}</td>
+                                  <td className="py-3 text-rose-400 font-bold">₹{(pay.pendingAmount ?? 0).toLocaleString()}</td>
+                                  <td className="py-3 font-medium text-slate-400">{pay.paymentMethod}</td>
+                                  <td className="py-3 text-right">
+                                    {pay.invoiceUrl ? (
+                                      <div className="flex items-center justify-end space-x-2">
+                                        <button
+                                          onClick={() => openSignedUrl(pay.invoiceUrl!)}
+                                          className="inline-flex items-center space-x-1 text-[10px] font-bold text-violet-400 hover:text-violet-300 hover:underline cursor-pointer"
+                                        >
+                                          <FaFileDownload className="text-[9px]" />
+                                          <span className="truncate max-w-[120px]">{pay.invoiceFile || "Open"}</span>
+                                        </button>
+                                        <button
+                                          onClick={async () => {
+                                            if (isUploading) return;
                                             setUploadInvoiceError("");
                                             const key = `${lead.id}-${pay.invoiceNumber}`;
                                             setUploadingInvoiceKey(key);
-                                            
-                                            const res = await uploadInvoice(lead.id, pay.invoiceNumber, file);
+                                            const res = await uploadInvoice(lead.id, pay.invoiceNumber, "");
                                             setUploadingInvoiceKey(null);
                                             if (res.ok) {
-                                              showToast("Invoice file uploaded successfully!");
+                                              showToast("Invoice attachment removed successfully!");
                                             } else {
-                                              setUploadInvoiceError(res.error || "Upload failed");
-                                              showToast(res.error || "Upload failed", "error");
+                                              setUploadInvoiceError(res.error || "Removal failed");
+                                              showToast(res.error || "Removal failed", "error");
                                             }
-                                            e.target.value = "";
                                           }}
-                                        />
-                                      </label>
+                                          className="p-1 text-slate-500 hover:text-rose-400 cursor-pointer"
+                                        >
+                                          <FaTrash className="text-[10px]" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center justify-end space-x-1.5">
+                                        <label
+                                          className="inline-flex items-center space-x-1 text-[10px] font-bold rounded-lg px-2 py-1 bg-slate-900 border border-slate-800 text-slate-300 hover:text-violet-400 hover:border-violet-500/30 cursor-pointer transition-all"
+                                        >
+                                          <FaFileUpload className="text-[9px]" />
+                                          <span>{isUploading ? "..." : "File"}</span>
+                                          <input
+                                            type="file"
+                                            className="hidden"
+                                            disabled={isUploading}
+                                            onChange={async (e) => {
+                                              const file = e.target.files?.[0];
+                                              if (!file) return;
+                                              setUploadInvoiceError("");
+                                              const key = `${lead.id}-${pay.invoiceNumber}`;
+                                              setUploadingInvoiceKey(key);
+                                              
+                                              const res = await uploadInvoice(lead.id, pay.invoiceNumber, file);
+                                              setUploadingInvoiceKey(null);
+                                              if (res.ok) {
+                                                showToast("Invoice file uploaded successfully!");
+                                              } else {
+                                                setUploadInvoiceError(res.error || "Upload failed");
+                                                showToast(res.error || "Upload failed", "error");
+                                              }
+                                              e.target.value = "";
+                                            }}
+                                          />
+                                        </label>
 
-                                      <button
-                                        onClick={() => {
-                                          setPastedInvoiceUrl("");
-                                          setUrlInvoiceData({
-                                            leadId: lead.id,
-                                            invoiceNumber: pay.invoiceNumber,
-                                          });
-                                        }}
-                                        className="inline-flex items-center space-x-1 text-[10px] font-bold rounded-lg px-2 py-1 bg-slate-900 border border-slate-800 text-slate-300 hover:text-violet-400 hover:border-violet-500/30 cursor-pointer transition-all"
-                                      >
-                                        <FaGlobe className="text-[9px]" />
-                                        <span>Link</span>
-                                      </button>
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                      </div>
-                    )}
+                                        <button
+                                          onClick={() => {
+                                            setPastedInvoiceUrl("");
+                                            setUrlInvoiceData({
+                                              leadId: lead.id,
+                                              invoiceNumber: pay.invoiceNumber,
+                                            });
+                                          }}
+                                          className="inline-flex items-center space-x-1 text-[10px] font-bold rounded-lg px-2 py-1 bg-slate-900 border border-slate-800 text-slate-300 hover:text-violet-400 hover:border-violet-500/30 cursor-pointer transition-all"
+                                        >
+                                          <FaGlobe className="text-[9px]" />
+                                          <span>Link</span>
+                                        </button>
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </>
               );

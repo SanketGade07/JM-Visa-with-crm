@@ -111,7 +111,8 @@ export interface Document {
   leadId: string;
   docType: string; // matches a DocumentChecklist key, e.g. "passport"
   fileName: string;
-  fileUrl: string; // storage path (storage://...) or external URL
+  fileUrl: string; // Google Drive webViewLink, or an external URL (link flow). Never a binary in Supabase.
+  driveFileId?: string; // Google Drive file ID for uploaded documents (textual metadata only)
   status: "UPLOADED" | "VERIFIED" | "REJECTED";
   uploadedBy: string;
   uploadedAt: string;

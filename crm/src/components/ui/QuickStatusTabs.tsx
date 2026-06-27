@@ -37,6 +37,10 @@ export function QuickStatusTabs({
   const tabList = isHeader ? (
     <div
       className={`${segmentedTabListHeaderClass} ${className}`.trim()}
+      // When scrollable, force the list to its intrinsic width (overriding the
+      // base `max-w-full`) so it overflows the scroll wrapper and scrolls
+      // instead of squishing the tabs.
+      style={scroll ? { width: "max-content", maxWidth: "none" } : undefined}
       role="tablist"
       aria-label="Lead status filters"
     >

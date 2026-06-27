@@ -321,31 +321,7 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
               />
             </div>
 
-            {isUsaCountry(lead.country) ? (
-              <div className="mt-5">
-                <h3 className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-3">
-                  USA Slot Tracking
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
-                  <InfoDetailField
-                    label="Mobile Number"
-                    value={lead.usaSlots?.trackingMobile?.trim() ?? ""}
-                  />
-                  <InfoDetailField
-                    label="Car"
-                    value={lead.usaSlots?.securityCar?.trim() ?? ""}
-                  />
-                  <InfoDetailField
-                    label="Food"
-                    value={lead.usaSlots?.securityFood?.trim() ?? ""}
-                  />
-                  <InfoDetailField
-                    label="City"
-                    value={lead.usaSlots?.securityCity?.trim() ?? ""}
-                  />
-                </div>
-              </div>
-            ) : null}
+
 
             <div className="mt-5">
               <label

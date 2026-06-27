@@ -237,7 +237,24 @@ export const writeDocuments = async (documents: Document[]): Promise<boolean> =>
 
 export const appendDocument = async (doc: Document): Promise<boolean> => {
   const supabase = getSupabase();
-  const { error } = await supabase.from("documents").insert(doc);
+  let { error } = await supabase.from("documents").insert(doc);
+
+  // Fall back gracefully if the optional driveFileId column hasn't been added
+  // yet (run supabase/document_drive_file_id_migration.sql to enable it).
+  if (
+    error &&
+    (error.code === "PGRST204" || error.code === "42703") &&
+    typeof error.message === "string" &&
+    error.message.toLowerCase().includes("drivefileid")
+  ) {
+    console.warn(
+      "documents.driveFileId column missing — saving without it. Run: supabase/document_drive_file_id_migration.sql"
+    );
+    const { driveFileId, ...rest } = doc;
+    void driveFileId;
+    ({ error } = await supabase.from("documents").insert(rest));
+  }
+
   if (error) {
     console.error("Error appending document to Supabase:", error);
     return false;
