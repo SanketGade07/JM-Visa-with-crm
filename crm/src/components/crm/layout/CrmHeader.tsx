@@ -380,7 +380,8 @@ export function CrmHeader() {
                           {item.leadName}
                         </p>
                         <p className="text-[11px] text-slate-500 mt-0.5">
-                          Assigned · {formatAssignedAt(item.assignedAt)}
+                          {item.kind === "discussion" ? "New message" : "Assigned"} ·{" "}
+                          {formatAssignedAt(item.assignedAt)}
                         </p>
                       </button>
                     </li>

@@ -14,10 +14,15 @@ import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "re
 const LEAD_ID_PATTERN = /^\/leads\/([^/]+)$/;
 const RESERVED_LEAD_SEGMENTS = new Set(["new"]);
 
+export type AssignmentNotificationKind = "assignment" | "discussion";
+
 export type AssignmentNotification = {
   leadId: string;
   leadName: string;
   assignedAt: string;
+  // Distinguishes a lead assignment from a new discussion message. Optional so
+  // previously stored notifications (which had no kind) keep working as before.
+  kind?: AssignmentNotificationKind;
 };
 
 export type UsaSlotView = "available" | "paid";
@@ -327,7 +332,12 @@ export function useCrmLayoutState() {
   }, [currentUser?.id, leads]);
 
   const pushAssignmentNotificationForCounselor = useCallback(
-    (counselorName: string, leadId: string, leadName?: string) => {
+    (
+      counselorName: string,
+      leadId: string,
+      leadName?: string,
+      kind: AssignmentNotificationKind = "assignment"
+    ) => {
       const counselorUser = findCounselorUser(users, counselorName);
       if (!counselorUser) return;
 
@@ -336,6 +346,7 @@ export function useCrmLayoutState() {
         leadId,
         leadName: name,
         assignedAt: new Date().toISOString(),
+        kind,
       };
 
       const next = appendStoredNotification(counselorUser.id, entry);
@@ -349,12 +360,13 @@ export function useCrmLayoutState() {
   );
 
   const pushAssignmentNotificationForAdmin = useCallback(
-    (leadId: string, leadName?: string) => {
+    (leadId: string, leadName?: string, kind: AssignmentNotificationKind = "assignment") => {
       const name = leadName ?? leads.find((l) => l.id === leadId)?.name ?? "Lead";
       const entry: AssignmentNotification = {
         leadId,
         leadName: name,
         assignedAt: new Date().toISOString(),
+        kind,
       };
 
       const admins = users.filter((u) => u.role === "ADMIN");
@@ -368,6 +380,55 @@ export function useCrmLayoutState() {
       });
     },
     [users, leads, currentUser?.id]
+  );
+
+  // Route a new lead-discussion message to the right recipient. There is exactly
+  // one Admin: any non-admin message notifies the Admin, while an Admin message
+  // notifies only the lead's assigned counselor/owner. The sender is never
+  // notified, and an unassigned lead produces no notification when the Admin
+  // posts. Per-lead de-duplication is handled by appendStoredNotification.
+  const notifyDiscussionMessage = useCallback(
+    (leadId: string) => {
+      const lead = leads.find((l) => l.id === leadId);
+      if (!lead) return;
+
+      const senderIsAdmin = (currentUser?.role ?? currentRole) === "ADMIN";
+
+      if (!senderIsAdmin) {
+        // Non-admin → Admin only (skip if the sender somehow resolves to the Admin).
+        const admin = users.find((u) => u.role === "ADMIN");
+        if (!admin || admin.id === currentUser?.id) return;
+        pushAssignmentNotificationForAdmin(leadId, lead.name, "discussion");
+        return;
+      }
+
+      // Admin → the assigned counselor/owner only.
+      const counselorUser = findCounselorUser(users, lead.counselor);
+      if (!counselorUser || counselorUser.id === currentUser?.id) return;
+      pushAssignmentNotificationForCounselor(lead.counselor, leadId, lead.name, "discussion");
+    },
+    [
+      leads,
+      users,
+      currentUser?.id,
+      currentUser?.role,
+      currentRole,
+      pushAssignmentNotificationForAdmin,
+      pushAssignmentNotificationForCounselor,
+    ]
+  );
+
+  // Post the message through the existing flow, then fan out a single role-based
+  // notification only when a message was actually created. The chat UI keeps
+  // calling postLeadDiscussionMessage unchanged.
+  const wrappedPostLeadDiscussionMessage = useCallback(
+    async (leadId: string, content: string) => {
+      const trimmed = content.trim();
+      await postLeadDiscussionMessage(leadId, content);
+      if (!trimmed) return;
+      notifyDiscussionMessage(leadId);
+    },
+    [postLeadDiscussionMessage, notifyDiscussionMessage]
   );
 
   const dismissAssignmentNotification = useCallback(
@@ -1225,7 +1286,7 @@ export function useCrmLayoutState() {
     setCurrentRole, setCurrentUser, addUser, deleteUser, resetUserPassword, addLead: wrappedAddLead, updateLeadStatus,
     updateUsaSlots, addPayment, setLeadPackage, addMeeting, updateMeeting, deleteLead, deleteLeads, restoreLead, updateLeadNotes,
     showConfirm, showAlert, closeCustomDialog, customDialog,
-    updateLeadProfile, assignCounselor: wrappedAssignCounselor, updateEmploymentCategory, setLeadCredentials, setLeadDriveFolder, patchLeadDriveFolder, uploadDocument, removeDocument, uploadInvoice, getLeadDocuments, getLeadActivities, postLeadDiscussionMessage, toggleChecklistItem,
+    updateLeadProfile, assignCounselor: wrappedAssignCounselor, updateEmploymentCategory, setLeadCredentials, setLeadDriveFolder, patchLeadDriveFolder, uploadDocument, removeDocument, uploadInvoice, getLeadDocuments, getLeadActivities, postLeadDiscussionMessage: wrappedPostLeadDiscussionMessage, toggleChecklistItem,
     assignmentNotifications, dismissAssignmentNotification, clearAssignmentNotifications, assignedLeadCount,
     handleLogout, searchTerm, setSearchTerm, checklistSearch, setChecklistSearch,
     isMobileSidebarOpen, setIsMobileSidebarOpen, isMobileDetailOpen, setIsMobileDetailOpen,
