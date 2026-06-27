@@ -644,7 +644,7 @@ export function LeadsTab() {
                                   {lead.usaSlots?.securityCar && (
                                     <button
                                       type="button"
-                                      data-tooltip={`Copy Car: ${lead.usaSlots.securityCar}`}
+                                      data-tooltip="Copy Car"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         try {
@@ -662,7 +662,7 @@ export function LeadsTab() {
                                   {lead.usaSlots?.securityFood && (
                                     <button
                                       type="button"
-                                      data-tooltip={`Copy Food: ${lead.usaSlots.securityFood}`}
+                                      data-tooltip="Copy Food"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         try {
@@ -680,7 +680,7 @@ export function LeadsTab() {
                                   {lead.usaSlots?.securityCity && (
                                     <button
                                       type="button"
-                                      data-tooltip={`Copy City: ${lead.usaSlots.securityCity}`}
+                                      data-tooltip="Copy City"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         try {

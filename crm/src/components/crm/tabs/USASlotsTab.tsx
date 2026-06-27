@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import type { Lead } from "@/context/CrmContext";
-import { FaTimes, FaTrash } from "react-icons/fa";
-import { FiSettings, FiPhone, FiMail, FiCopy } from "react-icons/fi";
+import { FaTimes, FaTrash, FaCar, FaUtensils, FaCity } from "react-icons/fa";
+import { FiSettings, FiPhone, FiMail, FiCopy, FiUser, FiLock } from "react-icons/fi";
 import DataTable, { exportRowsToCsv } from "@/components/ui/DataTable";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { useUsaSlotTabs } from "@/hooks/useUsaSlotTabs";
@@ -39,14 +39,22 @@ function CopyableCredentialCell({
   value,
   label,
   showToast,
+  icon,
+  variant = "gray",
 }: {
   value: string | undefined;
   label: string;
   showToast: ReturnType<typeof useCrmLayoutContext>["showToast"];
+  icon?: React.ReactNode;
+  variant?: "blue" | "gray";
 }) {
   if (!value) {
     return <span className="text-gray-400 dark:text-slate-500 text-[11px]">—</span>;
   }
+
+  const btnClassName = variant === "blue"
+    ? "w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+    : "w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer";
 
   return (
     <div className="inline-flex items-center gap-0.5 max-w-full min-w-0">
@@ -65,9 +73,9 @@ function CopyableCredentialCell({
             showToast("Copied", "success");
           }
         }}
-        className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+        className={btnClassName}
       >
-        <FiCopy className="text-[13px]" />
+        {icon || <FiCopy className="text-[13px]" />}
       </button>
     </div>
   );
@@ -477,6 +485,7 @@ export function USASlotsTab() {
                 value={lead.visaCredentials?.username}
                 label="Visa username"
                 showToast={showToast}
+                icon={<FiUser className="text-[13.5px]" />}
               />
             ),
           },
@@ -487,6 +496,7 @@ export function USASlotsTab() {
                 value={lead.visaCredentials?.password}
                 label="Visa password"
                 showToast={showToast}
+                icon={<FiLock className="text-[13.5px]" />}
               />
             ),
           },
@@ -497,6 +507,8 @@ export function USASlotsTab() {
                 value={lead.usaSlots?.slotPortalUsername}
                 label="Slot username"
                 showToast={showToast}
+                icon={<FiUser className="text-[13.5px]" />}
+                variant="blue"
               />
             ),
           },
@@ -507,31 +519,45 @@ export function USASlotsTab() {
                 value={lead.usaSlots?.slotPortalPassword}
                 label="Slot password"
                 showToast={showToast}
+                icon={<FiLock className="text-[13.5px]" />}
+                variant="blue"
               />
             ),
           },
           {
             header: "Car",
             render: (lead) => (
-              <span className="text-gray-600 dark:text-slate-300 text-[12px]">
-                {lead.usaSlots?.securityCar || "—"}
-              </span>
+              <CopyableCredentialCell
+                value={lead.usaSlots?.securityCar}
+                label="Car"
+                showToast={showToast}
+                icon={<FaCar className="text-[12.5px]" />}
+                variant="blue"
+              />
             ),
           },
           {
             header: "Food",
             render: (lead) => (
-              <span className="text-gray-600 dark:text-slate-300 text-[12px]">
-                {lead.usaSlots?.securityFood || "—"}
-              </span>
+              <CopyableCredentialCell
+                value={lead.usaSlots?.securityFood}
+                label="Food"
+                showToast={showToast}
+                icon={<FaUtensils className="text-[12px]" />}
+                variant="blue"
+              />
             ),
           },
           {
             header: "City",
             render: (lead) => (
-              <span className="text-gray-600 dark:text-slate-300 text-[12px]">
-                {lead.usaSlots?.securityCity || "—"}
-              </span>
+              <CopyableCredentialCell
+                value={lead.usaSlots?.securityCity}
+                label="City"
+                showToast={showToast}
+                icon={<FaCity className="text-[12px]" />}
+                variant="blue"
+              />
             ),
           },
           // {
