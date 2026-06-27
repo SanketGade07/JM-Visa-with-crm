@@ -54,7 +54,8 @@ export function CrmModals() {
     depositModalMode,
     closeDepositModal,
     tempInvoiceFile, setTempInvoiceFile,
-    tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
+    tempInvoiceUrl, setTempInvoiceUrl, tempInvoiceFileId, setTempInvoiceFileId,
+    isUploadingTempInvoice, setIsUploadingTempInvoice,
     allowedTabs, userAllowedTabs, canModifyLeads, canAssignLeads, canVerifyDocs, canSubmitVisa, canManagePayments,
     openSignedUrl, selectedLead, activeLeads, monthlyChart, chartMax, countryColors,
     countryStats, countryTotal, donutSegments, calendarData, filteredLeads,
@@ -102,6 +103,32 @@ export function CrmModals() {
                 const lead = leads.find((l) => l.id === leadId);
                 if (!lead) {
                   showToast("Client not found", "error");
+                  return;
+                }
+
+                // Block submission while the invoice is still uploading — otherwise
+                // the payment is created before tempInvoiceFile/Url are populated and
+                // the uploaded Drive file is left orphaned (the race condition).
+                if (isUploadingTempInvoice) {
+                  showToast(
+                    "Please wait for the invoice upload to finish before logging the transaction.",
+                    "error"
+                  );
+                  return;
+                }
+
+                // If an invoice file was uploaded (as opposed to a pasted URL link),
+                // require its Drive file ID, URL, and name so it is correctly linked.
+                const hasUploadedInvoice =
+                  !!tempInvoiceFile && tempInvoiceFile !== "Linked Invoice";
+                if (
+                  hasUploadedInvoice &&
+                  (!tempInvoiceFileId || !tempInvoiceUrl || !tempInvoiceFile)
+                ) {
+                  showToast(
+                    "Invoice upload did not complete. Please re-upload the invoice and try again.",
+                    "error"
+                  );
                   return;
                 }
 
@@ -196,6 +223,7 @@ export function CrmModals() {
                           onClick={() => {
                             setTempInvoiceFile("");
                             setTempInvoiceUrl("");
+                            setTempInvoiceFileId("");
                           }}
                           className="text-rose-400 hover:text-rose-300 cursor-pointer"
                         >
@@ -232,6 +260,7 @@ export function CrmModals() {
                               if (res.ok) {
                                 setTempInvoiceFile(data.document.fileName);
                                 setTempInvoiceUrl(data.document.fileUrl);
+                                setTempInvoiceFileId(data.document.driveFileId ?? "");
                                 showToast("Invoice uploaded successfully!");
                               } else {
                                 showToast(data.error || "Upload failed", "error");
@@ -257,6 +286,9 @@ export function CrmModals() {
                       value={tempInvoiceUrl && tempInvoiceFile === "Linked Invoice" ? tempInvoiceUrl : ""}
                       onChange={(e) => {
                         const val = e.target.value;
+                        // A pasted URL is an external link, not a Drive upload, so it
+                        // carries no Drive file ID.
+                        setTempInvoiceFileId("");
                         if (val) {
                           setTempInvoiceUrl(val);
                           setTempInvoiceFile("Linked Invoice");
@@ -272,11 +304,12 @@ export function CrmModals() {
                 </div>
               </div>
 
-              <button 
+              <button
                 type="submit"
-                className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-bold text-white rounded-xl shadow-lg"
+                disabled={isUploadingTempInvoice}
+                className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-bold text-white rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-violet-600 disabled:hover:to-indigo-600"
               >
-                Log Receipt Transaction
+                {isUploadingTempInvoice ? "Uploading Invoice…" : "Log Receipt Transaction"}
               </button>
             </form>
           </div>

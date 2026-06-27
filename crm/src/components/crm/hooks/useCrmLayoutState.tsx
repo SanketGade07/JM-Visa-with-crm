@@ -727,6 +727,10 @@ export function useCrmLayoutState() {
   const [depositModalMode, setDepositModalMode] = useState<"profile" | "picker">("picker");
   const [tempInvoiceFile, setTempInvoiceFile] = useState("");
   const [tempInvoiceUrl, setTempInvoiceUrl] = useState("");
+  // Google Drive file ID returned by the upload. Set only for uploaded invoices
+  // (not pasted URL links); used to verify an upload fully completed before the
+  // payment is logged, so the invoice can never be lost to the upload race.
+  const [tempInvoiceFileId, setTempInvoiceFileId] = useState("");
   const [isUploadingTempInvoice, setIsUploadingTempInvoice] = useState(false);
 
   const openProfileDepositModal = useCallback((leadId: string) => {
@@ -734,6 +738,7 @@ export function useCrmLayoutState() {
     setDepositModalMode("profile");
     setTempInvoiceFile("");
     setTempInvoiceUrl("");
+    setTempInvoiceFileId("");
     setIsAddPaymentOpen(true);
   }, []);
 
@@ -742,6 +747,7 @@ export function useCrmLayoutState() {
     setDepositModalMode("picker");
     setTempInvoiceFile("");
     setTempInvoiceUrl("");
+    setTempInvoiceFileId("");
     setIsAddPaymentOpen(true);
   }, []);
 
@@ -752,6 +758,7 @@ export function useCrmLayoutState() {
     setDepositModalMode("picker");
     setTempInvoiceFile("");
     setTempInvoiceUrl("");
+    setTempInvoiceFileId("");
   }, []);
 
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -1325,7 +1332,8 @@ export function useCrmLayoutState() {
     depositModalMode, setDepositModalMode,
     openProfileDepositModal, openPickerDepositModal, closeDepositModal,
     tempInvoiceFile, setTempInvoiceFile,
-    tempInvoiceUrl, setTempInvoiceUrl, isUploadingTempInvoice, setIsUploadingTempInvoice,
+    tempInvoiceUrl, setTempInvoiceUrl, tempInvoiceFileId, setTempInvoiceFileId,
+    isUploadingTempInvoice, setIsUploadingTempInvoice,
     allowedTabs, userAllowedTabs, isAdmin, canViewLeads, canModifyLeads, canAssignLeads, canVerifyDocs, canAccessLeadChecklist,
     canAccessChecklistForLead,
     canEditCredentials, canSubmitVisa, canManagePayments,

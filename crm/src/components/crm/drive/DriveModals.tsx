@@ -43,7 +43,6 @@ export function DrivePreviewModal({ item, isMounted, onClose }: DrivePreviewModa
   return createPortal(
     <div
       className={`fixed inset-0 z-[300] flex items-center justify-center bg-black/40 dark:bg-[#020207]/80 ${DRIVE_MODAL_BACKDROP} p-4`}
-      onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={`Preview ${item.name}`}
@@ -392,7 +391,6 @@ export function DriveModal({
   return createPortal(
     <div
       className={`fixed inset-0 z-[300] flex items-center justify-center bg-black/40 dark:bg-[#020207]/80 ${DRIVE_MODAL_BACKDROP} p-4`}
-      onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
