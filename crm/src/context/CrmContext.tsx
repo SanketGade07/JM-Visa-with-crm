@@ -144,6 +144,11 @@ export interface Lead {
   notes: string;
   lastUpdated: string;
   isDeleted: boolean;
+  passportNumber?: string;
+  passportIssueDate?: string;
+  passportExpiryDate?: string;
+  passportPlaceOfIssue?: string;
+  annualIncome?: string;
 }
 
 export interface Meeting {
@@ -189,7 +194,7 @@ interface CrmContextType {
   updateLeadNotes: (leadId: string, notes: string) => void;
   updateLeadProfile: (
     leadId: string,
-    patch: Partial<Pick<Lead, "email" | "country" | "visaType">>
+    patch: Partial<Pick<Lead, "email" | "country" | "visaType" | "passportNumber" | "passportIssueDate" | "passportExpiryDate" | "passportPlaceOfIssue" | "annualIncome">>
   ) => void;
   assignCounselor: (leadId: string, counselor: string) => void;
   setLeadCredentials: (leadId: string, creds: { username?: string; password?: string; portalUrl?: string } | null) => Promise<boolean>;
@@ -550,7 +555,19 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateLeadProfile = (
     leadId: string,
-    patch: Partial<Pick<Lead, "email" | "country" | "visaType">>
+    patch: Partial<
+      Pick<
+        Lead,
+        | "email"
+        | "country"
+        | "visaType"
+        | "passportNumber"
+        | "passportIssueDate"
+        | "passportExpiryDate"
+        | "passportPlaceOfIssue"
+        | "annualIncome"
+      >
+    >
   ) => {
     const today = new Date().toISOString().split("T")[0];
     const prev = leads.find((l) => l.id === leadId);
@@ -560,6 +577,15 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lead.id === leadId ? { ...lead, ...patch, lastUpdated: today } : lead
     );
     syncLeads(updated);
+
+    if (patch.passportNumber !== undefined && patch.passportNumber !== prev.passportNumber) {
+      logActivity({
+        leadId,
+        type: "note",
+        content: `Passport number updated to "${patch.passportNumber}"`,
+        createdBy: currentRole,
+      });
+    }
 
     if (patch.email !== undefined && patch.email !== prev.email) {
       logActivity({
@@ -582,6 +608,14 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         leadId,
         type: "note",
         content: `Visa service type changed from "${prev.visaType}" to "${patch.visaType}"`,
+        createdBy: currentRole,
+      });
+    }
+    if (patch.annualIncome !== undefined && patch.annualIncome !== prev.annualIncome) {
+      logActivity({
+        leadId,
+        type: "note",
+        content: `Annual Income updated to "${patch.annualIncome}"`,
         createdBy: currentRole,
       });
     }

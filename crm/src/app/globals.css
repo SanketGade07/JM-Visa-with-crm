@@ -573,7 +573,6 @@ textarea:disabled {
   cursor: not-allowed !important;
 }
 
-/* Text fields (force default text cursor) */
 input[type="text"],
 input[type="email"],
 input[type="number"],
@@ -581,6 +580,47 @@ input[type="date"],
 input[type="password"],
 textarea {
   cursor: text;
+}
+
+/* Theme-responsive styling for native HTML5 date input indicators and calendar dropdowns */
+input[type="date"] {
+  color-scheme: light;
+}
+
+html.dark input[type="date"],
+.dark input[type="date"] {
+  color-scheme: dark;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Theme-responsive styling for native HTML select dropdown option items */
+select {
+  color-scheme: light;
+}
+
+html.dark select,
+.dark select {
+  color-scheme: dark;
+}
+
+select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.dark select option,
+.dark select option {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
 }
 
 /* ==========================================

@@ -257,7 +257,7 @@ export function PaymentsTab() {
         },
       },
       {
-        header: "Invoiced Package",
+        header: "Service Charges",
         render: (lead) => {
           const total = lead.payments[0]?.totalPackage || 0;
           return (

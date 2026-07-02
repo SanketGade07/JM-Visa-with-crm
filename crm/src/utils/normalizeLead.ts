@@ -74,15 +74,24 @@ export const LEAD_DB_COLUMNS = [
   "usaSlots",
   "visaCredentials",
   "driveFolderId",
+  "passportNumber",
+  "passportIssueDate",
+  "passportExpiryDate",
+  "passportPlaceOfIssue",
+  "annualIncome",
 ] as const;
 
 export function serializeLeadForDb(
   lead: Lead,
-  options?: { omitAssignedAt?: boolean }
+  options?: { omitColumns?: Set<string> | string[] }
 ): Record<string, unknown> {
   const row: Record<string, unknown> = {};
+  const omitSet = options?.omitColumns
+    ? (options.omitColumns instanceof Set ? options.omitColumns : new Set(options.omitColumns))
+    : new Set<string>();
+
   for (const key of LEAD_DB_COLUMNS) {
-    if (options?.omitAssignedAt && key === "assignedAt") continue;
+    if (omitSet.has(key)) continue;
     const value = lead[key as keyof Lead];
     if (value !== undefined) {
       row[key] = value;
@@ -127,5 +136,10 @@ export function normalizeLead(raw: Record<string, unknown>): Lead {
       isUsaCountry(country) || usaSlotsRaw
         ? normalizeUsaSlots(usaSlotsRaw)
         : undefined,
+    passportNumber: (raw.passportNumber as string) ?? (raw.passportnumber as string) ?? "",
+    passportIssueDate: (raw.passportIssueDate as string) ?? (raw.passportissuedate as string) ?? "",
+    passportExpiryDate: (raw.passportExpiryDate as string) ?? (raw.passportexpirydate as string) ?? "",
+    passportPlaceOfIssue: (raw.passportPlaceOfIssue as string) ?? (raw.passportplaceofissue as string) ?? "",
+    annualIncome: (raw.annualIncome as string) ?? (raw.annualincome as string) ?? "",
   } as Lead;
 }

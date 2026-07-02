@@ -6,9 +6,10 @@ import { FaCheck } from "react-icons/fa";
 export const WIZARD_STEPS = [
   { id: 1, label: "Service Selection", shortLabel: "Service" },
   { id: 2, label: "Client Information", shortLabel: "Client" },
-  { id: 3, label: "Application Credentials", shortLabel: "Credentials" },
-  { id: 4, label: "Case Information", shortLabel: "Case Info" },
-  { id: 5, label: "Review & Submit", shortLabel: "Review" },
+  { id: 3, label: "Passport Details", shortLabel: "Passport" },
+  { id: 4, label: "Application Credentials", shortLabel: "Credentials" },
+  { id: 5, label: "Case Information", shortLabel: "Case Info" },
+  { id: 6, label: "Review & Submit", shortLabel: "Review" },
 ] as const;
 
 export type WizardStepId = (typeof WIZARD_STEPS)[number]["id"];
@@ -18,6 +19,7 @@ type WizardProgressProps = {
   onStepClick?: (step: WizardStepId) => void;
   allowFullNavigation?: boolean;
   completedSteps?: ReadonlySet<WizardStepId>;
+  activeStepIds?: WizardStepId[];
   className?: string;
 };
 
@@ -29,7 +31,7 @@ function getStepState(
 ) {
   const isComplete =
     stepId !== currentStep &&
-    stepId !== 5 &&
+    stepId !== 6 &&
     (completedSteps.has(stepId) || (!allowFullNavigation && stepId < currentStep));
 
   return {
@@ -44,6 +46,7 @@ export function WizardProgress({
   onStepClick,
   allowFullNavigation = false,
   completedSteps = new Set(),
+  activeStepIds = [1, 2, 4, 5, 6],
   className = "",
 }: WizardProgressProps) {
   const handleStepClick = (stepId: WizardStepId) => {
@@ -58,11 +61,15 @@ export function WizardProgress({
     onStepClick(stepId);
   };
 
+  const renderedSteps = WIZARD_STEPS.filter((step) => activeStepIds.includes(step.id));
+  const currentStepIndex = activeStepIds.indexOf(currentStep);
+  const currentStepDisplayNumber = currentStepIndex !== -1 ? currentStepIndex + 1 : 1;
+
   return (
     <div className={className}>
       {/* Desktop: horizontal stepper */}
       <ol className="hidden sm:flex items-center w-full">
-        {WIZARD_STEPS.map((step, index) => {
+        {renderedSteps.map((step, index) => {
           const { isComplete, isCurrent } = getStepState(
             step.id,
             currentStep,
@@ -73,7 +80,7 @@ export function WizardProgress({
             step.id !== currentStep &&
             Boolean(onStepClick) &&
             (allowFullNavigation || step.id < currentStep);
-          const isLast = index === WIZARD_STEPS.length - 1;
+          const isLast = index === renderedSteps.length - 1;
 
           const circleClassName = `flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0 transition-colors ${
             isComplete
@@ -94,7 +101,7 @@ export function WizardProgress({
           const stepContent = (
             <>
               <div className={circleClassName}>
-                {isComplete ? <FaCheck className="text-[10px]" /> : step.id}
+                {isComplete ? <FaCheck className="text-[10px]" /> : index + 1}
               </div>
               <span className={labelClassName}>{step.label}</span>
             </>
@@ -142,20 +149,20 @@ export function WizardProgress({
       <div className="sm:hidden space-y-2">
         <div className="flex items-center justify-between text-xs">
           <span className="font-bold text-slate-900 dark:text-white">
-            Step {currentStep} of {WIZARD_STEPS.length}
+            Step {currentStepDisplayNumber} of {activeStepIds.length}
           </span>
           <span className="text-slate-700 dark:text-slate-400 font-semibold">
-            {WIZARD_STEPS[currentStep - 1]?.label}
+            {WIZARD_STEPS.find((s) => s.id === currentStep)?.label}
           </span>
         </div>
         <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-violet-600 to-indigo-600 rounded-full transition-all duration-300"
-            style={{ width: `${(currentStep / WIZARD_STEPS.length) * 100}%` }}
+            style={{ width: `${(currentStepDisplayNumber / activeStepIds.length) * 100}%` }}
           />
         </div>
         <div className="flex justify-between gap-1">
-          {WIZARD_STEPS.map((step) => {
+          {renderedSteps.map((step, index) => {
             const { isComplete, isCurrent } = getStepState(
               step.id,
               currentStep,

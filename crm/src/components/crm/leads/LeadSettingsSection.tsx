@@ -24,6 +24,7 @@ import {
   FiLink,
   FiMail,
   FiUser,
+  FiDollarSign,
 } from "react-icons/fi";
 import {
   FaCheckCircle,
@@ -46,6 +47,36 @@ import {
 } from "../drive/driveTheme";
 import { extractFolderId, parseApiError } from "../drive/driveUtils";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
+
+const DAYS_OPTIONS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
+
+const MONTHS_OPTIONS = [
+  { value: "01", label: "Jan" },
+  { value: "02", label: "Feb" },
+  { value: "03", label: "Mar" },
+  { value: "04", label: "Apr" },
+  { value: "05", label: "May" },
+  { value: "06", label: "Jun" },
+  { value: "07", label: "Jul" },
+  { value: "08", label: "Aug" },
+  { value: "09", label: "Sep" },
+  { value: "10", label: "Oct" },
+  { value: "11", label: "Nov" },
+  { value: "12", label: "Dec" },
+];
+
+const currentYear = new Date().getFullYear();
+const ISSUE_YEARS = Array.from({ length: 100 }, (_, i) => String(currentYear - i));
+const EXPIRY_YEARS = Array.from({ length: 50 }, (_, i) => String(currentYear + i));
+
+const parseIsoDate = (dateStr: string) => {
+  if (!dateStr) return { day: "", month: "", year: "" };
+  const parts = dateStr.split("-");
+  if (parts.length === 3) {
+    return { year: parts[0], month: parts[1], day: parts[2] };
+  }
+  return { day: "", month: "", year: "" };
+};
 
 type SlotStatus = "available" | "paid";
 
@@ -334,10 +365,49 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
   );
 
   const [emailDraft, setEmailDraft] = useState(lead.email);
+  const [passportNumberDraft, setPassportNumberDraft] = useState(lead.passportNumber ?? "");
+  const [passportIssueDateDraft, setPassportIssueDateDraft] = useState(lead.passportIssueDate ?? "");
+  const [passportExpiryDateDraft, setPassportExpiryDateDraft] = useState(lead.passportExpiryDate ?? "");
+  const [passportPlaceOfIssueDraft, setPassportPlaceOfIssueDraft] = useState(lead.passportPlaceOfIssue ?? "");
+  const [annualIncomeDraft, setAnnualIncomeDraft] = useState(lead.annualIncome ?? "");
+
+  const parsedIssue = parseIsoDate(passportIssueDateDraft);
+  const parsedExpiry = parseIsoDate(passportExpiryDateDraft);
+
+  const handleDatePartChange = (
+    field: "passportIssueDate" | "passportExpiryDate",
+    part: "day" | "month" | "year",
+    value: string,
+    currentVal: string,
+    setDraft: (val: string) => void,
+    toastMsg: string
+  ) => {
+    const parsed = parseIsoDate(currentVal);
+    parsed[part] = value;
+    const isoString = `${parsed.year || ""}-${parsed.month || ""}-${parsed.day || ""}`;
+    setDraft(isoString);
+    updateLeadProfile(lead.id, { [field]: isoString });
+    if (parsed.day && parsed.month && parsed.year) {
+      showToast(toastMsg, "success");
+    }
+  };
 
   useEffect(() => {
     setEmailDraft(lead.email);
-  }, [lead.id, lead.email]);
+    setPassportNumberDraft(lead.passportNumber ?? "");
+    setPassportIssueDateDraft(lead.passportIssueDate ?? "");
+    setPassportExpiryDateDraft(lead.passportExpiryDate ?? "");
+    setPassportPlaceOfIssueDraft(lead.passportPlaceOfIssue ?? "");
+    setAnnualIncomeDraft(lead.annualIncome ?? "");
+  }, [
+    lead.id,
+    lead.email,
+    lead.passportNumber,
+    lead.passportIssueDate,
+    lead.passportExpiryDate,
+    lead.passportPlaceOfIssue,
+    lead.annualIncome,
+  ]);
 
   const employmentCategory = lead.employmentCategory ?? DEFAULT_EMPLOYMENT_CATEGORY;
   const activeKeys = getChecklistKeysForLead(employmentCategory);
@@ -588,6 +658,41 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
     showToast("Profile updated", "success");
   };
 
+  const handleAnnualIncomeSave = () => {
+    const trimmed = annualIncomeDraft.trim();
+    if (trimmed === (lead.annualIncome ?? "")) return;
+    updateLeadProfile(lead.id, { annualIncome: trimmed });
+    showToast("Profile updated", "success");
+  };
+
+  const handlePassportNumberSave = () => {
+    const trimmed = passportNumberDraft.trim();
+    if (trimmed === (lead.passportNumber ?? "")) return;
+    updateLeadProfile(lead.id, { passportNumber: trimmed });
+    showToast("Passport number updated", "success");
+  };
+
+  const handlePassportIssueDateSave = () => {
+    const val = passportIssueDateDraft;
+    if (val === (lead.passportIssueDate ?? "")) return;
+    updateLeadProfile(lead.id, { passportIssueDate: val });
+    showToast("Passport issue date updated", "success");
+  };
+
+  const handlePassportExpiryDateSave = () => {
+    const val = passportExpiryDateDraft;
+    if (val === (lead.passportExpiryDate ?? "")) return;
+    updateLeadProfile(lead.id, { passportExpiryDate: val });
+    showToast("Passport expiry date updated", "success");
+  };
+
+  const handlePassportPlaceOfIssueSave = () => {
+    const trimmed = passportPlaceOfIssueDraft.trim();
+    if (trimmed === (lead.passportPlaceOfIssue ?? "")) return;
+    updateLeadProfile(lead.id, { passportPlaceOfIssue: trimmed });
+    showToast("Passport place of issue updated", "success");
+  };
+
   return (
     <div className="space-y-6">
       <SettingsCard title="Lead Profile">
@@ -669,6 +774,148 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
                 }}
               />
             </div>
+          </EditableProfileField>
+
+          <EditableProfileField icon={FiDollarSign} label="Annual Income (INR)" htmlFor={`profile-annual-income-${lead.id}`}>
+            <input
+              id={`profile-annual-income-${lead.id}`}
+              type="number"
+              min="0"
+              value={annualIncomeDraft}
+              onChange={(e) => setAnnualIncomeDraft(e.target.value)}
+              onBlur={() => handleAnnualIncomeSave()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.currentTarget.blur();
+                }
+              }}
+              disabled={!canModifyLeads}
+              placeholder="e.g. 800000"
+              className={profileEmailInputCls}
+            />
+          </EditableProfileField>
+        </div>
+      </SettingsCard>
+
+      <SettingsCard title="Passport Details">
+        <style>{SETTINGS_PROFILE_FIELD_THEME_CSS}</style>
+        <div className="lead-settings-profile-fields grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+          <EditableProfileField icon={FiFileText} label="Passport Number" htmlFor={`profile-passport-number-${lead.id}`}>
+            <input
+              id={`profile-passport-number-${lead.id}`}
+              type="text"
+              value={passportNumberDraft}
+              onChange={(e) => setPassportNumberDraft(e.target.value)}
+              onBlur={() => handlePassportNumberSave()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.currentTarget.blur();
+                }
+              }}
+              disabled={!canModifyLeads}
+              placeholder="e.g. A1234567"
+              className={profileEmailInputCls}
+            />
+          </EditableProfileField>
+
+          <EditableProfileField icon={FiCalendar} label="Passport Issue Date">
+            <div className="grid grid-cols-3 gap-2">
+              <select
+                value={parsedIssue.day}
+                onChange={(e) => handleDatePartChange("passportIssueDate", "day", e.target.value, passportIssueDateDraft, setPassportIssueDateDraft, "Passport issue date updated")}
+                disabled={!canModifyLeads}
+                className={profileEmailInputCls}
+              >
+                <option value="">Day</option>
+                {DAYS_OPTIONS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <select
+                value={parsedIssue.month}
+                onChange={(e) => handleDatePartChange("passportIssueDate", "month", e.target.value, passportIssueDateDraft, setPassportIssueDateDraft, "Passport issue date updated")}
+                disabled={!canModifyLeads}
+                className={profileEmailInputCls}
+              >
+                <option value="">Month</option>
+                {MONTHS_OPTIONS.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                placeholder="Year"
+                value={parsedIssue.year}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, ""); // Digits only
+                  handleDatePartChange("passportIssueDate", "year", val, passportIssueDateDraft, setPassportIssueDateDraft, "Passport issue date updated");
+                }}
+                disabled={!canModifyLeads}
+                className={profileEmailInputCls}
+              />
+            </div>
+          </EditableProfileField>
+
+          <EditableProfileField icon={FiCalendar} label="Passport Expiry Date">
+            <div className="grid grid-cols-3 gap-2">
+              <select
+                value={parsedExpiry.day}
+                onChange={(e) => handleDatePartChange("passportExpiryDate", "day", e.target.value, passportExpiryDateDraft, setPassportExpiryDateDraft, "Passport expiry date updated")}
+                disabled={!canModifyLeads}
+                className={profileEmailInputCls}
+              >
+                <option value="">Day</option>
+                {DAYS_OPTIONS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <select
+                value={parsedExpiry.month}
+                onChange={(e) => handleDatePartChange("passportExpiryDate", "month", e.target.value, passportExpiryDateDraft, setPassportExpiryDateDraft, "Passport expiry date updated")}
+                disabled={!canModifyLeads}
+                className={profileEmailInputCls}
+              >
+                <option value="">Month</option>
+                {MONTHS_OPTIONS.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                placeholder="Year"
+                value={parsedExpiry.year}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, ""); // Digits only
+                  handleDatePartChange("passportExpiryDate", "year", val, passportExpiryDateDraft, setPassportExpiryDateDraft, "Passport expiry date updated");
+                }}
+                disabled={!canModifyLeads}
+                className={profileEmailInputCls}
+              />
+            </div>
+          </EditableProfileField>
+
+          <EditableProfileField icon={FiGlobe} label="Place of Issue" htmlFor={`profile-passport-place-${lead.id}`}>
+            <input
+              id={`profile-passport-place-${lead.id}`}
+              type="text"
+              value={passportPlaceOfIssueDraft}
+              onChange={(e) => setPassportPlaceOfIssueDraft(e.target.value)}
+              onBlur={() => handlePassportPlaceOfIssueSave()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.currentTarget.blur();
+                }
+              }}
+              disabled={!canModifyLeads}
+              placeholder="e.g. Delhi"
+              className={profileEmailInputCls}
+            />
           </EditableProfileField>
         </div>
       </SettingsCard>

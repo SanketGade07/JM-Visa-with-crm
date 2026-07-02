@@ -21,7 +21,7 @@ const LEAD_SOURCE_LABELS: Record<string, string> = {
   SOCIAL_MEDIA: "Social Media",
 };
 
-function formatPackageAmount(value: string): React.ReactNode {
+function formatCurrencyAmount(value: string): React.ReactNode {
   if (!value.trim()) {
     return summaryNotSet();
   }
@@ -90,7 +90,20 @@ export function CreateLeadReviewStep({ state, onEditStep }: CreateLeadReviewStep
           <SummaryRow label="Phone" value={summaryText(state.phone)} />
         </SummaryCard>
 
-        <SummaryCard title="Application Credentials" step={3} onEdit={onEditStep}>
+        {(state.leadType === "visa" ||
+          state.passportNumber.trim() ||
+          state.passportIssueDate.trim() ||
+          state.passportExpiryDate.trim() ||
+          state.passportPlaceOfIssue.trim()) && (
+          <SummaryCard title="Passport Details" step={3} onEdit={onEditStep}>
+            <SummaryRow label="Passport number" value={summaryText(state.passportNumber)} />
+            <SummaryRow label="Passport issue date" value={summaryText(state.passportIssueDate)} />
+            <SummaryRow label="Passport expiry date" value={summaryText(state.passportExpiryDate)} />
+            <SummaryRow label="Place of issue" value={summaryText(state.passportPlaceOfIssue)} />
+          </SummaryCard>
+        )}
+
+        <SummaryCard title="Application Credentials" step={4} onEdit={onEditStep}>
           <SummaryRow
             label="Immigration country"
             value={summaryText(state.immigrationCountry)}
@@ -125,7 +138,7 @@ export function CreateLeadReviewStep({ state, onEditStep }: CreateLeadReviewStep
           )}
         </SummaryCard>
 
-        <SummaryCard title="Case Information" step={4} onEdit={onEditStep}>
+        <SummaryCard title="Case Information" step={5} onEdit={onEditStep}>
           <SummaryRow label="Visa subtype" value={summaryText(state.visaSubtype)} />
           <SummaryRow label="Case officer" value={summaryText(state.caseOfficer)} />
           <SummaryRow
@@ -133,7 +146,8 @@ export function CreateLeadReviewStep({ state, onEditStep }: CreateLeadReviewStep
             value={summaryText(LEAD_SOURCE_LABELS[state.leadSource] ?? state.leadSource)}
           />
           <SummaryRow label="Employment category" value={summaryText(employmentLabel)} />
-          <SummaryRow label="Package amount" value={formatPackageAmount(state.packageAmount)} />
+          <SummaryRow label="Service charges" value={formatCurrencyAmount(state.packageAmount)} />
+          <SummaryRow label="Annual income" value={formatCurrencyAmount(state.annualIncome)} />
           <SummaryRow
             label="Initial notes"
             value={

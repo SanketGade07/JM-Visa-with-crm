@@ -28,6 +28,10 @@ export const CREATE_LEAD_FIELD_IDS: Partial<Record<keyof CreateLeadFormState, st
   clientName: "create-lead-client-name",
   email: "create-lead-email",
   phone: "create-lead-phone",
+  passportNumber: "create-lead-passport-number",
+  passportIssueDate: "create-lead-passport-issue-date",
+  passportExpiryDate: "create-lead-passport-expiry-date",
+  passportPlaceOfIssue: "create-lead-passport-place-of-issue",
   immigrationCountry: "create-lead-immigration-country",
   loginId: "create-lead-login-id",
   password: "create-lead-password",
@@ -42,12 +46,14 @@ export const CREATE_LEAD_FIELD_IDS: Partial<Record<keyof CreateLeadFormState, st
   leadSource: "create-lead-lead-source",
   employmentCategory: "create-lead-employment-category",
   packageAmount: "create-lead-package-amount",
+  annualIncome: "create-lead-annual-income",
 };
 
 const STEP_FIELD_ORDER: Record<WizardStepId, (keyof CreateLeadFormState)[]> = {
   1: ["leadType", "visaSubtype"],
   2: ["clientName", "email", "phone"],
-  3: [
+  3: ["passportNumber", "passportIssueDate", "passportExpiryDate", "passportPlaceOfIssue"],
+  4: [
     "immigrationCountry",
     "loginId",
     "password",
@@ -59,9 +65,16 @@ const STEP_FIELD_ORDER: Record<WizardStepId, (keyof CreateLeadFormState)[]> = {
     "usaSecurityFood",
     "usaSecurityCity",
   ],
-  4: ["visaSubtype", "caseOfficer", "leadSource", "employmentCategory", "packageAmount"],
-  5: [],
+  5: ["visaSubtype", "caseOfficer", "leadSource", "employmentCategory", "packageAmount", "annualIncome"],
+  6: [],
 };
+
+export function getActiveStepIds(leadType: CreateLeadType): WizardStepId[] {
+  if (leadType === "visa") {
+    return [1, 2, 3, 4, 5, 6];
+  }
+  return [1, 2, 4, 5, 6];
+}
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -71,6 +84,12 @@ function isValidEmail(email: string): boolean {
 }
 
 function isValidPackageAmount(value: string): boolean {
+  if (!value.trim()) return true;
+  const parsed = parseFloat(value);
+  return !Number.isNaN(parsed) && parsed >= 0;
+}
+
+function isValidAnnualIncome(value: string): boolean {
   if (!value.trim()) return true;
   const parsed = parseFloat(value);
   return !Number.isNaN(parsed) && parsed >= 0;
@@ -104,6 +123,25 @@ export function getStepFieldErrors(
       break;
     }
     case 3: {
+      if (state.leadType === "visa") {
+        if (!state.passportNumber.trim()) {
+          errors.passportNumber = "Passport number is required.";
+        }
+        const issueParts = state.passportIssueDate.split("-");
+        if (issueParts.length < 3 || issueParts.some((p) => !p.trim())) {
+          errors.passportIssueDate = "Passport issue date is required.";
+        }
+        const expiryParts = state.passportExpiryDate.split("-");
+        if (expiryParts.length < 3 || expiryParts.some((p) => !p.trim())) {
+          errors.passportExpiryDate = "Passport expiry date is required.";
+        }
+        if (!state.passportPlaceOfIssue.trim()) {
+          errors.passportPlaceOfIssue = "Passport place of issue is required.";
+        }
+      }
+      break;
+    }
+    case 4: {
       if (!state.immigrationCountry) {
         errors.immigrationCountry = "Select an immigration country.";
       }
@@ -138,7 +176,7 @@ export function getStepFieldErrors(
       }
       break;
     }
-    case 4: {
+    case 5: {
       if (!state.visaSubtype.trim()) {
         errors.visaSubtype = "Visa subtype is required.";
       }
@@ -149,11 +187,14 @@ export function getStepFieldErrors(
         errors.employmentCategory = "Select an employment category.";
       }
       if (!isValidPackageAmount(state.packageAmount)) {
-        errors.packageAmount = "Package amount must be a valid non-negative number.";
+        errors.packageAmount = "Service charges must be a valid non-negative number.";
+      }
+      if (!isValidAnnualIncome(state.annualIncome)) {
+        errors.annualIncome = "Annual income must be a valid non-negative number.";
       }
       break;
     }
-    case 5:
+    case 6:
       break;
   }
 
@@ -175,8 +216,9 @@ export function isStepValid(step: WizardStepId, state: CreateLeadFormState): boo
 }
 
 export function findFirstInvalidStep(state: CreateLeadFormState): WizardStepId | null {
-  for (const step of [1, 2, 3, 4] as WizardStepId[]) {
-    if (!validateStep(step, state).valid) {
+  const activeSteps = getActiveStepIds(state.leadType);
+  for (const step of activeSteps) {
+    if (step < 6 && !validateStep(step, state).valid) {
       return step;
     }
   }
@@ -187,7 +229,9 @@ export function findFirstInvalidField(state: CreateLeadFormState): {
   step: WizardStepId;
   field: keyof CreateLeadFormState;
 } | null {
-  for (const step of [1, 2, 3, 4] as WizardStepId[]) {
+  const activeSteps = getActiveStepIds(state.leadType);
+  for (const step of activeSteps) {
+    if (step === 6) continue;
     const fieldErrors = getStepFieldErrors(step, state);
     if (Object.keys(fieldErrors).length === 0) {
       continue;
@@ -317,8 +361,18 @@ export function useCreateLeadForm() {
   useEffect(() => {
     setCompletedSteps((prev) => {
       let next: Set<WizardStepId> | null = null;
+      const activeSteps = getActiveStepIds(state.leadType);
 
-      for (const step of [1, 2, 3, 4] as WizardStepId[]) {
+      for (const step of [1, 2, 3, 4, 5, 6] as WizardStepId[]) {
+        const isActive = activeSteps.includes(step);
+        if (!isActive) {
+          if (prev.has(step)) {
+            if (!next) next = new Set(prev);
+            next.delete(step);
+          }
+          continue;
+        }
+
         const isValid = isStepValid(step, state);
 
         if (prev.has(step)) {
@@ -342,7 +396,7 @@ export function useCreateLeadForm() {
 
   const goToStep = useCallback((step: WizardStepId) => {
     setCurrentStep(step);
-    if (step === 5) {
+    if (step === 6) {
       setHasCompletedWizard(true);
       setReturnToReview(false);
     }
@@ -359,7 +413,7 @@ export function useCreateLeadForm() {
   const editStepFromReview = useCallback(
     (step: WizardStepId) => {
       if (step === currentStep) return;
-      if (currentStep !== 5 || step >= 5) return;
+      if (currentStep !== 6 || step >= 6) return;
       setReturnToReview(true);
       goToStep(step);
     },
@@ -381,12 +435,14 @@ export function useCreateLeadForm() {
     });
 
     if (returnToReview) {
-      goToStep(5);
+      goToStep(6);
       return true;
     }
 
-    if (currentStep < 5) {
-      const nextStep = (currentStep + 1) as WizardStepId;
+    const activeSteps = getActiveStepIds(state.leadType);
+    const currentIndex = activeSteps.indexOf(currentStep);
+    if (currentIndex !== -1 && currentIndex < activeSteps.length - 1) {
+      const nextStep = activeSteps[currentIndex + 1];
       goToStep(nextStep);
       return true;
     }

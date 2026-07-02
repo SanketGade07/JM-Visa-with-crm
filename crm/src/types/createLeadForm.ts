@@ -13,6 +13,10 @@ export type CreateLeadFormState = {
   clientName: string;
   email: string;
   phone: string;
+  passportNumber: string;
+  passportIssueDate: string;
+  passportExpiryDate: string;
+  passportPlaceOfIssue: string;
   immigrationCountry: CountryType | "";
   loginId: string;
   password: string;
@@ -27,6 +31,7 @@ export type CreateLeadFormState = {
   leadSource: LeadSource;
   employmentCategory: EmploymentCategory;
   packageAmount: string;
+  annualIncome: string;
   notes: string;
 };
 
@@ -36,6 +41,10 @@ export const CREATE_LEAD_INITIAL_STATE: CreateLeadFormState = {
   clientName: "",
   email: "",
   phone: "",
+  passportNumber: "",
+  passportIssueDate: "",
+  passportExpiryDate: "",
+  passportPlaceOfIssue: "",
   immigrationCountry: "",
   loginId: "",
   password: "",
@@ -50,5 +59,6 @@ export const CREATE_LEAD_INITIAL_STATE: CreateLeadFormState = {
   leadSource: "MANUAL",
   employmentCategory: DEFAULT_EMPLOYMENT_CATEGORY,
   packageAmount: "",
+  annualIncome: "",
   notes: "",
 };

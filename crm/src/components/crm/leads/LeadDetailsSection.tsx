@@ -12,6 +12,8 @@ import {
   FiPhone,
   FiSend,
   FiUser,
+  FiCalendar,
+  FiDollarSign,
 } from "react-icons/fi";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import {
@@ -66,6 +68,19 @@ function formatMessageTimestamp(iso: string): string {
       year: "numeric",
       hour: "numeric",
       minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function formatDisplayDate(iso: string): string {
+  if (!iso) return "—";
+  try {
+    return new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
     });
   } catch {
     return iso;
@@ -298,6 +313,13 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
     EMPLOYMENT_CATEGORY_OPTIONS.find((opt) => opt.value === employmentCategory)?.label ??
     employmentCategory;
 
+  const formatAnnualIncome = (val?: string) => {
+    if (!val) return "—";
+    const num = parseFloat(val);
+    if (Number.isNaN(num)) return val;
+    return `₹${num.toLocaleString("en-IN")}`;
+  };
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start xl:items-stretch h-full min-h-0">
       <div className="min-w-0 flex flex-col xl:h-full xl:min-h-0 xl:overflow-hidden">
@@ -319,6 +341,11 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
                 label="Employment Category"
                 value={employmentLabel}
               />
+              <DetailField icon={FiDollarSign} label="Annual Income" value={formatAnnualIncome(lead.annualIncome)} />
+              <DetailField icon={FiFileText} label="Passport Number" value={lead.passportNumber ?? ""} />
+              <DetailField icon={FiCalendar} label="Passport Issue Date" value={lead.passportIssueDate ? formatDisplayDate(lead.passportIssueDate) : ""} />
+              <DetailField icon={FiCalendar} label="Passport Expiry Date" value={lead.passportExpiryDate ? formatDisplayDate(lead.passportExpiryDate) : ""} />
+              <DetailField icon={FiGlobe} label="Passport Place of Issue" value={lead.passportPlaceOfIssue ?? ""} />
             </div>
 
 

@@ -79,28 +79,37 @@ export const readLeads = async (): Promise<Lead[]> => {
 export const writeLeads = async (leads: Lead[]): Promise<boolean> => {
   const supabase = getSupabase();
 
-  const upsert = async (omitAssignedAt: boolean) => {
-    const rows = leads.map((lead) => serializeLeadForDb(lead, { omitAssignedAt }));
-    return supabase.from("leads").upsert(rows);
-  };
+  const omittedColumns = new Set<string>();
+  let attempts = 0;
+  const maxAttempts = 10;
 
-  let { error } = await upsert(false);
-  if (
-    error?.code === "PGRST204" &&
-    typeof error.message === "string" &&
-    error.message.includes("assignedAt")
-  ) {
-    console.warn(
-      "leads.assignedAt column missing — saving without it. Run: npm run migrate:assigned-at"
-    );
-    ({ error } = await upsert(true));
+  while (attempts < maxAttempts) {
+    const rows = leads.map((lead) => serializeLeadForDb(lead, { omitColumns: omittedColumns }));
+    const { error } = await supabase.from("leads").upsert(rows);
+
+    if (!error) {
+      return true;
+    }
+
+    const errMsg = typeof error.message === "string" ? error.message : "";
+    const columnMatch =
+      errMsg.match(/Could not find the '([^']+)' column/) ||
+      errMsg.match(/column "([^"]+)" of relation/) ||
+      errMsg.match(/column "([^"]+)" does not exist/);
+
+    if (columnMatch && columnMatch[1]) {
+      const missingColumn = columnMatch[1];
+      console.warn(`Column '${missingColumn}' is missing from the Supabase table — retrying without it.`);
+      omittedColumns.add(missingColumn);
+      attempts++;
+    } else {
+      console.error("Error writing leads to Supabase:", error);
+      return false;
+    }
   }
 
-  if (error) {
-    console.error("Error writing leads to Supabase:", error);
-    return false;
-  }
-  return true;
+  console.error("Failed to write leads to Supabase: reached maximum retry attempts");
+  return false;
 };
 
 export const updateLeadCredentials = async (

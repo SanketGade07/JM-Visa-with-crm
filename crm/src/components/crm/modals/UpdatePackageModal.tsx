@@ -58,7 +58,7 @@ export function UpdatePackageModal({
 
         <div>
           <h3 className="text-sm font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-slate-900 pb-3">
-            {isUpdate ? "Update Invoiced Package" : "Set Invoiced Package"}
+            {isUpdate ? "Update Service Charges" : "Set Service Charges"}
           </h3>
           <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
             {lead.name} · {lead.country}
@@ -85,7 +85,7 @@ export function UpdatePackageModal({
               htmlFor="package-amount"
               className="text-gray-500 dark:text-slate-400 font-bold block"
             >
-              Package amount (INR)
+              Service charges (INR)
             </label>
             <input
               id="package-amount"
@@ -114,7 +114,7 @@ export function UpdatePackageModal({
               disabled={!amount.trim()}
               className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 font-bold text-white rounded-xl transition-colors"
             >
-              {isUpdate ? "Update package" : "Set package"}
+              {isUpdate ? "Update charges" : "Set charges"}
             </button>
           </div>
         </form>

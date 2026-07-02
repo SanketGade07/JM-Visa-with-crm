@@ -6,6 +6,7 @@ import { FaTimes } from "react-icons/fa";
 import { PhoneInput } from "@/components/ui/FormInputs";
 import { useCrmLayoutContext } from "@/components/crm/context/CrmLayoutContext";
 import { useCreateLeadFormContext } from "@/components/crm/context/CreateLeadFormContext";
+import { getActiveStepIds } from "@/hooks/useCreateLeadForm";
 import { buildCreateLeadPayload } from "@/utils/buildCreateLeadPayload";
 import {
   EMPLOYMENT_CATEGORY_OPTIONS,
@@ -30,6 +31,36 @@ import {
 import { isUsaCountry } from "@/utils/countryUtils";
 import { CreateLeadReviewStep } from "./CreateLeadReviewStep";
 import { useCounselorSelectOptions } from "@/hooks/useCounselorOptions";
+
+const DAYS_OPTIONS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
+
+const MONTHS_OPTIONS = [
+  { value: "01", label: "Jan" },
+  { value: "02", label: "Feb" },
+  { value: "03", label: "Mar" },
+  { value: "04", label: "Apr" },
+  { value: "05", label: "May" },
+  { value: "06", label: "Jun" },
+  { value: "07", label: "Jul" },
+  { value: "08", label: "Aug" },
+  { value: "09", label: "Sep" },
+  { value: "10", label: "Oct" },
+  { value: "11", label: "Nov" },
+  { value: "12", label: "Dec" },
+];
+
+const currentYear = new Date().getFullYear();
+const ISSUE_YEARS = Array.from({ length: 100 }, (_, i) => String(currentYear - i));
+const EXPIRY_YEARS = Array.from({ length: 50 }, (_, i) => String(currentYear + i));
+
+const parseIsoDate = (dateStr: string) => {
+  if (!dateStr) return { day: "", month: "", year: "" };
+  const parts = dateStr.split("-");
+  if (parts.length === 3) {
+    return { year: parts[0], month: parts[1], day: parts[2] };
+  }
+  return { day: "", month: "", year: "" };
+};
 
 const SLOT_STATUS_OPTIONS: { value: CreateLeadSlotStatus; label: string }[] = [
   { value: "available", label: "Available" },
@@ -76,6 +107,22 @@ export function CreateLeadWizardPage({
     ? [{ value: currentUser!.name, label: `${currentUser!.name} (You)` }]
     : caseOfficerOptions;
 
+  const parsedIssue = parseIsoDate(state.passportIssueDate);
+  const parsedExpiry = parseIsoDate(state.passportExpiryDate);
+
+  const handleDatePartChange = (
+    field: "passportIssueDate" | "passportExpiryDate",
+    part: "day" | "month" | "year",
+    value: string,
+    currentVal: string
+  ) => {
+    const parsed = parseIsoDate(currentVal);
+    parsed[part] = value;
+    const isoString = `${parsed.year || ""}-${parsed.month || ""}-${parsed.day || ""}`;
+    updateField(field, isoString);
+    markFieldTouched(field);
+  };
+
   useEffect(() => {
     if (selfAssign && state.caseOfficer !== currentUser!.name) {
       updateField("caseOfficer", currentUser!.name);
@@ -121,7 +168,7 @@ export function CreateLeadWizardPage({
 
   const handleBack = useCallback(() => {
     if (returnToReview) {
-      setCurrentStep(5);
+      setCurrentStep(6);
       return;
     }
 
@@ -157,7 +204,11 @@ export function CreateLeadWizardPage({
       return;
     }
 
-    setCurrentStep((currentStep - 1) as WizardStepId);
+    const activeSteps = getActiveStepIds(state.leadType);
+    const currentIndex = activeSteps.indexOf(currentStep);
+    if (currentIndex > 0) {
+      setCurrentStep(activeSteps[currentIndex - 1]);
+    }
   }, [
     currentStep,
     goToLeads,
@@ -354,6 +405,134 @@ export function CreateLeadWizardPage({
       }
 
       case 3: {
+        const passportNumberError = getFieldError("passportNumber");
+        const passportIssueDateError = getFieldError("passportIssueDate");
+        const passportExpiryDateError = getFieldError("passportExpiryDate");
+        const passportPlaceOfIssueError = getFieldError("passportPlaceOfIssue");
+
+        return (
+          <div className="space-y-4">
+            <FormSection
+              label="Passport Number"
+              htmlFor="create-lead-passport-number"
+              error={passportNumberError}
+            >
+              <input
+                id="create-lead-passport-number"
+                value={state.passportNumber}
+                onChange={(e) => updateField("passportNumber", e.target.value)}
+                onBlur={() => markFieldTouched("passportNumber")}
+                placeholder="e.g. A1234567"
+                type="text"
+                className={`${FORM_INPUT_CLASS}${
+                  passportNumberError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                }`}
+              />
+            </FormSection>
+            <FormSectionGrid>
+              <FormSection
+                label="Passport Issue Date"
+                error={passportIssueDateError}
+              >
+                <div className="grid grid-cols-3 gap-2">
+                  <select
+                    value={parsedIssue.day}
+                    onChange={(e) => handleDatePartChange("passportIssueDate", "day", e.target.value, state.passportIssueDate)}
+                    className={FORM_SELECT_CLASS}
+                  >
+                    <option value="">Day</option>
+                    {DAYS_OPTIONS.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={parsedIssue.month}
+                    onChange={(e) => handleDatePartChange("passportIssueDate", "month", e.target.value, state.passportIssueDate)}
+                    className={FORM_SELECT_CLASS}
+                  >
+                    <option value="">Month</option>
+                    {MONTHS_OPTIONS.map((m) => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={4}
+                    placeholder="Year"
+                    value={parsedIssue.year}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, ""); // Digits only
+                      handleDatePartChange("passportIssueDate", "year", val, state.passportIssueDate);
+                    }}
+                    className={FORM_INPUT_CLASS}
+                  />
+                </div>
+              </FormSection>
+              <FormSection
+                label="Passport Expiry Date"
+                error={passportExpiryDateError}
+              >
+                <div className="grid grid-cols-3 gap-2">
+                  <select
+                    value={parsedExpiry.day}
+                    onChange={(e) => handleDatePartChange("passportExpiryDate", "day", e.target.value, state.passportExpiryDate)}
+                    className={FORM_SELECT_CLASS}
+                  >
+                    <option value="">Day</option>
+                    {DAYS_OPTIONS.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={parsedExpiry.month}
+                    onChange={(e) => handleDatePartChange("passportExpiryDate", "month", e.target.value, state.passportExpiryDate)}
+                    className={FORM_SELECT_CLASS}
+                  >
+                    <option value="">Month</option>
+                    {MONTHS_OPTIONS.map((m) => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={4}
+                    placeholder="Year"
+                    value={parsedExpiry.year}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, ""); // Digits only
+                      handleDatePartChange("passportExpiryDate", "year", val, state.passportExpiryDate);
+                    }}
+                    className={FORM_INPUT_CLASS}
+                  />
+                </div>
+              </FormSection>
+            </FormSectionGrid>
+            <FormSection
+              label="Place of Issue"
+              htmlFor="create-lead-passport-place-of-issue"
+              error={passportPlaceOfIssueError}
+            >
+              <input
+                id="create-lead-passport-place-of-issue"
+                value={state.passportPlaceOfIssue}
+                onChange={(e) => updateField("passportPlaceOfIssue", e.target.value)}
+                onBlur={() => markFieldTouched("passportPlaceOfIssue")}
+                placeholder="e.g. Delhi"
+                type="text"
+                className={`${FORM_INPUT_CLASS}${
+                  passportPlaceOfIssueError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                }`}
+              />
+            </FormSection>
+          </div>
+        );
+      }
+
+      case 4: {
         const immigrationCountryError = getFieldError("immigrationCountry");
         const loginIdError = getFieldError("loginId");
         const passwordError = getFieldError("password");
@@ -557,12 +736,13 @@ export function CreateLeadWizardPage({
         );
       }
 
-      case 4: {
+      case 5: {
         const visaSubtypeError = getFieldError("visaSubtype");
         const caseOfficerError = getFieldError("caseOfficer");
         const leadSourceError = getFieldError("leadSource");
         const employmentCategoryError = getFieldError("employmentCategory");
         const packageAmountError = getFieldError("packageAmount");
+        const annualIncomeError = getFieldError("annualIncome");
 
         return (
           <div className="space-y-4">
@@ -658,7 +838,7 @@ export function CreateLeadWizardPage({
                 </select>
               </FormSection>
               <FormSection
-                label="Initial Invoiced Package (INR)"
+                label="Service Charges (INR)"
                 htmlFor="create-lead-package-amount"
                 error={packageAmountError}
               >
@@ -668,13 +848,34 @@ export function CreateLeadWizardPage({
                   value={state.packageAmount}
                   onChange={(e) => updateField("packageAmount", e.target.value)}
                   onBlur={() => markFieldTouched("packageAmount")}
-                  placeholder="50000 (optional)"
+                  placeholder="e.g. 50000 (optional)"
                   type="number"
                   className={`${FORM_INPUT_CLASS}${
                     packageAmountError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
                   }`}
                 />
               </FormSection>
+            </FormSectionGrid>
+            <FormSectionGrid>
+              <FormSection
+                label="Annual Income (INR)"
+                htmlFor="create-lead-annual-income"
+                error={annualIncomeError}
+              >
+                <input
+                  id="create-lead-annual-income"
+                  min="0"
+                  value={state.annualIncome}
+                  onChange={(e) => updateField("annualIncome", e.target.value)}
+                  onBlur={() => markFieldTouched("annualIncome")}
+                  placeholder="e.g. 800000 (optional)"
+                  type="number"
+                  className={`${FORM_INPUT_CLASS}${
+                    annualIncomeError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                  }`}
+                />
+              </FormSection>
+              <div />
             </FormSectionGrid>
             <FormSection label="Description">
               <textarea
@@ -689,7 +890,7 @@ export function CreateLeadWizardPage({
         );
       }
 
-      case 5:
+      case 6:
         return <CreateLeadReviewStep state={state} onEditStep={handleReviewEditStep} />;
 
       default:
@@ -701,7 +902,7 @@ export function CreateLeadWizardPage({
     return null;
   }
 
-  const isLastStep = currentStep === 5;
+  const isLastStep = currentStep === 6;
   const canProceed = isStepValid();
   const showSaveToReview = returnToReview && !isLastStep;
 
@@ -742,6 +943,7 @@ export function CreateLeadWizardPage({
             onStepClick={handleProgressStepClick}
             allowFullNavigation
             completedSteps={completedSteps}
+            activeStepIds={getActiveStepIds(state.leadType)}
           />
         </div>
 

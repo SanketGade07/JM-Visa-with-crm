@@ -28,6 +28,10 @@ export function buildCreateLeadPayload(state: CreateLeadFormState): CreateLeadPa
     name: state.clientName.trim(),
     email: state.email.trim(),
     phone: state.phone.trim(),
+    passportNumber: state.passportNumber.trim(),
+    passportIssueDate: state.passportIssueDate.trim(),
+    passportExpiryDate: state.passportExpiryDate.trim(),
+    passportPlaceOfIssue: state.passportPlaceOfIssue.trim(),
     country,
     visaType: state.visaSubtype.trim(),
     status: "NEW_LEAD",
@@ -37,6 +41,7 @@ export function buildCreateLeadPayload(state: CreateLeadFormState): CreateLeadPa
       : UNASSIGNED_COUNSELOR,
     notes: state.notes.trim(),
     employmentCategory,
+    annualIncome: state.annualIncome.trim(),
     checklist: buildEmptyChecklist(employmentCategory),
     payments:
       totalPackage > 0
