@@ -333,7 +333,7 @@ export function CreateLeadWizardPage({
               </FormSection>
             </FormSectionGrid>
             <FormSection
-              label="Email Address"
+              label="Email Address (optional)"
               htmlFor="create-lead-email"
               error={emailError}
             >

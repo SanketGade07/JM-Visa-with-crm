@@ -158,9 +158,10 @@ export function LeadChecklistSection({
       <div className="p-3 bg-violet-50 dark:bg-violet-500/5 border border-violet-100 dark:border-violet-500/20 text-violet-700 dark:text-violet-400 rounded-xl text-[10px] font-semibold flex items-center space-x-2 shrink-0">
         <FaInfoCircle className="text-xs shrink-0" />
         <span>
-          Staff uploads each document manually (received via WhatsApp/email). Files are stored in
-          Google Drive (only metadata is kept in Supabase). Once all required docs are uploaded,
-          status auto-updates to <strong>READY FOR SUBMISSION</strong>.
+          Staff uploads each document manually (received via WhatsApp/email) and can only mark an
+          item verified once its file/link is attached. Files are stored in Google Drive (only
+          metadata is kept in Supabase). The lead advances to <strong>APPLICATION PROCESSED</strong>{" "}
+          only when the checklist is 100% complete, and can then proceed to Visa Submission.
         </span>
       </div>
     </div>

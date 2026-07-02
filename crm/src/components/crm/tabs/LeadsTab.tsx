@@ -41,7 +41,7 @@ import { getLeadAvatar, getLeadDescription, getLeadCompany } from "../helpers/le
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { useColumnSearch } from "@/hooks/useColumnSearch";
 import { applyColumnSearch } from "@/utils/columnSearch";
-import { HoverHint } from "@/components/ui/HoverHint";
+import { StatusDocumentCell } from "@/components/crm/leads/StatusDocumentCell";
 import {
   QUICK_TAB_FILTERS,
   filterScopedLeads,
@@ -494,37 +494,7 @@ export function LeadsTab() {
                       },
                       {
                         header: "Doc verifications",
-                        render: (lead) => {
-                          const pct = docProgress(lead.checklist, lead.employmentCategory);
-                          const filledCount = pct === 0 ? 0 : Math.ceil(pct / 25);
-                          const canOpenChecklist = canAccessChecklistForLead(lead);
-
-                          return (
-                            <div className="min-w-[120px] flex items-center justify-start gap-2 h-full">
-                              <HoverHint
-                                label="Open checklist"
-                                disabled={!canOpenChecklist}
-                                onClick={() => openLeadChecklist(lead.id)}
-                              >
-                                <div className="flex gap-1 w-[76px]">
-                                  {[1, 2, 3, 4].map((seg) => (
-                                    <div
-                                      key={seg}
-                                      className={`h-2 flex-1 rounded-[1.5px] ${
-                                        seg <= filledCount
-                                          ? "bg-emerald-500"
-                                          : "bg-gray-200 dark:bg-slate-800"
-                                      }`}
-                                    />
-                                  ))}
-                                </div>
-                              </HoverHint>
-                              <span className="text-[12px] font-bold text-gray-500 dark:text-slate-400 tabular-nums">
-                                {Math.round(pct)}%
-                              </span>
-                            </div>
-                          );
-                        },
+                        render: (lead) => <StatusDocumentCell lead={lead} />,
                       },
                       {
                         header: "Credentials",

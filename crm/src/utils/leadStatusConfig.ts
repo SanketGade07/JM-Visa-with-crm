@@ -1,6 +1,7 @@
 export type LeadStatus =
   | "NEW_LEAD"
   | "IN_PROGRESS"
+  | "APPLICATION_PROCESSED"
   | "VISA_SUBMISSION"
   | "VISA_APPROVED"
   | "VISA_REJECTED"
@@ -15,6 +16,7 @@ type StatusConfig = {
 const STATUS_CONFIG: Record<LeadStatus, StatusConfig> = {
   NEW_LEAD: { label: "New Lead", backgroundColor: "#CCCCCC" },
   IN_PROGRESS: { label: "In Progress", backgroundColor: "#FACC15" },
+  APPLICATION_PROCESSED: { label: "Application Processed", backgroundColor: "#F97316" },
   VISA_SUBMISSION: { label: "Visa Submission", backgroundColor: "#3B82F6" },
   VISA_APPROVED: { label: "Visa Approved", backgroundColor: "#22C55E" },
   VISA_REJECTED: { label: "Visa Rejected", backgroundColor: "#EF4444" },
@@ -24,6 +26,7 @@ const STATUS_CONFIG: Record<LeadStatus, StatusConfig> = {
 export const LEAD_STATUS_ORDER: LeadStatus[] = [
   "NEW_LEAD",
   "IN_PROGRESS",
+  "APPLICATION_PROCESSED",
   "VISA_SUBMISSION",
   "VISA_APPROVED",
   "VISA_REJECTED",
@@ -38,8 +41,9 @@ export const LEGACY_STATUS_MAP: Record<string, LeadStatus> = {
   "Follow-Up": "IN_PROGRESS",
   Interested: "IN_PROGRESS",
   "Documents Pending": "IN_PROGRESS",
-  "Documents Received": "IN_PROGRESS",
-  "Under Verification": "IN_PROGRESS",
+  "Documents Received": "APPLICATION_PROCESSED",
+  "Under Verification": "APPLICATION_PROCESSED",
+  "Application Processed": "APPLICATION_PROCESSED",
   "Ready For Submission": "VISA_SUBMISSION",
   "Visa Submitted": "VISA_SUBMISSION",
   "Approved / Rejected": "VISA_APPROVED",

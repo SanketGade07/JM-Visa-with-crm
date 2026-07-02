@@ -76,11 +76,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "id is required for delete" }, { status: 400 });
       }
       
-      // Prevent deleting seed admin
-      if (userId === "user-admin") {
-        return NextResponse.json({ error: "Cannot delete primary admin account" }, { status: 400 });
-      }
-
       const updatedUsers = existingUsers.filter((u) => u.id !== userId);
       const ok = await writeUsers(updatedUsers);
       return ok

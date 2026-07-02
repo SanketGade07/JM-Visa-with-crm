@@ -51,6 +51,11 @@ export function DocumentChecklistItemRow({
   const rowKey = `${lead.id}-${itemKey}`;
   const isUploading = uploadingKey === rowKey;
 
+  // A document may only be checked once it has been received and verified — i.e. a
+  // file/link exists for it. Unchecking an already-verified item stays allowed.
+  const needsDocumentBeforeChecking = !value && !doc;
+  const checkboxDisabled = !canVerifyDocs || needsDocumentBeforeChecking;
+
   const actionButtonClass = (disabled: boolean) =>
     `inline-flex items-center space-x-1 text-[10px] font-bold rounded-lg px-2.5 py-1.5 border cursor-pointer transition-all active:scale-95 ${
       disabled
@@ -64,9 +69,14 @@ export function DocumentChecklistItemRow({
         <input
           type="checkbox"
           checked={value}
-          disabled={!canVerifyDocs}
+          disabled={checkboxDisabled}
           onChange={() => toggleChecklistItem(lead.id, itemKey)}
           aria-label={`Mark ${label} as verified`}
+          title={
+            needsDocumentBeforeChecking && canVerifyDocs
+              ? "Upload or link this document before marking it verified."
+              : undefined
+          }
           className="checklist-item-checkbox shrink-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
         />
         <span

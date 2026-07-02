@@ -4,6 +4,7 @@ import { getStatusLabel, type LeadStatus } from "@/utils/leadStatusConfig";
 const ACTIVE_PIPELINE_STATUSES: LeadStatus[] = [
   "NEW_LEAD",
   "IN_PROGRESS",
+  "APPLICATION_PROCESSED",
   "VISA_SUBMISSION",
   "VISA_APPROVED",
   "VISA_REJECTED",

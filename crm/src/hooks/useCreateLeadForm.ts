@@ -95,7 +95,7 @@ export function getStepFieldErrors(
       if (!state.clientName.trim()) {
         errors.clientName = "Client name is required.";
       }
-      if (!isValidEmail(state.email)) {
+      if (state.email.trim() && !isValidEmail(state.email)) {
         errors.email = "Enter a valid email address.";
       }
       if (!isValidE164Phone(state.phone)) {

@@ -15,7 +15,7 @@ import {
   FaMinus, FaExpand, FaEye, FaPhone, FaCommentDots, FaCog, FaEnvelope,
   FaWhatsapp, FaExternalLinkAlt, FaSignOutAlt, FaKey, FaClipboard, FaEdit, FaSave
 } from "react-icons/fa";
-import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiEye, FiSettings, FiGlobe, FiMenu, FiUser, FiLock } from "react-icons/fi";
+import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiEye, FiSettings, FiGlobe, FiMenu, FiUser, FiLock, FiEdit, FiEdit3 } from "react-icons/fi";
 import DataTable, { exportRowsToCsv, StatusPill, getPillClasses, ProgressBar } from "@/components/ui/DataTable";
 import { SearchableCountrySelect, PhoneInput } from "@/components/ui/FormInputs";
 // @ts-ignore
@@ -112,117 +112,134 @@ export function StaffTab() {
                 )}
               </div>
 
-              {/* Roster profiles */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {users.map((staff, i) => (
-                  <div key={staff.id || i} className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-4 hover:-translate-y-0.5 transition-all flex flex-col justify-between">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center font-bold text-white uppercase">
-                            {staff.name ? staff.name.split(" ").map(n => n[0]).join("") : "U"}
+              {/* Roster list view */}
+              <div className="overflow-x-auto border border-slate-800/80 rounded-2xl bg-slate-900/60">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-500 bg-slate-950/40">
+                      <th className="py-4 px-6">Staff Member</th>
+                      <th className="py-4 px-6">Email Desk / User ID</th>
+                      <th className="py-4 px-6">Password</th>
+                      <th className="py-4 px-6 text-center">Tab Access</th>
+                      <th className="py-4 px-6 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/40 text-xs">
+                    {users.map((staff, i) => (
+                      <tr key={staff.id || i} className="hover:bg-slate-800/10 transition-colors">
+                        {/* Staff Member column */}
+                        <td className="py-4 px-6">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-9 h-9 shrink-0 rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center font-bold text-white uppercase text-xs">
+                              {staff.name ? staff.name.split(" ").map(n => n[0]).join("") : "U"}
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-100">{staff.name}</div>
+                              <span className="text-[9px] text-violet-400 font-extrabold uppercase tracking-wider block mt-0.5">{staff.role}</span>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="text-xs font-bold text-slate-100">{staff.name}</h4>
-                            <span className="text-[10px] text-violet-400 font-bold block">{staff.role}</span>
+                        </td>
+
+                        {/* Email Desk / User ID column */}
+                        <td className="py-4 px-6 font-medium text-slate-300">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="select-all truncate">{staff.email}</span>
+                            {currentRole === "ADMIN" && (
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(staff.email, "User ID")}
+                                className="p-1 text-slate-500 hover:text-violet-400 hover:bg-violet-500/10 rounded-md transition-colors shrink-0 cursor-pointer"
+                                title="Copy User ID"
+                              >
+                                <FaClipboard className="text-[10px]" />
+                              </button>
+                            )}
                           </div>
-                        </div>
-                        {currentRole === "ADMIN" && staff.id !== "user-admin" && staff.role !== "ADMIN" && (
-                          <button
-                            onClick={() => {
-                              if (confirm(`Are you sure you want to delete ${staff.name}'s account?`)) {
-                                deleteUser(staff.id).then((res) => {
-                                  if (res.ok) showToast("Account deleted successfully");
-                                  else showToast(res.error || "Failed to delete account", "error");
-                                });
-                              }
-                            }}
-                            className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer"
+                        </td>
 
-                          >
-                            <FaTrash className="text-xs" />
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="space-y-2 text-xs pt-1 border-t border-slate-900">
-                        <div className="flex justify-between">
-                          <span className="text-slate-500 font-semibold">Email Desk:</span>
-                          <span className="text-slate-300 font-bold select-all">{staff.email}</span>
-                        </div>
-                        {currentRole === "ADMIN" && (
-                          <>
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-slate-500 font-semibold shrink-0">User ID:</span>
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <span className="text-slate-300 font-bold truncate select-all">{staff.email}</span>
+                        {/* Password column */}
+                        <td className="py-4 px-6 font-medium text-slate-300">
+                          {currentRole === "ADMIN" ? (
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="select-all truncate font-mono">{staff.password || "—"}</span>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(staff.password || "", "Password")}
+                                disabled={!staff.password}
+                                className="p-1 text-slate-500 hover:text-violet-400 hover:bg-violet-500/10 rounded-md transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                                title="Copy password"
+                              >
+                                <FaClipboard className="text-[10px]" />
+                              </button>
+                              {staff.id !== "user-admin" && (
                                 <button
                                   type="button"
-                                  onClick={() => copyToClipboard(staff.email, "User ID")}
-                                  className="p-1 text-slate-500 hover:text-violet-400 hover:bg-violet-500/10 rounded-md transition-colors shrink-0"
-                                  title="Copy User ID"
+                                  onClick={() => handleResetPassword(staff)}
+                                  className="p-1 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-md transition-colors shrink-0 cursor-pointer"
+                                  title="Reset password"
                                 >
-                                  <FaClipboard className="text-[10px]" />
+                                  <FaKey className="text-[10px]" />
                                 </button>
-                              </div>
+                              )}
                             </div>
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-slate-500 font-semibold shrink-0">Password:</span>
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <span className="text-slate-300 font-bold truncate select-all">
-                                  {staff.password || "—"}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => copyToClipboard(staff.password || "", "Password")}
-                                  disabled={!staff.password}
-                                  className="p-1 text-slate-500 hover:text-violet-400 hover:bg-violet-500/10 rounded-md transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                                  title="Copy password"
-                                >
-                                  <FaClipboard className="text-[10px]" />
-                                </button>
-                                {staff.id !== "user-admin" && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleResetPassword(staff)}
-                                    className="p-1 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-md transition-colors shrink-0"
-                                    title="Reset password"
-                                  >
-                                    <FaKey className="text-[10px]" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </>
-                        )}
-                        <div className="flex justify-between">
-                          <span className="text-slate-500 font-semibold">Tab Access:</span>
-                          <span className="text-violet-400 font-extrabold">{normalizeAllowedTabs(staff.allowedTabs).length} / {AVAILABLE_TABS.length} Tabs</span>
-                        </div>
-                      </div>
-                    </div>
+                          ) : (
+                            <span className="text-slate-500 italic">Hidden</span>
+                          )}
+                        </td>
 
-                    {currentRole === "ADMIN" && staff.role !== "ADMIN" && (
-                      <button
-                        onClick={() => {
-                          setEditingStaff(staff);
-                          const standardRoles = ["ADMIN", "COUNSELOR", "DOCUMENT TEAM", "VISA TEAM", "ACCOUNT TEAM"];
-                          if (standardRoles.includes(staff.role)) {
-                            setEditStaffRole(staff.role);
-                            setEditStaffCustomRole("");
-                          } else {
-                            setEditStaffRole("OTHER");
-                            setEditStaffCustomRole(staff.role);
-                          }
-                          setIsEditStaffOpen(true);
-                        }}
-                        className="w-full mt-4 py-2 bg-slate-950 border border-slate-800 hover:border-violet-500/50 hover:bg-violet-950/10 text-slate-300 hover:text-violet-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
-                      >
-                        Configure Access
-                      </button>
-                    )}
-                  </div>
-                ))}
+                        {/* Tab Access column */}
+                        <td className="py-4 px-6 text-center">
+                          <span className="inline-flex items-center rounded-full bg-violet-400/10 px-2.5 py-0.5 text-[10px] font-extrabold text-violet-400 border border-violet-400/20">
+                            {normalizeAllowedTabs(staff.allowedTabs).length} / {AVAILABLE_TABS.length} Tabs
+                          </span>
+                        </td>
+
+                        {/* Actions column */}
+                        <td className="py-4 px-6 text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            {currentRole === "ADMIN" && (
+                              <button
+                                onClick={() => {
+                                  setEditingStaff(staff);
+                                  const standardRoles = ["ADMIN", "COUNSELOR", "DOCUMENT TEAM", "VISA TEAM", "ACCOUNT TEAM"];
+                                  if (standardRoles.includes(staff.role)) {
+                                    setEditStaffRole(staff.role);
+                                    setEditStaffCustomRole("");
+                                  } else {
+                                    setEditStaffRole("OTHER");
+                                    setEditStaffCustomRole(staff.role);
+                                  }
+                                  setIsEditStaffOpen(true);
+                                }}
+                                className="p-2 text-slate-400 hover:text-violet-400 hover:bg-violet-500/10 rounded-lg cursor-pointer transition-colors"
+                                title="Edit Details & Access"
+                              >
+                                <FiEdit3 className="text-[13px]" />
+                              </button>
+                            )}
+
+                            {currentRole === "ADMIN" && (
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Are you sure you want to delete ${staff.name}'s account?`)) {
+                                    deleteUser(staff.id).then((res) => {
+                                      if (res.ok) showToast("Account deleted successfully");
+                                      else showToast(res.error || "Failed to delete account", "error");
+                                    });
+                                  }
+                                }}
+                                className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer transition-colors"
+                                title="Delete Account"
+                              >
+                                <FaTrash className="text-xs" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
             </div>

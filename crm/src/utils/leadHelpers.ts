@@ -82,6 +82,7 @@ export const getStatusColor = (status: VisaStatus) => {
   switch (status) {
     case "NEW_LEAD": return "bg-sky-500/10 text-sky-400 border border-sky-500/20";
     case "IN_PROGRESS": return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
+    case "APPLICATION_PROCESSED": return "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20";
     case "VISA_SUBMISSION": return "bg-violet-500/15 text-violet-300 border border-violet-500/30";
     case "VISA_APPROVED": return "bg-teal-500/10 text-teal-400 border border-teal-500/20";
     case "VISA_REJECTED": return "bg-orange-500/10 text-orange-400 border border-orange-500/20";

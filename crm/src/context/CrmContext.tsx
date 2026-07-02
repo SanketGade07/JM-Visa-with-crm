@@ -15,7 +15,7 @@ import {
   UNASSIGNED_COUNSELOR,
 } from "@/utils/counselorOptions";
 import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
-import type { LeadStatus } from "@/utils/leadStatusConfig";
+import { getStatusLabel, type LeadStatus } from "@/utils/leadStatusConfig";
 
 export type { EmploymentCategory } from "@/utils/documentChecklistConfig";
 
@@ -207,11 +207,26 @@ interface CrmContextType {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
 
-const TERMINAL_STATUSES: VisaStatus[] = [
+// Stages at or beyond "every document verified". A lead can only enter this zone
+// once its mandatory Document Checklist is 100% complete, so the checklist gates
+// manual moves into it and drives the auto-advance / revert below. Application
+// Processed is the entry point of the zone — it *means* all documents are verified.
+const CHECKLIST_GATED_STATUSES: VisaStatus[] = [
+  "APPLICATION_PROCESSED",
   "VISA_SUBMISSION",
   "VISA_APPROVED",
   "VISA_REJECTED",
 ];
+
+/** True when every required checklist document for the lead's category is verified. */
+const areRequiredDocsComplete = (
+  lead: Lead,
+  checklist: DocumentChecklist = lead.checklist
+): boolean => {
+  const category = lead.employmentCategory ?? DEFAULT_EMPLOYMENT_CATEGORY;
+  const requiredDocs = getChecklistKeysForLead(category);
+  return requiredDocs.every((key) => checklist[key]);
+};
 
 const resolveStatusAfterChecklistChange = (
   lead: Lead,
@@ -219,14 +234,18 @@ const resolveStatusAfterChecklistChange = (
 ): VisaStatus => {
   if (lead.status === "DROPPED") return lead.status;
 
-  const category = lead.employmentCategory ?? DEFAULT_EMPLOYMENT_CATEGORY;
-  const requiredDocs = getChecklistKeysForLead(category);
-  const allRequired = requiredDocs.every((key) => updatedChecklist[key]);
+  const allRequired = areRequiredDocsComplete(lead, updatedChecklist);
 
-  if (allRequired && !TERMINAL_STATUSES.includes(lead.status)) {
-    return "VISA_SUBMISSION";
+  // Verifying every required document marks the application as processed.
+  if (allRequired && (lead.status === "NEW_LEAD" || lead.status === "IN_PROGRESS")) {
+    return "APPLICATION_PROCESSED";
   }
-  if (!allRequired && lead.status === "VISA_SUBMISSION") {
+  // Losing a required document pulls the lead back out of the processed zone
+  // (Application Processed / Visa Submission both require a 100% checklist).
+  if (
+    !allRequired &&
+    (lead.status === "APPLICATION_PROCESSED" || lead.status === "VISA_SUBMISSION")
+  ) {
     return "IN_PROGRESS";
   }
   return lead.status;
@@ -481,6 +500,32 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateLeadStatus = (leadId: string, status: VisaStatus) => {
     const today = new Date().toISOString().split("T")[0];
     const prev = leads.find((l) => l.id === leadId);
+
+    // Mandatory Document Checklist gate: a lead can only advance into the
+    // "documents verified" zone — Application Processed and everything after it —
+    // once every required document is checked (100%). Moving between stages already
+    // inside that zone (e.g. Visa Submission → Approved) and reverting to an earlier
+    // stage stay allowed.
+    if (
+      prev &&
+      prev.status !== status &&
+      CHECKLIST_GATED_STATUSES.includes(status) &&
+      !CHECKLIST_GATED_STATUSES.includes(prev.status) &&
+      !areRequiredDocsComplete(prev)
+    ) {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("crm-toast", {
+            detail: {
+              message: `Verify all required documents in the checklist (100%) before moving this lead to "${getStatusLabel(status)}".`,
+              type: "error",
+            },
+          })
+        );
+      }
+      return;
+    }
+
     const updated = leads.map((lead) =>
       lead.id === leadId ? { ...lead, status, lastUpdated: today } : lead
     );
