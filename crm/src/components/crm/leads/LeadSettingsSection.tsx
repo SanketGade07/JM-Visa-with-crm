@@ -5,6 +5,7 @@ import type { Lead } from "@/context/CrmContext";
 import {
   DEFAULT_EMPLOYMENT_CATEGORY,
   getChecklistKeysForLead,
+  EMPLOYMENT_CATEGORY_OPTIONS,
 } from "@/utils/documentChecklistConfig";
 import {
   getCountrySelectOptions,
@@ -25,6 +26,7 @@ import {
   FiMail,
   FiUser,
   FiDollarSign,
+  FiBriefcase,
 } from "react-icons/fi";
 import {
   FaCheckCircle,
@@ -351,6 +353,8 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
     assignCounselor,
     updateUsaSlots,
     currentRole,
+    updateEmploymentCategory,
+    setLeadPackage,
   } = useCrmLayoutContext();
 
   const isUsa = isUsaCountry(lead.country);
@@ -365,11 +369,49 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
   );
 
   const [emailDraft, setEmailDraft] = useState(lead.email);
+  const isEmailValid = useMemo(() => {
+    if (!emailDraft.trim()) return true;
+    return /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(emailDraft.trim());
+  }, [emailDraft]);
   const [passportNumberDraft, setPassportNumberDraft] = useState(lead.passportNumber ?? "");
   const [passportIssueDateDraft, setPassportIssueDateDraft] = useState(lead.passportIssueDate ?? "");
   const [passportExpiryDateDraft, setPassportExpiryDateDraft] = useState(lead.passportExpiryDate ?? "");
   const [passportPlaceOfIssueDraft, setPassportPlaceOfIssueDraft] = useState(lead.passportPlaceOfIssue ?? "");
   const [annualIncomeDraft, setAnnualIncomeDraft] = useState(lead.annualIncome ?? "");
+  const [referredByDraft, setReferredByDraft] = useState(lead.referredBy ?? "");
+
+  const predefinedServices = useMemo(() => [
+    "Study Abroad",
+    "Work Visa",
+    "Business Visa",
+    "Residence Visa",
+    "Tourist Visa",
+  ], []);
+
+  const isPredefined = lead.visaType ? predefinedServices.includes(lead.visaType) : true;
+
+  const [isOtherSelected, setIsOtherSelected] = useState(!isPredefined);
+  const [customServiceDraft, setCustomServiceDraft] = useState(!isPredefined ? (lead.visaType ?? "") : "");
+
+  useEffect(() => {
+    const checkIsPredefined = lead.visaType ? predefinedServices.includes(lead.visaType) : true;
+    setIsOtherSelected(!checkIsPredefined);
+    setCustomServiceDraft(!checkIsPredefined ? (lead.visaType ?? "") : "");
+  }, [lead.id, lead.visaType, predefinedServices]);
+
+  const handleCustomServiceSave = () => {
+    const val = customServiceDraft.trim();
+    if (val) {
+      updateLeadProfile(lead.id, { visaType: val });
+      showToast("Profile updated", "success");
+    }
+  };
+
+  const handleCustomServiceCancel = () => {
+    const checkIsPredefined = lead.visaType ? predefinedServices.includes(lead.visaType) : true;
+    setIsOtherSelected(!checkIsPredefined);
+    setCustomServiceDraft(!checkIsPredefined ? (lead.visaType ?? "") : "");
+  };
 
   const parsedIssue = parseIsoDate(passportIssueDateDraft);
   const parsedExpiry = parseIsoDate(passportExpiryDateDraft);
@@ -399,6 +441,7 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
     setPassportExpiryDateDraft(lead.passportExpiryDate ?? "");
     setPassportPlaceOfIssueDraft(lead.passportPlaceOfIssue ?? "");
     setAnnualIncomeDraft(lead.annualIncome ?? "");
+    setReferredByDraft(lead.referredBy ?? "");
   }, [
     lead.id,
     lead.email,
@@ -407,6 +450,7 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
     lead.passportExpiryDate,
     lead.passportPlaceOfIssue,
     lead.annualIncome,
+    lead.referredBy,
   ]);
 
   const employmentCategory = lead.employmentCategory ?? DEFAULT_EMPLOYMENT_CATEGORY;
@@ -418,6 +462,22 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
     paymentSummary.totalPackage > 0
       ? `₹${paymentSummary.received.toLocaleString("en-IN")} / ₹${paymentSummary.totalPackage.toLocaleString("en-IN")}`
       : "Not set";
+
+  const [packageAmountDraft, setPackageAmountDraft] = useState(
+    paymentSummary.totalPackage > 0 ? String(paymentSummary.totalPackage) : ""
+  );
+
+  useEffect(() => {
+    setPackageAmountDraft(paymentSummary.totalPackage > 0 ? String(paymentSummary.totalPackage) : "");
+  }, [lead.id, paymentSummary.totalPackage]);
+
+  const handlePackageAmountSave = () => {
+    const amount = parseFloat(packageAmountDraft);
+    if (Number.isNaN(amount) || amount <= 0) return;
+    if (amount === paymentSummary.totalPackage) return;
+    setLeadPackage(lead.id, amount);
+    showToast("Package amount updated", "success");
+  };
 
   const [credUsername, setCredUsername] = useState(lead.visaCredentials?.username ?? "");
   const [credPassword, setCredPassword] = useState(lead.visaCredentials?.password ?? "");
@@ -665,6 +725,13 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
     showToast("Profile updated", "success");
   };
 
+  const handleReferredBySave = () => {
+    const trimmed = referredByDraft.trim();
+    if (trimmed === (lead.referredBy ?? "")) return;
+    updateLeadProfile(lead.id, { referredBy: trimmed });
+    showToast("Referred by updated", "success");
+  };
+
   const handlePassportNumberSave = () => {
     const trimmed = passportNumberDraft.trim();
     if (trimmed === (lead.passportNumber ?? "")) return;
@@ -699,21 +766,52 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
         <style>{SETTINGS_PROFILE_FIELD_THEME_CSS}</style>
         <div className="lead-settings-profile-fields grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
           <EditableProfileField icon={FiMail} label="Email" htmlFor={`profile-email-${lead.id}`}>
-            <input
-              id={`profile-email-${lead.id}`}
-              type="email"
-              value={emailDraft}
-              onChange={(e) => setEmailDraft(e.target.value)}
-              onBlur={() => handleEmailSave()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.currentTarget.blur();
-                }
-              }}
-              disabled={!canModifyLeads}
-              placeholder="lead@example.com"
-              className={profileEmailInputCls}
-            />
+            <div className="space-y-2 w-full">
+              <input
+                id={`profile-email-${lead.id}`}
+                type="email"
+                value={emailDraft}
+                onChange={(e) => setEmailDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && isEmailValid) {
+                    handleEmailSave();
+                  } else if (e.key === "Escape") {
+                    setEmailDraft(lead.email);
+                  }
+                }}
+                disabled={!canModifyLeads}
+                placeholder="lead@example.com"
+                className={profileEmailInputCls}
+              />
+              {emailDraft !== lead.email && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-1">
+                  {!isEmailValid ? (
+                    <span className="text-[10px] font-semibold text-rose-500">
+                      Please enter a valid email address
+                    </span>
+                  ) : (
+                    <span />
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleEmailSave}
+                      disabled={!isEmailValid}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-[10px] uppercase tracking-wider rounded-lg shadow transition-colors cursor-pointer select-none"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEmailDraft(lead.email)}
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] uppercase tracking-wider rounded-lg transition-colors cursor-pointer select-none"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </EditableProfileField>
 
           <EditableProfileField icon={FiGlobe} label="Destination Country">
@@ -742,21 +840,67 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
           />
 
           <EditableProfileField icon={FiFileText} label="Visa Service Type">
-            <div
-              className={`${profileSelectWrapperCls}${!canModifyLeads ? " opacity-60 pointer-events-none" : ""}`}
-            >
-              <SearchableFilterSelect
-                value={lead.visaType}
-                onChange={(visaType) => {
-                  if (!visaType || visaType === lead.visaType) return;
-                  updateLeadProfile(lead.id, { visaType });
-                  showToast("Profile updated", "success");
-                }}
-                options={visaServiceOptions}
-                placeholder="Select service type…"
-                portalId={`settings-visa-type-${lead.id}`}
-                clearValue={lead.visaType}
-              />
+            <div className="space-y-2 w-full">
+              <div
+                className={`${profileSelectWrapperCls}${!canModifyLeads ? " opacity-60 pointer-events-none" : ""}`}
+              >
+                <SearchableFilterSelect
+                  value={isOtherSelected ? "Other" : lead.visaType}
+                  onChange={(visaType) => {
+                    if (!visaType) return;
+                    if (visaType === "Other") {
+                      setIsOtherSelected(true);
+                      setCustomServiceDraft("");
+                    } else {
+                      setIsOtherSelected(false);
+                      updateLeadProfile(lead.id, { visaType });
+                      showToast("Profile updated", "success");
+                    }
+                  }}
+                  options={visaServiceOptions}
+                  placeholder="Select service type…"
+                  portalId={`settings-visa-type-${lead.id}`}
+                  clearValue={isOtherSelected ? "Other" : lead.visaType}
+                />
+              </div>
+
+              {isOtherSelected && (
+                <div className="flex gap-2 w-full">
+                  <input
+                    type="text"
+                    value={customServiceDraft}
+                    onChange={(e) => setCustomServiceDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleCustomServiceSave();
+                      } else if (e.key === "Escape") {
+                        handleCustomServiceCancel();
+                      }
+                    }}
+                    placeholder="Specify service name…"
+                    className={`${profileEmailInputCls} flex-1`}
+                    autoFocus
+                  />
+                  {customServiceDraft !== (lead.visaType ?? "") && (
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleCustomServiceSave}
+                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow transition-colors cursor-pointer shrink-0"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCustomServiceCancel}
+                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-colors cursor-pointer shrink-0"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </EditableProfileField>
 
@@ -777,23 +921,167 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
           </EditableProfileField>
 
           <EditableProfileField icon={FiDollarSign} label="Annual Income (INR)" htmlFor={`profile-annual-income-${lead.id}`}>
-            <input
-              id={`profile-annual-income-${lead.id}`}
-              type="number"
-              min="0"
-              value={annualIncomeDraft}
-              onChange={(e) => setAnnualIncomeDraft(e.target.value)}
-              onBlur={() => handleAnnualIncomeSave()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.currentTarget.blur();
-                }
-              }}
-              disabled={!canModifyLeads}
-              placeholder="e.g. 800000"
-              className={profileEmailInputCls}
-            />
+            <div className="space-y-2 w-full">
+              <input
+                id={`profile-annual-income-${lead.id}`}
+                type="number"
+                min="0"
+                value={annualIncomeDraft}
+                onChange={(e) => setAnnualIncomeDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleAnnualIncomeSave();
+                  } else if (e.key === "Escape") {
+                    setAnnualIncomeDraft(lead.annualIncome ?? "");
+                  }
+                }}
+                disabled={!canModifyLeads}
+                placeholder="e.g. 800000"
+                className={profileEmailInputCls}
+              />
+              {annualIncomeDraft !== (lead.annualIncome ?? "") && (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAnnualIncomeSave}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] uppercase tracking-wider rounded-lg shadow transition-colors cursor-pointer select-none"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnnualIncomeDraft(lead.annualIncome ?? "")}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] uppercase tracking-wider rounded-lg transition-colors cursor-pointer select-none"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
           </EditableProfileField>
+
+          <EditableProfileField icon={FiLink} label="Lead Source">
+            <div className="w-full">
+              <select
+                value={lead.source}
+                onChange={(e) => {
+                  const source = e.target.value as any;
+                  updateLeadProfile(lead.id, { source });
+                  showToast("Lead source updated", "success");
+                }}
+                disabled={!canModifyLeads}
+                className={fieldInputCls}
+              >
+                <option value="MANUAL">Manual Entry</option>
+                <option value="WEBSITE">Website</option>
+                <option value="REFERRAL">Referral</option>
+                <option value="WALK_IN">Walk-In</option>
+                <option value="SOCIAL_MEDIA">Social Media</option>
+              </select>
+            </div>
+          </EditableProfileField>
+
+          <EditableProfileField icon={FiBriefcase} label="Employment Category">
+            <div className="w-full">
+              <select
+                value={lead.employmentCategory || DEFAULT_EMPLOYMENT_CATEGORY}
+                onChange={(e) => {
+                  const category = e.target.value as any;
+                  updateEmploymentCategory(lead.id, category);
+                  showToast("Employment category updated", "success");
+                }}
+                disabled={!canModifyLeads}
+                className={fieldInputCls}
+              >
+                {EMPLOYMENT_CATEGORY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </EditableProfileField>
+
+          <EditableProfileField icon={FiDollarSign} label="Service Charges (INR)" htmlFor={`profile-package-amount-${lead.id}`}>
+            <div className="space-y-2 w-full">
+              <input
+                id={`profile-package-amount-${lead.id}`}
+                type="number"
+                min="0"
+                value={packageAmountDraft}
+                onChange={(e) => setPackageAmountDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handlePackageAmountSave();
+                  } else if (e.key === "Escape") {
+                    setPackageAmountDraft(paymentSummary.totalPackage > 0 ? String(paymentSummary.totalPackage) : "");
+                  }
+                }}
+                disabled={!canModifyLeads}
+                placeholder="e.g. 50000"
+                className={profileEmailInputCls}
+              />
+              {packageAmountDraft !== (paymentSummary.totalPackage > 0 ? String(paymentSummary.totalPackage) : "") && (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePackageAmountSave}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] uppercase tracking-wider rounded-lg shadow transition-colors cursor-pointer select-none"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPackageAmountDraft(paymentSummary.totalPackage > 0 ? String(paymentSummary.totalPackage) : "")}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] uppercase tracking-wider rounded-lg transition-colors cursor-pointer select-none"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          </EditableProfileField>
+
+          {lead.source === "REFERRAL" && (
+            <EditableProfileField icon={FiUser} label="Referred By" htmlFor={`profile-referred-by-${lead.id}`}>
+              <div className="space-y-2 w-full">
+                <input
+                  id={`profile-referred-by-${lead.id}`}
+                  type="text"
+                  value={referredByDraft}
+                  onChange={(e) => setReferredByDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleReferredBySave();
+                    } else if (e.key === "Escape") {
+                      setReferredByDraft(lead.referredBy ?? "");
+                    }
+                  }}
+                  disabled={!canModifyLeads}
+                  placeholder="e.g. Jane Doe"
+                  className={profileEmailInputCls}
+                />
+                {referredByDraft !== (lead.referredBy ?? "") && (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleReferredBySave}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] uppercase tracking-wider rounded-lg shadow transition-colors cursor-pointer select-none"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReferredByDraft(lead.referredBy ?? "")}
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] uppercase tracking-wider rounded-lg transition-colors cursor-pointer select-none"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            </EditableProfileField>
+          )}
         </div>
       </SettingsCard>
 
@@ -801,21 +1089,42 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
         <style>{SETTINGS_PROFILE_FIELD_THEME_CSS}</style>
         <div className="lead-settings-profile-fields grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
           <EditableProfileField icon={FiFileText} label="Passport Number" htmlFor={`profile-passport-number-${lead.id}`}>
-            <input
-              id={`profile-passport-number-${lead.id}`}
-              type="text"
-              value={passportNumberDraft}
-              onChange={(e) => setPassportNumberDraft(e.target.value)}
-              onBlur={() => handlePassportNumberSave()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.currentTarget.blur();
-                }
-              }}
-              disabled={!canModifyLeads}
-              placeholder="e.g. A1234567"
-              className={profileEmailInputCls}
-            />
+            <div className="space-y-2 w-full">
+              <input
+                id={`profile-passport-number-${lead.id}`}
+                type="text"
+                value={passportNumberDraft}
+                onChange={(e) => setPassportNumberDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handlePassportNumberSave();
+                  } else if (e.key === "Escape") {
+                    setPassportNumberDraft(lead.passportNumber ?? "");
+                  }
+                }}
+                disabled={!canModifyLeads}
+                placeholder="e.g. A1234567"
+                className={profileEmailInputCls}
+              />
+              {passportNumberDraft !== (lead.passportNumber ?? "") && (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePassportNumberSave}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] uppercase tracking-wider rounded-lg shadow transition-colors cursor-pointer select-none"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPassportNumberDraft(lead.passportNumber ?? "")}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] uppercase tracking-wider rounded-lg transition-colors cursor-pointer select-none"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
           </EditableProfileField>
 
           <EditableProfileField icon={FiCalendar} label="Passport Issue Date">
@@ -901,21 +1210,42 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
           </EditableProfileField>
 
           <EditableProfileField icon={FiGlobe} label="Place of Issue" htmlFor={`profile-passport-place-${lead.id}`}>
-            <input
-              id={`profile-passport-place-${lead.id}`}
-              type="text"
-              value={passportPlaceOfIssueDraft}
-              onChange={(e) => setPassportPlaceOfIssueDraft(e.target.value)}
-              onBlur={() => handlePassportPlaceOfIssueSave()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.currentTarget.blur();
-                }
-              }}
-              disabled={!canModifyLeads}
-              placeholder="e.g. Delhi"
-              className={profileEmailInputCls}
-            />
+            <div className="space-y-2 w-full">
+              <input
+                id={`profile-passport-place-${lead.id}`}
+                type="text"
+                value={passportPlaceOfIssueDraft}
+                onChange={(e) => setPassportPlaceOfIssueDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handlePassportPlaceOfIssueSave();
+                  } else if (e.key === "Escape") {
+                    setPassportPlaceOfIssueDraft(lead.passportPlaceOfIssue ?? "");
+                  }
+                }}
+                disabled={!canModifyLeads}
+                placeholder="e.g. Delhi"
+                className={profileEmailInputCls}
+              />
+              {passportPlaceOfIssueDraft !== (lead.passportPlaceOfIssue ?? "") && (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePassportPlaceOfIssueSave}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] uppercase tracking-wider rounded-lg shadow transition-colors cursor-pointer select-none"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPassportPlaceOfIssueDraft(lead.passportPlaceOfIssue ?? "")}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] uppercase tracking-wider rounded-lg transition-colors cursor-pointer select-none"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
           </EditableProfileField>
         </div>
       </SettingsCard>

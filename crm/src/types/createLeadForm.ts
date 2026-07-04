@@ -32,6 +32,7 @@ export type CreateLeadFormState = {
   employmentCategory: EmploymentCategory;
   packageAmount: string;
   annualIncome: string;
+  referredBy: string;
   notes: string;
 };
 
@@ -60,5 +61,6 @@ export const CREATE_LEAD_INITIAL_STATE: CreateLeadFormState = {
   employmentCategory: DEFAULT_EMPLOYMENT_CATEGORY,
   packageAmount: "",
   annualIncome: "",
+  referredBy: "",
   notes: "",
 };

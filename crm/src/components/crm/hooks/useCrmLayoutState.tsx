@@ -144,7 +144,7 @@ export function useCrmLayoutState() {
   const canEditCredentials = userAllowedTabs.includes("USASlots");
   const canSubmitVisa = ["ADMIN", "VISA TEAM"].includes(currentRole) || userAllowedTabs.includes("Submissions");
   const canManagePayments = ["ADMIN", "ACCOUNT TEAM"].includes(currentRole) || userAllowedTabs.includes("Payments");
-  const canAssignLeads = userHasPermission(currentUser, "assignLeads");
+  const canAssignLeads = !!currentUser;
 
   // Document checklist access is per-lead: admins have full privilege; any other
   // staff member can open/verify a lead's checklist only when that lead is

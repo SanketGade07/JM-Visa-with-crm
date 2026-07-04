@@ -10,7 +10,13 @@ export function isCounselorAssigned(counselor: string | undefined | null): boole
 }
 
 export function isAssignableCounselorStaff(user: CrmUser): boolean {
-  return user.role === "COUNSELOR" && user.id !== "user-admin";
+  return (
+    user.role === "COUNSELOR" ||
+    user.role === "ADMIN" ||
+    user.role === "VISA TEAM" ||
+    user.role === "DOCUMENT TEAM" ||
+    user.role === "ACCOUNT TEAM"
+  );
 }
 
 export function getAssignableCounselorNames(users: CrmUser[]): string[] {

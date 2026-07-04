@@ -47,52 +47,20 @@ export const CREATE_LEAD_FIELD_IDS: Partial<Record<keyof CreateLeadFormState, st
   employmentCategory: "create-lead-employment-category",
   packageAmount: "create-lead-package-amount",
   annualIncome: "create-lead-annual-income",
+  referredBy: "create-lead-referred-by",
 };
 
 const STEP_FIELD_ORDER: Record<WizardStepId, (keyof CreateLeadFormState)[]> = {
-  1: ["leadType", "visaSubtype"],
-  2: ["clientName", "email", "phone"],
-  3: ["passportNumber", "passportIssueDate", "passportExpiryDate", "passportPlaceOfIssue"],
-  4: [
-    "immigrationCountry",
-    "loginId",
-    "password",
-    "slotStatus",
-    "slotPortalLoginId",
-    "slotPortalPassword",
-    "usaTrackingMobile",
-    "usaSecurityCar",
-    "usaSecurityFood",
-    "usaSecurityCity",
-  ],
-  5: ["visaSubtype", "caseOfficer", "leadSource", "employmentCategory", "packageAmount", "annualIncome"],
+  1: ["clientName", "phone", "immigrationCountry", "leadSource", "referredBy", "notes", "caseOfficer"],
+  2: [],
+  3: [],
+  4: [],
+  5: [],
   6: [],
 };
 
 export function getActiveStepIds(leadType: CreateLeadType): WizardStepId[] {
-  if (leadType === "visa") {
-    return [1, 2, 3, 4, 5, 6];
-  }
-  return [1, 2, 4, 5, 6];
-}
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function isValidEmail(email: string): boolean {
-  const trimmed = email.trim();
-  return trimmed.length > 0 && EMAIL_PATTERN.test(trimmed);
-}
-
-function isValidPackageAmount(value: string): boolean {
-  if (!value.trim()) return true;
-  const parsed = parseFloat(value);
-  return !Number.isNaN(parsed) && parsed >= 0;
-}
-
-function isValidAnnualIncome(value: string): boolean {
-  if (!value.trim()) return true;
-  const parsed = parseFloat(value);
-  return !Number.isNaN(parsed) && parsed >= 0;
+  return [1];
 }
 
 export function getStepFieldErrors(
@@ -101,105 +69,16 @@ export function getStepFieldErrors(
 ): Partial<Record<keyof CreateLeadFormState, string>> {
   const errors: Partial<Record<keyof CreateLeadFormState, string>> = {};
 
-  switch (step) {
-    case 1: {
-      if (!state.leadType) {
-        errors.leadType = "Select a service type.";
-      } else if (state.leadType === "visa" && !state.visaSubtype.trim()) {
-        errors.visaSubtype = "Select a visa subtype.";
-      }
-      break;
+  if (step === 1) {
+    if (state.phone && !isValidE164Phone(state.phone)) {
+      errors.phone = "Enter a valid phone number.";
     }
-    case 2: {
-      if (!state.clientName.trim()) {
-        errors.clientName = "Client name is required.";
-      }
-      if (state.email.trim() && !isValidEmail(state.email)) {
-        errors.email = "Enter a valid email address.";
-      }
-      if (!isValidE164Phone(state.phone)) {
-        errors.phone = "Enter a valid phone number.";
-      }
-      break;
-    }
-    case 3: {
-      if (state.leadType === "visa") {
-        if (!state.passportNumber.trim()) {
-          errors.passportNumber = "Passport number is required.";
-        }
-        const issueParts = state.passportIssueDate.split("-");
-        if (issueParts.length < 3 || issueParts.some((p) => !p.trim())) {
-          errors.passportIssueDate = "Passport issue date is required.";
-        }
-        const expiryParts = state.passportExpiryDate.split("-");
-        if (expiryParts.length < 3 || expiryParts.some((p) => !p.trim())) {
-          errors.passportExpiryDate = "Passport expiry date is required.";
-        }
-        if (!state.passportPlaceOfIssue.trim()) {
-          errors.passportPlaceOfIssue = "Passport place of issue is required.";
-        }
-      }
-      break;
-    }
-    case 4: {
-      if (!state.immigrationCountry) {
-        errors.immigrationCountry = "Select an immigration country.";
-      }
-      if (!state.loginId.trim()) {
-        errors.loginId = "Visa portal login ID is required.";
-      }
-      if (!state.password.trim()) {
-        errors.password = "Visa portal password is required.";
-      }
-      if (isUsaCountry(state.immigrationCountry)) {
-        if (!state.slotStatus) {
-          errors.slotStatus = "Select a slot portal type (Available or Paid).";
-        }
-        if (!state.slotPortalLoginId.trim()) {
-          errors.slotPortalLoginId = "Slot portal login ID is required.";
-        }
-        if (!state.slotPortalPassword.trim()) {
-          errors.slotPortalPassword = "Slot portal password is required.";
-        }
-        if (!state.usaTrackingMobile.trim()) {
-          errors.usaTrackingMobile = "Mobile number is required.";
-        }
-        if (!state.usaSecurityCar.trim()) {
-          errors.usaSecurityCar = "Car is required.";
-        }
-        if (!state.usaSecurityFood.trim()) {
-          errors.usaSecurityFood = "Food is required.";
-        }
-        if (!state.usaSecurityCity.trim()) {
-          errors.usaSecurityCity = "City is required.";
-        }
-      }
-      break;
-    }
-    case 5: {
-      if (!state.visaSubtype.trim()) {
-        errors.visaSubtype = "Visa subtype is required.";
-      }
-      if (!state.leadSource) {
-        errors.leadSource = "Select a lead source.";
-      }
-      if (!state.employmentCategory) {
-        errors.employmentCategory = "Select an employment category.";
-      }
-      if (!isValidPackageAmount(state.packageAmount)) {
-        errors.packageAmount = "Service charges must be a valid non-negative number.";
-      }
-      if (!isValidAnnualIncome(state.annualIncome)) {
-        errors.annualIncome = "Annual income must be a valid non-negative number.";
-      }
-      break;
-    }
-    case 6:
-      break;
   }
 
   return errors;
 }
+
+
 
 export function validateStep(
   step: WizardStepId,

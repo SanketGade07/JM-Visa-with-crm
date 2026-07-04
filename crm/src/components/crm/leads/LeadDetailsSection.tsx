@@ -327,7 +327,7 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
           <div
             id="lead-details-scroll"
             ref={scrollContainerRef}
-            className="crm-slim-scrollbar xl:flex-1 xl:min-h-0 xl:overflow-y-auto pr-0.5"
+            className="crm-slim-scrollbar xl:flex-1 xl:min-h-0 xl:overflow-y-auto pr-3"
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-3">
               <DetailField icon={FiUser} label="Name" value={lead.name} />

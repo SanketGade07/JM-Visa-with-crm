@@ -42,7 +42,36 @@ export function LeadChecklistSection({
     setUploadError,
     openSignedUrl,
     toggleChecklistItem,
+    setLeadDetailTab,
   } = useCrmLayoutContext();
+
+  const [dismissedAlert, setDismissedAlert] = React.useState(false);
+
+  React.useEffect(() => {
+    setDismissedAlert(false);
+  }, [lead.id]);
+
+  const incompleteFields = React.useMemo(() => {
+    const fields = [];
+    if (!lead.email?.trim()) fields.push("Email");
+    if (!lead.passportNumber?.trim()) fields.push("Passport Number");
+    if (!lead.passportIssueDate?.trim()) fields.push("Passport Issue Date");
+    if (!lead.passportExpiryDate?.trim()) fields.push("Passport Expiry Date");
+    if (!lead.passportPlaceOfIssue?.trim()) fields.push("Passport Place of Issue");
+    if (!lead.annualIncome?.trim()) fields.push("Annual Income");
+    return fields;
+  }, [
+    lead.email,
+    lead.passportNumber,
+    lead.passportIssueDate,
+    lead.passportExpiryDate,
+    lead.passportPlaceOfIssue,
+    lead.annualIncome,
+  ]);
+
+  const isProfileIncomplete = incompleteFields.length > 0;
+
+  const showAlert = isProfileIncomplete && !dismissedAlert;
 
   // Gate on THIS lead's assignment (admins always, otherwise the assigned staff).
   const canAccessLeadChecklist = canAccessChecklistForLead(lead);
@@ -74,6 +103,53 @@ export function LeadChecklistSection({
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-220px)] space-y-6 p-6">
+      {showAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 backdrop-blur-sm p-4 animate-premium-fade-in">
+          <div className="w-full max-w-md bg-white dark:bg-[#0c0d21] border border-gray-100 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-6 space-y-5 transform scale-100 transition-all">
+            <div className="flex items-center gap-3 text-amber-500">
+              <FaInfoCircle className="text-3xl shrink-0" />
+              <h3 className="text-base font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                Incomplete Profile Details
+              </h3>
+            </div>
+            
+            <p className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
+              Please fill out the lead's complete profile first. The following fields are currently empty:
+            </p>
+
+            <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800/40">
+              <ul className="list-disc list-inside space-y-1.5 text-xs text-slate-700 dark:text-slate-300 font-semibold">
+                {incompleteFields.map((field) => (
+                  <li key={field} className="marker:text-amber-500">
+                    {field}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDismissedAlert(true);
+                  setLeadDetailTab("settings");
+                }}
+                className="flex-1 py-3 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all text-center select-none cursor-pointer"
+              >
+                Edit Profile
+              </button>
+              <button
+                type="button"
+                onClick={() => setDismissedAlert(true)}
+                className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-all text-center select-none cursor-pointer"
+              >
+                Proceed Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col space-y-4 pb-4">
         {showLeadHeader && (
           <div className="flex items-start justify-between gap-4">

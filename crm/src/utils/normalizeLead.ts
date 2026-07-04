@@ -79,6 +79,7 @@ export const LEAD_DB_COLUMNS = [
   "passportExpiryDate",
   "passportPlaceOfIssue",
   "annualIncome",
+  "referredBy",
 ] as const;
 
 export function serializeLeadForDb(
@@ -141,5 +142,6 @@ export function normalizeLead(raw: Record<string, unknown>): Lead {
     passportExpiryDate: (raw.passportExpiryDate as string) ?? (raw.passportexpirydate as string) ?? "",
     passportPlaceOfIssue: (raw.passportPlaceOfIssue as string) ?? (raw.passportplaceofissue as string) ?? "",
     annualIncome: (raw.annualIncome as string) ?? (raw.annualincome as string) ?? "",
+    referredBy: (raw.referredBy as string) ?? (raw.referredby as string) ?? "",
   } as Lead;
 }

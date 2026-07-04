@@ -42,6 +42,7 @@ export function buildCreateLeadPayload(state: CreateLeadFormState): CreateLeadPa
     notes: state.notes.trim(),
     employmentCategory,
     annualIncome: state.annualIncome.trim(),
+    referredBy: state.referredBy.trim(),
     checklist: buildEmptyChecklist(employmentCategory),
     payments:
       totalPackage > 0

@@ -141,6 +141,7 @@ export interface Lead {
     portalUrl?: string;
   };
   driveFolderId?: string | null;
+  referredBy?: string;
   notes: string;
   lastUpdated: string;
   isDeleted: boolean;
@@ -194,7 +195,7 @@ interface CrmContextType {
   updateLeadNotes: (leadId: string, notes: string) => void;
   updateLeadProfile: (
     leadId: string,
-    patch: Partial<Pick<Lead, "email" | "country" | "visaType" | "passportNumber" | "passportIssueDate" | "passportExpiryDate" | "passportPlaceOfIssue" | "annualIncome">>
+    patch: Partial<Pick<Lead, "email" | "country" | "visaType" | "passportNumber" | "passportIssueDate" | "passportExpiryDate" | "passportPlaceOfIssue" | "annualIncome" | "source" | "referredBy">>
   ) => void;
   assignCounselor: (leadId: string, counselor: string) => void;
   setLeadCredentials: (leadId: string, creds: { username?: string; password?: string; portalUrl?: string } | null) => Promise<boolean>;
@@ -566,6 +567,8 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         | "passportExpiryDate"
         | "passportPlaceOfIssue"
         | "annualIncome"
+        | "source"
+        | "referredBy"
       >
     >
   ) => {
@@ -616,6 +619,22 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         leadId,
         type: "note",
         content: `Annual Income updated to "${patch.annualIncome}"`,
+        createdBy: currentRole,
+      });
+    }
+    if (patch.source !== undefined && patch.source !== prev.source) {
+      logActivity({
+        leadId,
+        type: "note",
+        content: `Lead source changed from "${prev.source}" to "${patch.source}"`,
+        createdBy: currentRole,
+      });
+    }
+    if (patch.referredBy !== undefined && patch.referredBy !== prev.referredBy) {
+      logActivity({
+        leadId,
+        type: "note",
+        content: `Referred by name updated to "${patch.referredBy}"`,
         createdBy: currentRole,
       });
     }

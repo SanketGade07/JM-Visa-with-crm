@@ -13,6 +13,7 @@
     "migrate:employment-category": "node ./scripts/run-employment-category-migration.js",
     "migrate:assigned-at": "node ./scripts/run-assigned-at-migration.js",
     "migrate:annual-income": "node ./scripts/run-annual-income-migration.js",
+    "migrate:referred-by": "node ./scripts/run-referred-by-migration.js",
     "verify:employment-category": "node ./scripts/verify-employment-category-write.js",
     "drive:verify-setup": "node ./scripts/verify-google-drive-setup.js",
     "drive:link-root": "node ./scripts/link-drive-root-folder.js",

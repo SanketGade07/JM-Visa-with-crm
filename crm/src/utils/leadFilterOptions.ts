@@ -14,14 +14,17 @@ export function getCountryFilterOptions(): LeadFilterOption[] {
 }
 
 export function getVisaServiceSelectOptions(
-  leads: Lead[],
-  currentValue?: string
+  _leads?: Lead[],
+  _currentValue?: string
 ): LeadFilterOption[] {
-  const types = new Set(leads.map((lead) => lead.visaType).filter(Boolean));
-  if (currentValue?.trim()) {
-    types.add(currentValue.trim());
-  }
-  return [...types].sort().map((type) => ({ value: type, label: type }));
+  return [
+    { value: "Business Visa", label: "Business Visa" },
+    { value: "Residence Visa", label: "Residence Visa" },
+    { value: "Study Abroad", label: "Study Abroad" },
+    { value: "Tourist Visa", label: "Tourist Visa" },
+    { value: "Work Visa", label: "Work Visa" },
+    { value: "Other", label: "Other" },
+  ];
 }
 
 export function getVisaServiceFilterOptions(leads: Lead[]): LeadFilterOption[] {
