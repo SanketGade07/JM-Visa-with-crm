@@ -258,7 +258,7 @@ export function CrmHeader() {
               />
             </div>
           </div>
-          <div className="pointer-events-none absolute left-1/2 top-1/2 z-0 w-full max-w-[min(100%,calc(100%-9rem))] -translate-x-1/2 -translate-y-1/2 px-2 text-center">
+          <div className="pointer-events-none absolute left-1/2 top-1/2 z-0 w-full max-w-[min(100%,calc(100%-9rem))] -translate-x-1/2 -translate-y-1/2 px-2 text-center hidden md:block">
             <p className="truncate text-base font-bold leading-tight text-white">{lead.name}</p>
             <p className="truncate text-sm leading-tight text-slate-400">
               {lead.country} · {lead.visaType}
@@ -280,7 +280,7 @@ export function CrmHeader() {
                   ? "Export dropped leads"
                   : "Export leads"
             }
-            className="p-2 rounded-xl bg-slate-900 border border-slate-800/80 text-slate-400 hover:text-violet-400 hover:border-violet-500/30 transition-all flex items-center justify-center shadow-md cursor-pointer"
+            className="p-2 rounded-xl bg-slate-900 border border-slate-800/80 text-slate-400 hover:text-violet-400 hover:border-violet-500/30 transition-all hidden sm:flex items-center justify-center shadow-md cursor-pointer"
           >
             <FiDownload className="text-sm" />
           </button>
@@ -419,14 +419,16 @@ export function CrmHeader() {
           <button
             onClick={openCreateLead}
             disabled={isCreateLeadOpen}
-            className={`flex items-center gap-1 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-xs py-1.5 px-2 rounded-xl transition-all shadow-md shadow-violet-500/10 ${
+            title="New Lead"
+            aria-label="New Lead"
+            className={`flex items-center gap-1 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-xs p-2 sm:py-1.5 sm:px-2 rounded-xl transition-all shadow-md shadow-violet-500/10 ${
               isCreateLeadOpen
                 ? "opacity-40 cursor-not-allowed"
                 : "hover:from-violet-500 hover:to-indigo-500"
             }`}
           >
             <FaPlus className="text-[10px]" />
-            <span>New</span>
+            <span className="hidden sm:inline">New</span>
           </button>
         )}
       </div>

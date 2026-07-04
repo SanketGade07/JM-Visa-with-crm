@@ -180,7 +180,7 @@ export function LeadManagementCard({
         </div>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3">
             <CredentialField
               value={lead.visaCredentials?.username?.trim() ?? ""}
               icon={FiUser}
@@ -204,7 +204,7 @@ export function LeadManagementCard({
           <div className="border-t border-gray-200 dark:border-slate-800/80 pt-4 mt-4 space-y-4">
             <h3 className={sectionTitleCls}>USA Slot Portal</h3>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3">
                 <CredentialField
                   value={lead.usaSlots?.slotPortalUsername?.trim() ?? ""}
                   icon={FiUser}

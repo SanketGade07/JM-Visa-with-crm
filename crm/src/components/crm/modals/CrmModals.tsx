@@ -210,7 +210,7 @@ export function CrmModals() {
               {/* Invoice Attachment Options */}
               <div className="space-y-2 border-t border-slate-900 pt-3">
                 <label className="text-slate-400 font-bold block">Invoice Document (Optional)</label>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   
                   {/* File Upload Option */}
                   <div className="space-y-1">
@@ -357,7 +357,7 @@ export function CrmModals() {
                 <input required name="clientName" placeholder="e.g. Rahul Kapoor" type="text" className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none" />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-slate-400 font-bold block">Meeting Date</label>
                   <input required name="meetingDate" type="date" className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-xl focus:outline-none" />
@@ -445,7 +445,7 @@ export function CrmModals() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-slate-400 font-bold block">Meeting Date</label>
                   <input 
@@ -830,7 +830,7 @@ export function CrmModals() {
               }}
               className="space-y-4 text-xs"
             >
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5 text-left">
                   <label className="text-slate-400 font-bold block">Full Name</label>
                   <input
@@ -852,7 +852,7 @@ export function CrmModals() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5 text-left">
                   <label className="text-slate-400 font-bold block">Password</label>
                   <input
@@ -1006,7 +1006,7 @@ export function CrmModals() {
               }}
               className="space-y-4 text-xs"
             >
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5 text-left">
                   <label className="text-slate-400 font-bold block">Full Name</label>
                   <input
@@ -1030,7 +1030,7 @@ export function CrmModals() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5 text-left">
                   <label className="text-slate-400 font-bold block">Password <span className="font-normal text-slate-500">(edit to change)</span></label>
                   <input

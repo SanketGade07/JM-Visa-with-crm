@@ -114,7 +114,7 @@ export function StaffTab() {
 
               {/* Roster list view */}
               <div className="overflow-x-auto border border-slate-800/80 rounded-2xl bg-slate-900/60">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse min-w-[800px]">
                   <thead>
                     <tr className="border-b border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-500 bg-slate-950/40">
                       <th className="py-4 px-6">Staff Member</th>

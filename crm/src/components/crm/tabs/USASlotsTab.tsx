@@ -291,7 +291,7 @@ function UsaSlotSettingsModal({
                 className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none focus:ring-1 focus:ring-violet-500"
               />
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">Car</label>
                 <input
