@@ -36,11 +36,56 @@ export function userHasPermission(
 // Which sidebar tabs each role is allowed to open (guide §8.9 access model).
 // Every role lands on the Dashboard; specialist teams only see their own desks.
 export const ROLE_TABS: Record<StaffRole, string[]> = {
-  ADMIN: ["Dashboard", "Leads", "USASlots", "Submissions", "Payments", "DropLeads", "Staff", "Drive"],
-  COUNSELOR: ["Dashboard", "Leads", "DropLeads"],
-  "DOCUMENT TEAM": ["Dashboard", "Leads"],
-  "VISA TEAM": ["Dashboard", "Leads", "USASlots", "Submissions"],
-  "ACCOUNT TEAM": ["Dashboard", "Leads", "Payments"],
+  ADMIN: [
+    "Dashboard",
+    "Leads",
+    "USASlots",
+    "Submissions",
+    "Payments",
+    "DropLeads",
+    "Staff",
+    "Drive",
+    "LeadDetails_Details",
+    "LeadDetails_Checklist",
+    "LeadDetails_Drive",
+    "LeadDetails_Settings",
+  ],
+  COUNSELOR: [
+    "Dashboard",
+    "Leads",
+    "DropLeads",
+    "LeadDetails_Details",
+    "LeadDetails_Checklist",
+    "LeadDetails_Drive",
+    "LeadDetails_Settings",
+  ],
+  "DOCUMENT TEAM": [
+    "Dashboard",
+    "Leads",
+    "LeadDetails_Details",
+    "LeadDetails_Checklist",
+    "LeadDetails_Drive",
+    "LeadDetails_Settings",
+  ],
+  "VISA TEAM": [
+    "Dashboard",
+    "Leads",
+    "USASlots",
+    "Submissions",
+    "LeadDetails_Details",
+    "LeadDetails_Checklist",
+    "LeadDetails_Drive",
+    "LeadDetails_Settings",
+  ],
+  "ACCOUNT TEAM": [
+    "Dashboard",
+    "Leads",
+    "Payments",
+    "LeadDetails_Details",
+    "LeadDetails_Checklist",
+    "LeadDetails_Drive",
+    "LeadDetails_Settings",
+  ],
   OTHER: ["Dashboard"],
 };
 
@@ -52,7 +97,11 @@ export const AVAILABLE_TABS = [
   { id: "Payments", label: "Payments & Finance" },
   { id: "DropLeads", label: "Drop Leads Log" },
   { id: "Staff", label: "Staff Directory" },
-  { id: "Drive", label: "Drive" },
+  { id: "Drive", label: "Drive Storage (Sidebar)" },
+  { id: "LeadDetails_Details", label: "Lead Details: Details" },
+  { id: "LeadDetails_Checklist", label: "Lead Details: Checklist" },
+  { id: "LeadDetails_Drive", label: "Lead Details: Drive" },
+  { id: "LeadDetails_Settings", label: "Lead Details: Settings" },
 ];
 
 export const AVAILABLE_TAB_IDS = new Set(AVAILABLE_TABS.map((tab) => tab.id));

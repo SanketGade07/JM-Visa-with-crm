@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { Lead, PaymentDetails } from "@/context/CrmContext";
 import { FaEnvelope, FaFileInvoiceDollar, FaTag } from "react-icons/fa";
-import DataTable, { type Column } from "@/components/ui/DataTable";
+import DataTable, { type Column, exportRowsToCsv } from "@/components/ui/DataTable";
 import { TableViewToggle } from "@/components/crm/ui/TableViewToggle";
 import { UpdatePackageModal } from "@/components/crm/modals/UpdatePackageModal";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
@@ -73,6 +73,7 @@ export function PaymentsTab() {
     showConfirm,
     showAlert,
     isAdmin,
+    registerPaymentsExport,
   } = useCrmLayoutContext();
 
   const columnSearch = useColumnSearch();
@@ -221,6 +222,55 @@ export function PaymentsTab() {
     () => deskRevenueRows.reduce((sum, row) => sum + row.realizedRevenue, 0),
     [deskRevenueRows]
   );
+
+  useEffect(() => {
+    registerPaymentsExport(() => {
+      if (paymentsView === "ledger") {
+        exportRowsToCsv(
+          "payments-ledger",
+          ["Client Name", "Destination", "Service Charges", "Realized Paid", "Remaining Balance", "Payment Status"],
+          ledgerRows.map((l) => {
+            const total = l.payments[0]?.totalPackage || 0;
+            const scoped = paymentsInRange(l.payments, startDate, endDate);
+            const paid = scoped.reduce((acc, pay) => acc + pay.amountPaid, 0);
+            const balance = total > 0 ? Math.max(0, total - paid) : 0;
+            const status = isLeadPaid(l) ? "Paid" : "Unpaid";
+            return [
+              l.name,
+              getCountryDisplayName(l.country),
+              total > 0 ? total : "",
+              paid,
+              balance,
+              status,
+            ];
+          })
+        );
+      } else {
+        exportRowsToCsv(
+          "payments-desk-revenue",
+          ["Destination Desk", "Active Clients", "Realized Revenue", "Revenue Share"],
+          deskRevenueRows.map((row) => {
+            const sharePct = totalDeskRevenue > 0 ? (row.realizedRevenue / totalDeskRevenue) * 100 : 0;
+            return [
+              row.country,
+              row.clientCount,
+              row.realizedRevenue,
+              `${sharePct.toFixed(1)}%`,
+            ];
+          })
+        );
+      }
+    });
+    return () => registerPaymentsExport(null);
+  }, [
+    registerPaymentsExport,
+    paymentsView,
+    ledgerRows,
+    deskRevenueRows,
+    startDate,
+    endDate,
+    totalDeskRevenue,
+  ]);
 
   const ledgerColumns = useMemo<Column<Lead>[]>(
     () => [

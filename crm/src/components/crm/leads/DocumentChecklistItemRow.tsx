@@ -75,7 +75,7 @@ export function DocumentChecklistItemRow({
         <span
           className={`min-w-0 flex-1 text-xs font-bold leading-snug ${value ? "text-emerald-700 dark:text-emerald-400" : "text-gray-800 dark:text-slate-300"}`}
         >
-          {label}
+          {label} <span className="text-rose-500 font-extrabold ml-0.5">*</span>
         </span>
       </div>
 

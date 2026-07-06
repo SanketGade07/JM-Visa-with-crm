@@ -9,6 +9,8 @@ import { LeadDetailsSection } from "./LeadDetailsSection";
 import { LeadDriveTab } from "./LeadDriveTab";
 import { LeadManagementCard } from "./LeadManagementCard";
 import { LeadSettingsSection } from "./LeadSettingsSection";
+import { CollapsiblePanel } from "@/components/ui/CollapsiblePanel";
+import { CreateLeadWizardPage } from "./create/CreateLeadWizardPage";
 
 function TabPlaceholder({ title, description }: { title: string; description: string }) {
   return (
@@ -35,10 +37,19 @@ export function LeadDetailPage() {
     leadDetailTab,
     canAccessChecklistForLead,
     canViewLeads,
+    userAllowedTabs,
+    isEditLeadOpen,
+    editLeadSession,
+    closeEditLead,
   } = useCrmLayoutContext();
 
   const lead = selectedLeadId ? leads.find((l) => l.id === selectedLeadId) ?? null : null;
   const canAccessLeadChecklist = canAccessChecklistForLead(lead);
+  const isDetailsAllowed = userAllowedTabs.includes("LeadDetails_Details");
+  const isChecklistAllowed = userAllowedTabs.includes("LeadDetails_Checklist") && canAccessLeadChecklist;
+  const isDriveAllowed = userAllowedTabs.includes("LeadDetails_Drive");
+  const isSettingsAllowed = userAllowedTabs.includes("LeadDetails_Settings");
+
   useEffect(() => {
     if (searchParams.get("created") !== "1" || !selectedLeadId) return;
     if (createdHandledRef.current) return;
@@ -59,6 +70,12 @@ export function LeadDetailPage() {
       window.clearTimeout(unhighlightTimer);
     };
   }, [selectedLeadId, router]);
+
+  useEffect(() => {
+    if (leadDetailTab !== "details" && isEditLeadOpen) {
+      closeEditLead();
+    }
+  }, [leadDetailTab, isEditLeadOpen, closeEditLead]);
 
   if (!canViewLeads) {
     return null;
@@ -81,42 +98,55 @@ export function LeadDetailPage() {
   }
 
   return (
-    <div className={leadDetailTab === "details" ? "flex-1 min-h-0 flex flex-col" : "space-y-6"}>
+    <div className="flex-1 min-h-0 flex flex-col space-y-4">
+      {/* Banner */}
       {showCreatedBanner && (
-        <div
-          role="status"
-          className="flex items-start justify-between gap-3 rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3 animate-premium-fade-in-up"
-        >
-          <div>
-            <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">
-              Lead created successfully
-            </p>
-            <p className="mt-0.5 text-xs text-emerald-700/80 dark:text-emerald-300/80">
-              Review the request details and manage this lead from the panel on the right.
-            </p>
+        <div className="relative overflow-hidden p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-350 shadow-sm flex items-center justify-between text-xs font-semibold">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span>Lead initialized successfully! Copy credentials or notes below.</span>
           </div>
           <button
             type="button"
             onClick={() => setShowCreatedBanner(false)}
-            className="shrink-0 p-1.5 rounded-lg text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
-            aria-label="Dismiss success message"
+            aria-label="Dismiss banner"
+            className="text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-300 font-bold"
           >
-            <FaTimes className="text-xs" />
+            Dismiss
           </button>
         </div>
       )}
 
+      {/* Edit wizard panel */}
+      <CollapsiblePanel open={isEditLeadOpen}>
+        <div className="mb-4">
+          <CreateLeadWizardPage
+            key={editLeadSession}
+            variant="inline"
+            onClose={closeEditLead}
+            editLeadId={selectedLeadId}
+          />
+        </div>
+      </CollapsiblePanel>
+
+      {/* Tabs panels */}
       <div
         role="tabpanel"
         aria-label={leadDetailTab}
         className={leadDetailTab === "details" ? "flex-1 min-h-0 flex flex-col" : undefined}
       >
-        {leadDetailTab === "details" && (
+        {leadDetailTab === "details" && isDetailsAllowed && (
           <div className="flex-1 min-h-0 flex flex-col">
             <LeadDetailsSection lead={lead} highlighted={highlightSummary} />
           </div>
         )}
-        {leadDetailTab === "checklist" && canAccessLeadChecklist && (
+        {leadDetailTab === "details" && !isDetailsAllowed && (
+          <TabPlaceholder
+            title="Details access restricted"
+            description="You do not have permission to view this lead's profile details."
+          />
+        )}
+        {leadDetailTab === "checklist" && isChecklistAllowed && (
           <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start">
             <LeadChecklistSection lead={lead} />
             <LeadManagementCard
@@ -126,14 +156,26 @@ export function LeadDetailPage() {
             />
           </div>
         )}
-        {leadDetailTab === "checklist" && !canAccessLeadChecklist && (
+        {leadDetailTab === "checklist" && !isChecklistAllowed && (
           <TabPlaceholder
             title="Checklist access restricted"
             description="You do not have permission to view or verify documents for this lead."
           />
         )}
-        {leadDetailTab === "drive" && <LeadDriveTab lead={lead} />}
-        {leadDetailTab === "settings" && <LeadSettingsSection lead={lead} />}
+        {leadDetailTab === "drive" && isDriveAllowed && <LeadDriveTab lead={lead} />}
+        {leadDetailTab === "drive" && !isDriveAllowed && (
+          <TabPlaceholder
+            title="Drive access restricted"
+            description="You do not have permission to view files in this lead's drive storage."
+          />
+        )}
+        {leadDetailTab === "settings" && isSettingsAllowed && <LeadSettingsSection lead={lead} />}
+        {leadDetailTab === "settings" && !isSettingsAllowed && (
+          <TabPlaceholder
+            title="Settings access restricted"
+            description="You do not have permission to configure settings for this lead."
+          />
+        )}
       </div>
     </div>
   );

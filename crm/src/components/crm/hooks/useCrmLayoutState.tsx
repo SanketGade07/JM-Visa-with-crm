@@ -98,6 +98,7 @@ export function useCrmLayoutState() {
     updateUsaSlots,
     addPayment,
     setLeadPackage,
+    updateAmountReceived,
     addMeeting,
     updateMeeting,
     deleteLead,
@@ -117,6 +118,7 @@ export function useCrmLayoutState() {
     getLeadActivities,
     postLeadDiscussionMessage,
     toggleChecklistItem,
+    updateLeadFromWizard,
   } = useCrm();
 
   const pathname = usePathname();
@@ -154,9 +156,10 @@ export function useCrmLayoutState() {
     (lead?: Lead | null): boolean => {
       if (isAdminUser) return true;
       if (!lead || !currentUser) return false;
+      if (userAllowedTabs.includes("LeadDetails_Checklist")) return true;
       return isLeadAssignedToCounselor(lead, currentUser.name);
     },
-    [isAdminUser, currentUser]
+    [isAdminUser, currentUser, userAllowedTabs]
   );
 
   const resolveLeadDetailTab = useCallback(
@@ -555,6 +558,19 @@ export function useCrmLayoutState() {
     setIsCreateLeadOpen(false);
   }, []);
 
+  const [isEditLeadOpen, setIsEditLeadOpen] = useState(false);
+  const [editLeadSession, setEditLeadSession] = useState(0);
+
+  const openEditLead = useCallback(() => {
+    if (!canModifyLeads) return;
+    setEditLeadSession((session) => session + 1);
+    setIsEditLeadOpen(true);
+  }, [canModifyLeads]);
+
+  const closeEditLead = useCallback(() => {
+    setIsEditLeadOpen(false);
+  }, []);
+
   const setLeadDetailTab = useCallback(
     (tab: LeadDetailTab) => {
       const lead = selectedLeadId
@@ -651,6 +667,7 @@ export function useCrmLayoutState() {
   const leadsExportRef = useRef<(() => void) | null>(null);
   const usaSlotsExportRef = useRef<(() => void) | null>(null);
   const droppedLeadsExportRef = useRef<(() => void) | null>(null);
+  const paymentsExportRef = useRef<(() => void) | null>(null);
   const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
 
   const registerLeadsExport = useCallback((fn: (() => void) | null) => {
@@ -675,6 +692,14 @@ export function useCrmLayoutState() {
 
   const exportDroppedLeadsCsv = useCallback(() => {
     droppedLeadsExportRef.current?.();
+  }, []);
+
+  const registerPaymentsExport = useCallback((fn: (() => void) | null) => {
+    paymentsExportRef.current = fn;
+  }, []);
+
+  const exportPaymentsCsv = useCallback(() => {
+    paymentsExportRef.current?.();
   }, []);
 
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -1291,9 +1316,9 @@ export function useCrmLayoutState() {
   return {
     leads, meetings, users, currentUser, authUser, currentRole, currentTab, setCurrentTab,
     setCurrentRole, setCurrentUser, addUser, deleteUser, resetUserPassword, addLead: wrappedAddLead, updateLeadStatus,
-    updateUsaSlots, addPayment, setLeadPackage, addMeeting, updateMeeting, deleteLead, deleteLeads, restoreLead, updateLeadNotes,
+    updateUsaSlots, addPayment, setLeadPackage, updateAmountReceived, addMeeting, updateMeeting, deleteLead, deleteLeads, restoreLead, updateLeadNotes,
     showConfirm, showAlert, closeCustomDialog, customDialog,
-    updateLeadProfile, assignCounselor: wrappedAssignCounselor, updateEmploymentCategory, setLeadCredentials, setLeadDriveFolder, patchLeadDriveFolder, uploadDocument, removeDocument, uploadInvoice, getLeadDocuments, getLeadActivities, postLeadDiscussionMessage: wrappedPostLeadDiscussionMessage, toggleChecklistItem,
+    updateLeadProfile, assignCounselor: wrappedAssignCounselor, updateEmploymentCategory, setLeadCredentials, setLeadDriveFolder, patchLeadDriveFolder, uploadDocument, removeDocument, uploadInvoice, getLeadDocuments, getLeadActivities, postLeadDiscussionMessage: wrappedPostLeadDiscussionMessage, toggleChecklistItem, updateLeadFromWizard,
     assignmentNotifications, dismissAssignmentNotification, clearAssignmentNotifications, assignedLeadCount,
     handleLogout, searchTerm, setSearchTerm, checklistSearch, setChecklistSearch,
     isMobileSidebarOpen, setIsMobileSidebarOpen, isMobileDetailOpen, setIsMobileDetailOpen,
@@ -1312,6 +1337,7 @@ export function useCrmLayoutState() {
     openLeadDetail, closeLeadDetail, leadDetailTab, setLeadDetailTab,
     openLeadChecklist, closeLeadChecklist, navigateToTab,
     isCreateLeadOpen, createLeadSession, openCreateLead, closeCreateLead,
+    isEditLeadOpen, editLeadSession, openEditLead, closeEditLead,
     isLeadsListRoute, isLeadNewRoute, isLeadDetailRoute, isLeadChecklistRoute,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,
     selectedMeeting, setSelectedMeeting, isEditMeetingOpen, setIsEditMeetingOpen,
@@ -1345,6 +1371,7 @@ export function useCrmLayoutState() {
     registerLeadsExport, exportLeadsCsv,
     registerUsaSlotsExport, exportUsaSlotsCsv,
     registerDroppedLeadsExport, exportDroppedLeadsCsv,
+    registerPaymentsExport, exportPaymentsCsv,
   };
 }
 

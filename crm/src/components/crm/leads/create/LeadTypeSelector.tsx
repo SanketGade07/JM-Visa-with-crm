@@ -7,9 +7,10 @@ import { SELECTION_CARD_CLASS, SELECTION_CHEVRON_CLASS } from "./selectionCardSt
 type LeadTypeSelectorProps = {
   onSelectStudyAbroad: () => void;
   onSelectVisa: () => void;
+  onSelectPassport: () => void;
 };
 
-export function LeadTypeSelector({ onSelectStudyAbroad, onSelectVisa }: LeadTypeSelectorProps) {
+export function LeadTypeSelector({ onSelectStudyAbroad, onSelectVisa, onSelectPassport }: LeadTypeSelectorProps) {
   return (
     <div className="flex flex-col space-y-4 py-4">
       <button
@@ -23,6 +24,10 @@ export function LeadTypeSelector({ onSelectStudyAbroad, onSelectVisa }: LeadType
       </button>
       <button type="button" onClick={onSelectVisa} className={SELECTION_CARD_CLASS}>
         <span className="text-sm font-bold text-slate-800 dark:text-white">Visa</span>
+        <FaChevronRight className={SELECTION_CHEVRON_CLASS} />
+      </button>
+      <button type="button" onClick={onSelectPassport} className={SELECTION_CARD_CLASS}>
+        <span className="text-sm font-bold text-slate-800 dark:text-white">Passport</span>
         <FaChevronRight className={SELECTION_CHEVRON_CLASS} />
       </button>
     </div>

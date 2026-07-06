@@ -24,7 +24,7 @@ export function CountrySelector({
   error,
 }: CountrySelectorProps) {
   return (
-    <FormSection label={label} htmlFor={inputId} error={error}>
+    <FormSection label={label} htmlFor={inputId} error={error} required={required}>
       <SearchableCountrySelect
         name={name}
         value={value}

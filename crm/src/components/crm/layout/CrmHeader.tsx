@@ -16,6 +16,7 @@ import {
   FiStar,
   FiTrash,
   FiX,
+  FiUserX,
 } from "react-icons/fi";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { LeadDetailTabBar } from "../leads/LeadDetailTabBar";
@@ -73,6 +74,7 @@ export function CrmHeader() {
     exportLeadsCsv,
     exportUsaSlotsCsv,
     exportDroppedLeadsCsv,
+    exportPaymentsCsv,
     leadDetailTab,
     setLeadDetailTab,
     openLeadDetail,
@@ -91,6 +93,8 @@ export function CrmHeader() {
     setStartDate,
     endDate,
     setEndDate,
+    openEditLead,
+    isEditLeadOpen,
   } = useCrmLayoutContext();
 
   const { toolbarProps: mainDriveToolbarProps } = useMainDriveToolbar();
@@ -142,6 +146,72 @@ export function CrmHeader() {
       )
     : 0;
 
+  const incompleteLeads = useMemo(() => {
+    return leads.filter((l) => {
+      if (l.isDeleted) return false;
+      if (l.status === "DROPPED") return false;
+      const hasMissingEmail = !l.email?.trim();
+      const hasMissingPassportNum = !l.passportNumber?.trim();
+      const hasMissingPassportIssue = !l.passportIssueDate?.trim();
+      const hasMissingPassportExpiry = !l.passportExpiryDate?.trim();
+      const hasMissingPassportPlace = !l.passportPlaceOfIssue?.trim();
+      const hasMissingIncome = !l.annualIncome?.trim();
+      return (
+        hasMissingEmail ||
+        hasMissingPassportNum ||
+        hasMissingPassportIssue ||
+        hasMissingPassportExpiry ||
+        hasMissingPassportPlace ||
+        hasMissingIncome
+      );
+    });
+  }, [leads]);
+
+  const getMissingFieldsString = (l: typeof leads[0]) => {
+    const missing = [];
+    if (!l.email?.trim()) missing.push("Email");
+    if (!l.annualIncome?.trim()) missing.push("Income");
+    if (
+      !l.passportNumber?.trim() ||
+      !l.passportIssueDate?.trim() ||
+      !l.passportExpiryDate?.trim() ||
+      !l.passportPlaceOfIssue?.trim()
+    ) {
+      missing.push("Passport");
+    }
+    return missing.join(", ");
+  };
+
+  const selectedLead = useMemo(() => {
+    return leads.find((l) => l.id === selectedLeadId) ?? null;
+  }, [leads, selectedLeadId]);
+
+  const selectedLeadIsIncomplete = useMemo(() => {
+    if (!selectedLead) return false;
+    return (
+      !selectedLead.email?.trim() ||
+      !selectedLead.passportNumber?.trim() ||
+      !selectedLead.passportIssueDate?.trim() ||
+      !selectedLead.passportExpiryDate?.trim() ||
+      !selectedLead.passportPlaceOfIssue?.trim() ||
+      !selectedLead.annualIncome?.trim()
+    );
+  }, [selectedLead]);
+
+  const [isIncompletePopoverOpen, setIsIncompletePopoverOpen] = useState(false);
+  const incompleteRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isIncompletePopoverOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (incompleteRef.current && !incompleteRef.current.contains(e.target as Node)) {
+        setIsIncompletePopoverOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isIncompletePopoverOpen]);
+
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
   const unreadCount = assignmentNotifications.length;
@@ -168,11 +238,13 @@ export function CrmHeader() {
   const showExportButton =
     (currentTab === "Leads" && !isLeadDetailRoute) ||
     currentTab === "USASlots" ||
-    currentTab === "DropLeads";
+    currentTab === "DropLeads" ||
+    currentTab === "Payments";
 
   const handleExportCsv = () => {
     if (currentTab === "USASlots") exportUsaSlotsCsv();
     else if (currentTab === "DropLeads") exportDroppedLeadsCsv();
+    else if (currentTab === "Payments") exportPaymentsCsv();
     else exportLeadsCsv();
   };
 
@@ -297,6 +369,108 @@ export function CrmHeader() {
               setEndDate("");
             }}
           />
+        )}
+
+        {/* Incomplete Profiles warning button & popover */}
+        {/* Incomplete Profiles warning button & popover */}
+        {selectedLead ? (
+          // When inside lead details
+          selectedLeadIsIncomplete && leadDetailTab === "details" && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => openEditLead()}
+                disabled={isEditLeadOpen}
+                title="Complete Profile"
+                aria-label="Complete current lead profile details"
+                className={`relative p-2 rounded-xl border transition-all flex items-center justify-center shadow-md ${
+                  isEditLeadOpen
+                    ? "opacity-40 cursor-not-allowed border-amber-500/20 text-amber-500/40 bg-amber-500/5"
+                    : "cursor-pointer bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500/20"
+                }`}
+              >
+                <FiUserX className="text-sm" />
+              </button>
+            </div>
+          )
+        ) : (
+          // Outside lead details (on dashboard/leads list)
+          incompleteLeads.length > 0 && (
+            <div className="relative" ref={incompleteRef}>
+              <button
+                type="button"
+                onClick={() => setIsIncompletePopoverOpen((open) => !open)}
+                title="Incomplete Profiles"
+                aria-label="Incomplete lead profiles warning list"
+                className="relative p-2 rounded-xl border transition-all flex items-center justify-center shadow-md cursor-pointer bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500/20"
+              >
+                <FiUserX className="text-sm" />
+                <span className="absolute -top-1 -right-1 min-w-[1.125rem] h-[1.125rem] px-1 flex items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-slate-950 leading-none">
+                  {incompleteLeads.length}
+                </span>
+              </button>
+
+              {isIncompletePopoverOpen && (
+                <div
+                  className={`absolute right-0 top-full mt-2 w-80 rounded-xl border shadow-xl z-50 overflow-hidden ${
+                    theme === "light"
+                      ? "border-slate-200 bg-white shadow-slate-300/40"
+                      : "border-slate-700/80 bg-[#0f0f22] shadow-black/40"
+                  }`}
+                >
+                  <div
+                    className={`px-4 py-3 border-b ${
+                      theme === "light" ? "border-slate-200" : "border-slate-800/80"
+                    }`}
+                  >
+                    <p
+                      className={`text-sm font-semibold ${
+                        theme === "light" ? "text-slate-900" : "text-white"
+                      }`}
+                    >
+                      Incomplete Profiles
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {incompleteLeads.length} lead{incompleteLeads.length === 1 ? "" : "s"} require attention
+                    </p>
+                  </div>
+
+                  <ul className={`max-h-64 overflow-y-auto ${CRM_DROPDOWN_SCROLL_CLASS}`}>
+                    {incompleteLeads.map((item) => (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsIncompletePopoverOpen(false);
+                            openLeadDetail(item.id);
+                            setTimeout(() => {
+                              openEditLead();
+                            }, 100);
+                          }}
+                          className={`w-full px-4 py-3 text-left transition-colors border-b last:border-b-0 cursor-pointer ${
+                            theme === "light"
+                              ? "hover:bg-slate-50 border-slate-100"
+                              : "hover:bg-slate-800/50 border-slate-800/40"
+                          }`}
+                        >
+                          <p
+                            className={`text-sm font-semibold truncate ${
+                              theme === "light" ? "text-slate-800" : "text-slate-200"
+                            }`}
+                          >
+                            {item.name}
+                          </p>
+                          <p className="text-[11px] text-amber-500 font-medium mt-0.5">
+                            Missing: {getMissingFieldsString(item)}
+                          </p>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )
         )}
 
         <button

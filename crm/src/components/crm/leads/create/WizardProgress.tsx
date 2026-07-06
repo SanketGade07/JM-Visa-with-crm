@@ -101,7 +101,7 @@ export function WizardProgress({
           const stepContent = (
             <>
               <div className={circleClassName}>
-                {isComplete ? <FaCheck className="text-[10px]" /> : index + 1}
+                {index + 1}
               </div>
               <span className={labelClassName}>{step.label}</span>
             </>

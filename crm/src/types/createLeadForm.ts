@@ -3,7 +3,7 @@ import type { EmploymentCategory } from "@/utils/documentChecklistConfig";
 import { DEFAULT_EMPLOYMENT_CATEGORY } from "@/utils/documentChecklistConfig";
 import { UNASSIGNED_COUNSELOR } from "@/utils/counselorOptions";
 
-export type CreateLeadType = "study_abroad" | "visa" | null;
+export type CreateLeadType = "study_abroad" | "visa" | "passport" | null;
 
 export type CreateLeadSlotStatus = "available" | "paid" | "";
 

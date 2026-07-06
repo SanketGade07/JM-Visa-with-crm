@@ -289,7 +289,7 @@ export const getSeedUsers = (): CrmUser[] => [
     email: "admin@jmvisa.com",
     password: "admin123",
     role: "ADMIN",
-    allowedTabs: ["Dashboard", "Leads", "USASlots", "Submissions", "Payments", "DropLeads", "Staff", "Drive"],
+    allowedTabs: ["Dashboard", "Leads", "USASlots", "Submissions", "Payments", "DropLeads", "Staff", "Drive", "LeadDetails_Details", "LeadDetails_Checklist", "LeadDetails_Drive", "LeadDetails_Settings"],
     permissions: ["assignLeads"],
     createdAt: new Date().toISOString()
   },
@@ -299,7 +299,7 @@ export const getSeedUsers = (): CrmUser[] => [
     email: "counselor@jmvisa.com",
     password: "counselor123",
     role: "COUNSELOR",
-    allowedTabs: ["Dashboard", "Leads", "DropLeads"],
+    allowedTabs: ["Dashboard", "Leads", "DropLeads", "LeadDetails_Details", "LeadDetails_Checklist", "LeadDetails_Drive", "LeadDetails_Settings"],
     permissions: [],
     createdAt: new Date().toISOString()
   }

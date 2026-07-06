@@ -189,24 +189,29 @@ export function LeadsTab() {
     return sortLeadsByRecency(searched);
   }, [baseFilteredLeads, leadSearchColumns, columnSearch.debouncedFilters]);
 
+  const allActiveLeads = useMemo(() => {
+    const active = counselorScopedLeads.filter((l) => l.status !== "DROPPED");
+    return sortLeadsByRecency(active);
+  }, [counselorScopedLeads]);
+
   useEffect(() => {
     registerLeadsExport(() =>
       exportRowsToCsv(
         "leads",
         ["#", "Lead", "Service", "Country", "Assign to", "Status", "Doc %"],
-        tableRows.map((l, i) => [
+        allActiveLeads.map((l, i) => [
           i + 1,
           l.name,
-          l.visaType,
-          l.country,
-          l.counselor,
+          l.visaType ?? "",
+          l.country ?? "",
+          l.counselor ?? "",
           l.status,
           `${Math.round(docProgress(l.checklist, l.employmentCategory))}%`,
         ])
       )
     );
     return () => registerLeadsExport(null);
-  }, [registerLeadsExport, tableRows]);
+  }, [registerLeadsExport, allActiveLeads]);
 
   return (
     <>
@@ -713,44 +718,7 @@ export function LeadsTab() {
                         title: "Email",
                         onClick: (l) => window.open(`mailto:${l.email}`),
                       },
-                      {
-                        icon: FaTrash,
-                        title: "Delete",
-                        hidden: () => !isAdmin,
-                        onClick: (l) => {
-                          showConfirm(
-                            "Delete Lead",
-                            `Are you sure you want to permanently delete "${l.name}" from the database? This action cannot be undone.`,
-                            async () => {
-                              const ok = await deleteLead(l.id);
-                              if (ok) {
-                                showAlert("Delete Success", `"${l.name}" has been permanently deleted from the database.`);
-                              } else {
-                                showAlert("Delete Failed", "Failed to delete the lead from the database.");
-                              }
-                            }
-                          );
-                        },
-                      },
                     ]}
-                    onBulkDelete={
-                      isAdmin
-                        ? (ids) => {
-                            showConfirm(
-                              "Delete Multiple Leads",
-                              `Are you sure you want to permanently delete the ${ids.length} selected lead(s) from the database? This action cannot be undone.`,
-                              async () => {
-                                const ok = await deleteLeads(ids);
-                                if (ok) {
-                                  showAlert("Delete Success", `${ids.length} lead(s) have been permanently deleted from the database.`);
-                                } else {
-                                  showAlert("Delete Failed", "Failed to delete the selected leads.");
-                                }
-                              }
-                            );
-                          }
-                        : undefined
-                    }
                     emptyText="No leads match your filters."
                   />
                 </div>

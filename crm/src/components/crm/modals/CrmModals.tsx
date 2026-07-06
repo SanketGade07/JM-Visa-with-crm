@@ -13,9 +13,13 @@ import {
 } from "./DepositLeadSearchSelect";
 import { getDepositLeadSummary, validateDepositAmount } from "@/utils/leadPaymentUtils";
 import { CounselorFormSelect } from "@/components/ui/CounselorNativeSelect";
+import { CreateLeadWizardPage } from "@/components/crm/leads/create/CreateLeadWizardPage";
 
 
 export function CrmModals() {
+  const [isDeleteStaffModalOpen, setIsDeleteStaffModalOpen] = React.useState(false);
+  const [deleteStaffConfirmationText, setDeleteStaffConfirmationText] = React.useState("");
+  const [isDeletingStaff, setIsDeletingStaff] = React.useState(false);
   const {
     leads, meetings, users, currentUser, currentRole, currentTab, setCurrentTab,
     setCurrentRole, setCurrentUser, addUser, deleteUser, addLead, updateLeadStatus,
@@ -62,6 +66,7 @@ export function CrmModals() {
     countryBarChartData, maxLeadsCount, yLabels, getCountryAbbreviation,
     handlePeriodChange, handleCalendarDateClick, getDaysInMonth, monthNames,
     leadsMgmtData, topCountryStats, pipelineStats, cardMap, modalMap,
+    isEditLeadOpen, editLeadSession, openEditLead, closeEditLead,
   } = useCrmLayoutContext();
 
   const activeDepositLeadId =
@@ -1072,10 +1077,10 @@ export function CrmModals() {
               </div>
 
               <div className="space-y-2 text-left">
-                <label className="text-slate-400 font-bold block border-b border-slate-900 pb-1.5">
+                <label className="text-slate-400 font-bold block">
                   Tab Permissions (Select accessible operations)
                 </label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 max-h-40 overflow-y-auto p-2 bg-slate-950/50 rounded-xl border border-slate-900">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 p-2 bg-slate-950/50 rounded-xl border border-slate-900">
                   {AVAILABLE_TABS.map((t) => (
                     <label key={t.id} className="flex items-center space-x-2 p-1.5 hover:bg-slate-900/50 rounded-lg cursor-pointer text-slate-300 hover:text-white transition-colors">
                       <input
@@ -1121,11 +1126,120 @@ export function CrmModals() {
 
               <button 
                 type="submit"
-                className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-bold text-white rounded-xl shadow-lg cursor-pointer"
+                className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 font-bold text-white rounded-xl shadow-lg cursor-pointer animate-premium-scale-up"
               >
                 Save Account Configuration
               </button>
             </form>
+
+            {/* Danger Zone */}
+            <div className="mt-8 border-t border-rose-950/40 pt-5">
+              <div className="rounded-2xl border border-red-950/60 overflow-hidden bg-red-950/5 shadow-sm">
+                {/* Header */}
+                <div className="bg-red-950/15 px-4 py-2.5 border-b border-red-950/30 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                  <h2 className="text-[10px] font-bold uppercase tracking-wider text-red-400">
+                    Danger Zone
+                  </h2>
+                </div>
+                
+                {/* Action Row */}
+                <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="space-y-0.5 text-left">
+                    <h3 className="text-xs font-bold text-slate-200">
+                      Delete staff account
+                    </h3>
+                    <p className="text-[10px] text-slate-400 leading-relaxed max-w-sm">
+                      Permanently delete this counselor or administrator account from the CRM database. This action cannot be undone.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeleteStaffConfirmationText("");
+                      setIsDeleteStaffModalOpen(true);
+                    }}
+                    className="py-2 px-3.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow transition-colors cursor-pointer shrink-0 self-start sm:self-center"
+                  >
+                    Delete Account
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Staff Account Deletion Confirmation Modal */}
+      {isDeleteStaffModalOpen && editingStaff && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden p-6 space-y-4 text-left relative">
+            <button
+              type="button"
+              onClick={() => setIsDeleteStaffModalOpen(false)}
+              className="absolute right-4 top-4 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              aria-label="Close modal"
+            >
+              <FaTimes className="text-xs" />
+            </button>
+
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400 border-b border-gray-100 dark:border-slate-800 pb-3 pr-8">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" />
+              <h3 className="text-sm font-bold uppercase tracking-wider">Confirm Account Deletion</h3>
+            </div>
+            
+            <p className="text-xs text-gray-650 dark:text-slate-300 leading-relaxed">
+              Are you sure you want to permanently delete staff account <strong className="text-gray-900 dark:text-white">&ldquo;{editingStaff.name}&rdquo;</strong> ({editingStaff.email})? They will lose all access to the system.
+            </p>
+
+            <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-xl p-3 text-[11px] text-rose-700 dark:text-rose-300 leading-relaxed font-semibold">
+              Warning: This action cannot be undone. Please type <span className="font-mono bg-rose-100 dark:bg-rose-900/50 px-1 py-0.5 rounded text-rose-900 dark:text-rose-200">delete</span> in the input below to confirm.
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block">
+                Verification Input
+              </label>
+              <input
+                type="text"
+                value={deleteStaffConfirmationText}
+                onChange={(e) => setDeleteStaffConfirmationText(e.target.value)}
+                placeholder='Type "delete"'
+                className="w-full bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 text-gray-850 dark:text-slate-100 text-xs font-semibold py-2.5 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsDeleteStaffModalOpen(false)}
+                disabled={isDeletingStaff}
+                className="py-2 px-4 border border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl font-bold text-xs cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteStaffConfirmationText.trim().toLowerCase() !== "delete" || isDeletingStaff}
+                onClick={async () => {
+                  setIsDeletingStaff(true);
+                  const res = await deleteUser(editingStaff.id);
+                  setIsDeletingStaff(false);
+                  if (res.ok) {
+                    showToast("Account deleted successfully!");
+                    setIsEditStaffOpen(false);
+                    setEditingStaff(null);
+                  } else {
+                    showToast(res.error || "Failed to delete account", "error");
+                  }
+                  setIsDeleteStaffModalOpen(false);
+                }}
+                className="py-2 px-4 bg-rose-600 hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-colors"
+              >
+                {isDeletingStaff ? "Deleting…" : "Delete"}
+              </button>
+            </div>
           </div>
         </div>
       )}

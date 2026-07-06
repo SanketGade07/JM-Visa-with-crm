@@ -43,6 +43,7 @@ export function LeadChecklistSection({
     openSignedUrl,
     toggleChecklistItem,
     setLeadDetailTab,
+    openEditLead,
   } = useCrmLayoutContext();
 
   const [dismissedAlert, setDismissedAlert] = React.useState(false);
@@ -132,7 +133,7 @@ export function LeadChecklistSection({
                 type="button"
                 onClick={() => {
                   setDismissedAlert(true);
-                  setLeadDetailTab("settings");
+                  openEditLead();
                 }}
                 className="flex-1 py-3 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all text-center select-none cursor-pointer"
               >

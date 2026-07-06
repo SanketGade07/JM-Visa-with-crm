@@ -26,6 +26,7 @@ import {
   FiMail,
   FiUser,
   FiDollarSign,
+  FiEdit2,
   FiBriefcase,
 } from "react-icons/fi";
 import {
@@ -35,6 +36,7 @@ import {
   FaFolder,
   FaSpinner,
   FaUnlink,
+  FaTimes,
 } from "react-icons/fa";
 import {
   DRIVE_ACCENT_TEXT,
@@ -318,11 +320,13 @@ function EditableProfileField({
   label,
   htmlFor,
   children,
+  required,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   htmlFor?: string;
   children: React.ReactNode;
+  required?: boolean;
 }) {
   return (
     <div className="space-y-1.5 min-w-0">
@@ -332,6 +336,7 @@ function EditableProfileField({
         </div>
         <label className={fieldLabelCls} htmlFor={htmlFor}>
           {label}
+          {required && <span className="text-rose-500 font-extrabold ml-1">*</span>}
         </label>
       </div>
       {children}
@@ -352,9 +357,15 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
     updateLeadProfile,
     assignCounselor,
     updateUsaSlots,
+    addPayment,
     currentRole,
     updateEmploymentCategory,
     setLeadPackage,
+    updateAmountReceived,
+    openProfileDepositModal,
+    canManagePayments,
+    deleteLead,
+    closeLeadDetail,
   } = useCrmLayoutContext();
 
   const isUsa = isUsaCountry(lead.country);
@@ -379,6 +390,10 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
   const [passportPlaceOfIssueDraft, setPassportPlaceOfIssueDraft] = useState(lead.passportPlaceOfIssue ?? "");
   const [annualIncomeDraft, setAnnualIncomeDraft] = useState(lead.annualIncome ?? "");
   const [referredByDraft, setReferredByDraft] = useState(lead.referredBy ?? "");
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const predefinedServices = useMemo(() => [
     "Study Abroad",
@@ -466,6 +481,7 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
   const [packageAmountDraft, setPackageAmountDraft] = useState(
     paymentSummary.totalPackage > 0 ? String(paymentSummary.totalPackage) : ""
   );
+  const [isEditingPackage, setIsEditingPackage] = useState(false);
 
   useEffect(() => {
     setPackageAmountDraft(paymentSummary.totalPackage > 0 ? String(paymentSummary.totalPackage) : "");
@@ -477,6 +493,30 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
     if (amount === paymentSummary.totalPackage) return;
     setLeadPackage(lead.id, amount);
     showToast("Package amount updated", "success");
+  };
+
+  const [depositAmountInput, setDepositAmountInput] = useState("");
+  const handleRecordDirectDeposit = () => {
+    if (!canManagePayments) return;
+    const amount = parseFloat(depositAmountInput);
+    if (Number.isNaN(amount) || amount <= 0) {
+      showToast("Enter a valid deposit amount", "error");
+      return;
+    }
+    const pending = paymentSummary.pending;
+    if (amount > pending) {
+      showToast(`Deposit cannot exceed outstanding balance of ₹${pending.toLocaleString("en-IN")}`, "error");
+      return;
+    }
+    const nextPending = Math.max(0, paymentSummary.totalPackage - (paymentSummary.received + amount));
+    addPayment(lead.id, {
+      totalPackage: paymentSummary.totalPackage,
+      amountPaid: amount,
+      pendingAmount: nextPending,
+      paymentMethod: "Direct Entry",
+    });
+    setDepositAmountInput("");
+    showToast("Deposit recorded successfully", "success");
   };
 
   const [credUsername, setCredUsername] = useState(lead.visaCredentials?.username ?? "");
@@ -1002,45 +1042,7 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
             </div>
           </EditableProfileField>
 
-          <EditableProfileField icon={FiDollarSign} label="Service Charges (INR)" htmlFor={`profile-package-amount-${lead.id}`}>
-            <div className="space-y-2 w-full">
-              <input
-                id={`profile-package-amount-${lead.id}`}
-                type="number"
-                min="0"
-                value={packageAmountDraft}
-                onChange={(e) => setPackageAmountDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handlePackageAmountSave();
-                  } else if (e.key === "Escape") {
-                    setPackageAmountDraft(paymentSummary.totalPackage > 0 ? String(paymentSummary.totalPackage) : "");
-                  }
-                }}
-                disabled={!canModifyLeads}
-                placeholder="e.g. 50000"
-                className={profileEmailInputCls}
-              />
-              {packageAmountDraft !== (paymentSummary.totalPackage > 0 ? String(paymentSummary.totalPackage) : "") && (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handlePackageAmountSave}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] uppercase tracking-wider rounded-lg shadow transition-colors cursor-pointer select-none"
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPackageAmountDraft(paymentSummary.totalPackage > 0 ? String(paymentSummary.totalPackage) : "")}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] uppercase tracking-wider rounded-lg transition-colors cursor-pointer select-none"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </div>
-          </EditableProfileField>
+
 
           {lead.source === "REFERRAL" && (
             <EditableProfileField icon={FiUser} label="Referred By" htmlFor={`profile-referred-by-${lead.id}`}>
@@ -1257,12 +1259,144 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
           value={`${verifiedCount}/${totalCount}`}
           accentClass="border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
         />
-        <StatCard
-          icon={FaCoins}
-          label="Amount Received"
-          value={paymentStatValue}
-          accentClass="border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
-        />
+        <div className="rounded-2xl border border-gray-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <FaCoins className="text-base" />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 block animate-none">
+                  Service Charges & Payments
+                </span>
+                {isEditingPackage ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={packageAmountDraft}
+                      onChange={(e) => setPackageAmountDraft(e.target.value)}
+                      className="px-2 py-1 text-xs bg-slate-50 border border-slate-200 dark:border-slate-800 rounded-lg dark:bg-slate-900/60 dark:text-white border-slate-250 dark:border-slate-800 w-28"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handlePackageAmountSave();
+                        setIsEditingPackage(false);
+                      }}
+                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] rounded-lg shadow cursor-pointer transition-colors"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPackageAmountDraft(String(paymentSummary.totalPackage));
+                        setIsEditingPackage(false);
+                      }}
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] rounded-lg transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-base font-bold text-gray-900 dark:text-white tabular-nums mt-0.5 block flex items-center gap-2">
+                    <span>
+                      {paymentSummary.totalPackage > 0
+                        ? `Received: ₹${paymentSummary.received.toLocaleString("en-IN")} / ₹${paymentSummary.totalPackage.toLocaleString("en-IN")}`
+                        : "Package not decided"}
+                    </span>
+                    {canManagePayments && paymentSummary.totalPackage > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingPackage(true)}
+                        className="text-gray-400 hover:text-blue-500 transition-colors p-1"
+                        title="Edit Package Amount"
+                      >
+                        <FiEdit2 className="text-xs" />
+                      </button>
+                    )}
+                  </span>
+                )}
+              </div>
+            </div>
+            {paymentSummary.status && (
+              <span
+                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                  paymentSummary.status === "pending"
+                    ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+                    : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+                }`}
+              >
+                {paymentSummary.status === "pending" ? "Pending" : "Received"}
+              </span>
+            )}
+          </div>
+
+          <div className="mt-3">
+            {paymentSummary.totalPackage <= 0 ? (
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={packageAmountDraft}
+                  onChange={(e) => setPackageAmountDraft(e.target.value)}
+                  disabled={!canManagePayments}
+                  placeholder="Set package (e.g. 50000)"
+                  className="flex-1 min-w-0 px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 dark:border-slate-850 rounded-xl dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-800"
+                />
+                <button
+                  type="button"
+                  disabled={!canManagePayments || !packageAmountDraft.trim()}
+                  onClick={handlePackageAmountSave}
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow cursor-pointer transition-colors"
+                >
+                  Set package
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {paymentSummary.pending > 0 ? (
+                  <>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500 dark:text-slate-400">Pending outstanding: </span>
+                      <span className="font-bold text-rose-600 dark:text-rose-400">
+                        ₹{paymentSummary.pending.toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        placeholder="Enter deposit amount"
+                        value={depositAmountInput}
+                        onChange={(e) => setDepositAmountInput(e.target.value)}
+                        disabled={!canManagePayments}
+                        className="flex-1 min-w-0 px-3 py-1.5 text-xs bg-slate-50 border border-slate-250 rounded-xl dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-800"
+                      />
+                      <button
+                        type="button"
+                        disabled={!canManagePayments || !depositAmountInput.trim()}
+                        onClick={handleRecordDirectDeposit}
+                        className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow cursor-pointer transition-colors"
+                      >
+                        Record deposit
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-1 flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 rounded-xl border border-emerald-250 dark:border-emerald-500/20">
+                    <FaCheckCircle className="text-sm shrink-0" />
+                    <span>Payment completed in full.</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {isUsa ? (
@@ -1642,6 +1776,114 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
             </div>
         </SettingsCard>
       </div>
+
+      {/* Danger Zone */}
+      <div className="mt-8 border-t border-rose-100/10 pt-6">
+        <div className="rounded-2xl border border-red-200 dark:border-red-900/40 overflow-hidden bg-white dark:bg-slate-900/30 shadow-sm">
+          {/* Header */}
+          <div className="bg-red-50/50 dark:bg-red-950/10 px-5 py-3 border-b border-red-100 dark:border-red-900/30 flex items-center gap-2">
+            <FaExclamationTriangle className="text-red-600 dark:text-red-500 text-xs shrink-0" />
+            <h2 className="text-[10px] font-bold uppercase tracking-wider text-red-700 dark:text-red-400">
+              Danger Zone
+            </h2>
+          </div>
+          
+          {/* Action Row */}
+          <div className="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="space-y-1">
+              <h3 className="text-xs font-bold text-gray-800 dark:text-slate-200">
+                Delete this lead
+              </h3>
+              <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-relaxed">
+                Permanently delete this lead and all associated documents, notes, credentials, and slot details from the database. This action cannot be undone.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteConfirmationText("");
+                setIsDeleteModalOpen(true);
+              }}
+              className="py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow transition-colors cursor-pointer shrink-0 self-start sm:self-center"
+            >
+              Delete Lead
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Lead Deletion Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden p-6 space-y-4 text-left relative">
+            <button
+              type="button"
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="absolute right-4 top-4 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              aria-label="Close modal"
+            >
+              <FaTimes className="text-xs" />
+            </button>
+
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400 border-b border-gray-100 dark:border-slate-800 pb-3 pr-8">
+              <FaExclamationTriangle className="text-xl shrink-0" />
+              <h3 className="text-sm font-bold uppercase tracking-wider">Confirm Lead Deletion</h3>
+            </div>
+            
+            <p className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
+              Are you sure you want to permanently delete <strong className="text-gray-900 dark:text-white">&ldquo;{lead.name}&rdquo;</strong>? This will remove all checklists, credentials, tracking, and payments permanently from the database.
+            </p>
+
+            <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-xl p-3 text-[11px] text-rose-700 dark:text-rose-300 leading-relaxed font-semibold">
+              Warning: This action cannot be undone. Please type <span className="font-mono bg-rose-100 dark:bg-rose-900/50 px-1 py-0.5 rounded text-rose-900 dark:text-rose-200">delete</span> in the input below to confirm.
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block">
+                Verification Input
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmationText}
+                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                placeholder='Type "delete"'
+                className="w-full bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 text-gray-850 dark:text-slate-100 text-xs font-semibold py-2.5 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                disabled={isDeleting}
+                className="py-2 px-4 border border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl font-bold text-xs cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteConfirmationText.trim().toLowerCase() !== "delete" || isDeleting}
+                onClick={async () => {
+                  setIsDeleting(true);
+                  const ok = await deleteLead(lead.id);
+                  setIsDeleting(false);
+                  if (ok) {
+                    showToast("Lead deleted successfully", "success");
+                    closeLeadDetail();
+                  } else {
+                    showToast("Failed to delete lead", "error");
+                  }
+                  setIsDeleteModalOpen(false);
+                }}
+                className="py-2 px-4 bg-rose-600 hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-colors"
+              >
+                {isDeleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

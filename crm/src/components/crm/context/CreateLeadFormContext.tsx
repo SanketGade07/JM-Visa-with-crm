@@ -6,7 +6,7 @@ import { useCrmLayoutContext } from "./CrmLayoutContext";
 
 type CreateLeadFormValue = ReturnType<typeof useCreateLeadForm>;
 
-const CreateLeadFormContext = createContext<CreateLeadFormValue | null>(null);
+export const CreateLeadFormContext = createContext<CreateLeadFormValue | null>(null);
 
 /**
  * Holds the multi-step "Create Lead" wizard state ABOVE the tab views so it

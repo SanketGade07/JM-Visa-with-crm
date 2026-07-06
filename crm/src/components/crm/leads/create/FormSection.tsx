@@ -8,6 +8,7 @@ type FormSectionProps = {
   className?: string;
   htmlFor?: string;
   error?: string;
+  required?: boolean;
 };
 
 export function FormSection({
@@ -16,6 +17,7 @@ export function FormSection({
   className = "",
   htmlFor,
   error,
+  required,
 }: FormSectionProps) {
   return (
     <div className={`space-y-1 ${className}`}>
@@ -24,6 +26,7 @@ export function FormSection({
         className="text-slate-500 dark:text-slate-400 font-bold block"
       >
         {label}
+        {required && <span className="text-rose-500 font-extrabold ml-1">*</span>}
       </label>
       {children}
       {error ? (

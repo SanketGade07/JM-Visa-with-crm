@@ -186,6 +186,7 @@ interface CrmContextType {
   toggleChecklistItem: (leadId: string, item: string) => void;
   updateUsaSlots: (leadId: string, slots: Partial<UsaSlotTracking>) => void;
   addPayment: (leadId: string, payment: Omit<PaymentDetails, "invoiceNumber" | "date">) => void;
+  updateAmountReceived: (leadId: string, amount: number) => void;
   setLeadPackage: (leadId: string, totalPackage: number) => void;
   addMeeting: (meeting: Omit<Meeting, "id">) => void;
   updateMeeting: (meeting: Meeting) => void;
@@ -208,6 +209,7 @@ interface CrmContextType {
   removeDocument: (leadId: string, documentId: string) => Promise<{ ok: boolean; error?: string }>;
   uploadInvoice: (leadId: string, invoiceNumber: string, fileOrUrl: File | string) => Promise<{ ok: boolean; error?: string }>;
   getLeadDocuments: (leadId: string) => Document[];
+  updateLeadFromWizard: (leadId: string, payload: Partial<Lead>) => Promise<boolean>;
 }
 
 
@@ -640,6 +642,46 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateLeadFromWizard = async (
+    leadId: string,
+    payload: Partial<Lead>
+  ): Promise<boolean> => {
+    const today = new Date().toISOString().split("T")[0];
+    const prev = leads.find((l) => l.id === leadId);
+    if (!prev) return false;
+
+    const updated = leads.map((lead) => {
+      if (lead.id === leadId) {
+        return {
+          ...lead,
+          ...payload,
+          visaCredentials: payload.visaCredentials 
+            ? { ...lead.visaCredentials, ...payload.visaCredentials }
+            : lead.visaCredentials,
+          usaSlots: payload.usaSlots
+            ? { ...lead.usaSlots, ...payload.usaSlots }
+            : lead.usaSlots,
+          payments: payload.payments && payload.payments.length > 0
+            ? payload.payments
+            : lead.payments,
+          lastUpdated: today,
+        };
+      }
+      return lead;
+    });
+
+    const success = await syncLeads(updated);
+    if (success) {
+      logActivity({
+        leadId,
+        type: "note",
+        content: `Lead profile completed / updated via wizard`,
+        createdBy: currentRole,
+      });
+    }
+    return success;
+  };
+
   const assignCounselor = (leadId: string, counselor: string) => {
     const today = new Date().toISOString().split("T")[0];
     const now = new Date().toISOString();
@@ -827,6 +869,52 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         previousPackage > 0
           ? `Package amount updated from ₹${previousPackage.toLocaleString()} to ₹${totalPackage.toLocaleString()}`
           : `Package amount set to ₹${totalPackage.toLocaleString()}`,
+      createdBy: currentRole,
+    });
+  };
+
+  const updateAmountReceived = (leadId: string, amount: number) => {
+    if (amount < 0) return;
+    const today = new Date().toISOString().split("T")[0];
+    let previousReceived = 0;
+    let didUpdate = false;
+
+    const updated = leads.map((lead) => {
+      if (lead.id !== leadId) return lead;
+      const payments = lead.payments || [];
+      const totalPackage = payments[0]?.totalPackage || 0;
+      previousReceived = payments.reduce((acc, p) => acc + p.amountPaid, 0);
+      if (amount === previousReceived) return lead;
+
+      const newTotalPackage = Math.max(totalPackage, amount);
+      const pendingAmount = Math.max(0, newTotalPackage - amount);
+      didUpdate = true;
+
+      const invoiceNum = `INV-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+
+      return {
+        ...lead,
+        payments: [
+          {
+            totalPackage: newTotalPackage,
+            amountPaid: amount,
+            pendingAmount,
+            paymentMethod: "Direct Entry",
+            invoiceNumber: invoiceNum,
+            date: today,
+          },
+        ],
+        lastUpdated: today,
+      };
+    });
+
+    if (!didUpdate) return;
+
+    syncLeads(updated);
+    logActivity({
+      leadId,
+      type: "payment",
+      content: `Amount received updated directly from ₹${previousReceived.toLocaleString()} to ₹${amount.toLocaleString()}`,
       createdBy: currentRole,
     });
   };
@@ -1385,6 +1473,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateUsaSlots,
         addPayment,
         setLeadPackage,
+        updateAmountReceived,
         addMeeting,
         updateMeeting,
         deleteLead,
@@ -1403,6 +1492,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         removeDocument,
         uploadInvoice,
         getLeadDocuments,
+        updateLeadFromWizard,
       }}
     >
       {children}

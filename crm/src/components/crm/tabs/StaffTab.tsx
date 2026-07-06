@@ -217,23 +217,6 @@ export function StaffTab() {
                                 <FiEdit3 className="text-[13px]" />
                               </button>
                             )}
-
-                            {currentRole === "ADMIN" && (
-                              <button
-                                onClick={() => {
-                                  if (confirm(`Are you sure you want to delete ${staff.name}'s account?`)) {
-                                    deleteUser(staff.id).then((res) => {
-                                      if (res.ok) showToast("Account deleted successfully");
-                                      else showToast(res.error || "Failed to delete account", "error");
-                                    });
-                                  }
-                                }}
-                                className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer transition-colors"
-                                title="Delete Account"
-                              >
-                                <FaTrash className="text-xs" />
-                              </button>
-                            )}
                           </div>
                         </td>
                       </tr>

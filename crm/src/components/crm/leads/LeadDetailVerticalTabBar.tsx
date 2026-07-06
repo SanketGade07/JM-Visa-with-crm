@@ -50,11 +50,15 @@ export function LeadDetailVerticalTabBar({
   className = "",
   orientation = "auto",
 }: LeadDetailVerticalTabBarProps) {
-  const { canAccessLeadChecklist } = useCrmLayoutContext();
+  const { userAllowedTabs, canAccessLeadChecklist } = useCrmLayoutContext();
 
-  const visibleTabs = LEAD_DETAIL_TAB_ITEMS.filter(
-    (tab) => tab.id !== "checklist" || canAccessLeadChecklist
-  );
+  const visibleTabs = LEAD_DETAIL_TAB_ITEMS.filter((tab) => {
+    if (tab.id === "details") return userAllowedTabs.includes("LeadDetails_Details");
+    if (tab.id === "checklist") return userAllowedTabs.includes("LeadDetails_Checklist") && canAccessLeadChecklist;
+    if (tab.id === "drive") return userAllowedTabs.includes("LeadDetails_Drive");
+    if (tab.id === "settings") return userAllowedTabs.includes("LeadDetails_Settings");
+    return true;
+  });
 
   return (
     <nav

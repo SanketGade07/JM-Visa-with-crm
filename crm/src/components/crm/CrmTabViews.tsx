@@ -15,10 +15,10 @@ import { DriveTab } from "./tabs/DriveTab";
 import { LeadDetailPage } from "./leads/LeadDetailPage";
 
 export function CrmTabViews() {
-  const { currentTab, isLeadDetailRoute, canViewLeads, leadDetailTab } = useCrmLayoutContext();
+  const { currentTab, isLeadDetailRoute, canViewLeads, leadDetailTab, isEditLeadOpen } = useCrmLayoutContext();
 
   const isLeadDetailsTab =
-    currentTab === "Leads" && isLeadDetailRoute && leadDetailTab === "details";
+    currentTab === "Leads" && isLeadDetailRoute && leadDetailTab === "details" && !isEditLeadOpen;
 
   return (
     <div

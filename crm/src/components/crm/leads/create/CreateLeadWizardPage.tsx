@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { FaTimes } from "react-icons/fa";
 import { PhoneInput } from "@/components/ui/FormInputs";
 import { useCrmLayoutContext } from "@/components/crm/context/CrmLayoutContext";
-import { useCreateLeadFormContext } from "@/components/crm/context/CreateLeadFormContext";
-import { getActiveStepIds } from "@/hooks/useCreateLeadForm";
+import { useCreateLeadFormContext, CreateLeadFormContext } from "@/components/crm/context/CreateLeadFormContext";
+import { getActiveStepIds, useCreateLeadForm } from "@/hooks/useCreateLeadForm";
 import { buildCreateLeadPayload } from "@/utils/buildCreateLeadPayload";
 import {
   EMPLOYMENT_CATEGORY_OPTIONS,
@@ -70,15 +70,62 @@ const SLOT_STATUS_OPTIONS: { value: CreateLeadSlotStatus; label: string }[] = [
 type CreateLeadWizardPageProps = {
   variant?: "page" | "inline";
   onClose?: () => void;
+  editLeadId?: string | null;
 };
 
 export function CreateLeadWizardPage({
   variant = "page",
   onClose,
+  editLeadId,
+}: CreateLeadWizardPageProps = {}) {
+  const { leads } = useCrmLayoutContext();
+  const lead = editLeadId ? leads.find((l) => l.id === editLeadId) ?? null : null;
+
+  if (editLeadId) {
+    return (
+      <CreateLeadWizardWrapper
+        variant={variant}
+        onClose={onClose}
+        editLeadId={editLeadId}
+        lead={lead}
+      />
+    );
+  }
+
+  return (
+    <CreateLeadWizardInner
+      variant={variant}
+      onClose={onClose}
+    />
+  );
+}
+
+function CreateLeadWizardWrapper({
+  variant,
+  onClose,
+  editLeadId,
+  lead,
+}: CreateLeadWizardPageProps & { lead: any }) {
+  const form = useCreateLeadForm(lead);
+  return (
+    <CreateLeadFormContext.Provider value={form}>
+      <CreateLeadWizardInner
+        variant={variant}
+        onClose={onClose}
+        editLeadId={editLeadId}
+      />
+    </CreateLeadFormContext.Provider>
+  );
+}
+
+function CreateLeadWizardInner({
+  variant = "page",
+  onClose,
+  editLeadId,
 }: CreateLeadWizardPageProps = {}) {
   const router = useRouter();
   const isInline = variant === "inline";
-  const { addLead, showToast, canModifyLeads, canAssignLeads, currentUser, openLeadDetail } = useCrmLayoutContext();
+  const { addLead, showToast, canModifyLeads, canAssignLeads, currentUser, openLeadDetail, updateLeadFromWizard } = useCrmLayoutContext();
   const {
     state,
     currentStep,
@@ -95,6 +142,7 @@ export function CreateLeadWizardPage({
     focusFieldId,
     clearFocusFieldId,
     completedSteps,
+    activeStepIds,
   } = useCreateLeadFormContext();
   const caseOfficerOptions = useCounselorSelectOptions(state.caseOfficer);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -204,7 +252,7 @@ export function CreateLeadWizardPage({
       return;
     }
 
-    const activeSteps = getActiveStepIds(state.leadType);
+    const activeSteps = activeStepIds;
     const currentIndex = activeSteps.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(activeSteps[currentIndex - 1]);
@@ -217,6 +265,7 @@ export function CreateLeadWizardPage({
     state.leadType,
     state.visaSubtype,
     updateField,
+    activeStepIds,
   ]);
 
   const handleNext = useCallback(() => {
@@ -237,7 +286,7 @@ export function CreateLeadWizardPage({
     [editStepFromReview]
   );
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (isSubmitting) return;
     if (!validateAllStepsForSubmit()) {
       return;
@@ -246,11 +295,22 @@ export function CreateLeadWizardPage({
     setIsSubmitting(true);
     try {
       const payload = buildCreateLeadPayload(state);
-      const newId = addLead(payload);
-      showToast("Lead initialized successfully!");
-      openLeadDetail(newId, "details", { created: true });
-      if (isInline) {
-        onClose?.();
+      if (editLeadId) {
+        const ok = await updateLeadFromWizard(editLeadId, payload);
+        if (ok) {
+          showToast("Lead profile completed successfully!");
+          openLeadDetail(editLeadId, "details");
+          if (onClose) onClose();
+        } else {
+          showToast("Failed to update lead", "error");
+        }
+      } else {
+        const newId = addLead(payload);
+        showToast("Lead initialized successfully!");
+        openLeadDetail(newId, "details", { created: true });
+        if (isInline) {
+          onClose?.();
+        }
       }
     } finally {
       setIsSubmitting(false);
@@ -264,6 +324,8 @@ export function CreateLeadWizardPage({
     showToast,
     state,
     validateAllStepsForSubmit,
+    editLeadId,
+    updateLeadFromWizard,
   ]);
 
   const showVisaSubtypePicker =
@@ -279,8 +341,15 @@ export function CreateLeadWizardPage({
           return (
             <div className="space-y-4">
               <LeadTypeSelector
-                onSelectStudyAbroad={() => updateField("leadType", "study_abroad")}
+                onSelectStudyAbroad={() => {
+                  updateField("leadType", "study_abroad");
+                  updateField("visaSubtype", "Study Abroad");
+                }}
                 onSelectVisa={() => updateField("leadType", "visa")}
+                onSelectPassport={() => {
+                  updateField("leadType", "passport");
+                  updateField("visaSubtype", "Passport");
+                }}
               />
               {leadTypeError ? (
                 <p className="text-red-500 dark:text-red-400 text-[10px] font-medium">
@@ -324,9 +393,15 @@ export function CreateLeadWizardPage({
                 <LeadTypeSelector
                   onSelectStudyAbroad={() => {
                     updateField("leadType", "study_abroad");
+                    updateField("visaSubtype", "Study Abroad");
                     goToClientInfo();
                   }}
                   onSelectVisa={() => updateField("leadType", "visa")}
+                  onSelectPassport={() => {
+                    updateField("leadType", "passport");
+                    updateField("visaSubtype", "Passport");
+                    goToClientInfo();
+                  }}
                 />
                 {leadTypeError ? (
                   <p className="text-red-500 dark:text-red-400 text-[10px] font-medium">
@@ -943,7 +1018,7 @@ export function CreateLeadWizardPage({
             onStepClick={handleProgressStepClick}
             allowFullNavigation
             completedSteps={completedSteps}
-            activeStepIds={getActiveStepIds(state.leadType)}
+            activeStepIds={activeStepIds}
           />
         </div>
 
