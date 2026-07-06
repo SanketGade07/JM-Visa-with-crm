@@ -11,7 +11,7 @@ import {
 import { isUsaCountry } from "@/utils/countryUtils";
 import { isValidE164Phone } from "@/utils/validatePhone";
 
-import type { Lead } from "@/context/CrmContext";
+import { useCrm, type Lead } from "@/context/CrmContext";
 import { DEFAULT_EMPLOYMENT_CATEGORY } from "@/utils/documentChecklistConfig";
 import { UNASSIGNED_COUNSELOR } from "@/utils/counselorOptions";
 
@@ -148,7 +148,9 @@ function isValidAnnualIncome(value: string): boolean {
 
 export function getStepFieldErrors(
   step: WizardStepId,
-  state: CreateLeadFormState
+  state: CreateLeadFormState,
+  leads?: Lead[],
+  excludeLeadId?: string
 ): Partial<Record<keyof CreateLeadFormState, string>> {
   const errors: Partial<Record<keyof CreateLeadFormState, string>> = {};
 
@@ -170,6 +172,12 @@ export function getStepFieldErrors(
       }
       if (!isValidE164Phone(state.phone)) {
         errors.phone = "Enter a valid phone number.";
+      } else if (leads) {
+        const normalizedPhone = state.phone.trim();
+        const exists = leads.some((l) => l.id !== excludeLeadId && l.phone?.trim() === normalizedPhone);
+        if (exists) {
+          errors.phone = "This phone number already exists.";
+        }
       }
       break;
     }
@@ -256,36 +264,53 @@ export function getStepFieldErrors(
 
 export function validateStep(
   step: WizardStepId,
-  state: CreateLeadFormState
+  state: CreateLeadFormState,
+  leads?: Lead[],
+  excludeLeadId?: string
 ): StepValidationResult {
-  const fieldErrors = getStepFieldErrors(step, state);
+  const fieldErrors = getStepFieldErrors(step, state, leads, excludeLeadId);
   const errors = Object.values(fieldErrors);
 
   return { valid: errors.length === 0, errors };
 }
 
-export function isStepValid(step: WizardStepId, state: CreateLeadFormState): boolean {
-  return validateStep(step, state).valid;
+export function isStepValid(
+  step: WizardStepId,
+  state: CreateLeadFormState,
+  leads?: Lead[],
+  excludeLeadId?: string
+): boolean {
+  return validateStep(step, state, leads, excludeLeadId).valid;
 }
 
-export function findFirstInvalidStep(state: CreateLeadFormState, activeStepsOverride?: WizardStepId[]): WizardStepId | null {
+export function findFirstInvalidStep(
+  state: CreateLeadFormState,
+  activeStepsOverride?: WizardStepId[],
+  leads?: Lead[],
+  excludeLeadId?: string
+): WizardStepId | null {
   const activeSteps = activeStepsOverride ?? getActiveStepIds(state.leadType);
   for (const step of activeSteps) {
-    if (step < 6 && !validateStep(step, state).valid) {
+    if (step < 6 && !validateStep(step, state, leads, excludeLeadId).valid) {
       return step;
     }
   }
   return null;
 }
 
-export function findFirstInvalidField(state: CreateLeadFormState, activeStepsOverride?: WizardStepId[]): {
+export function findFirstInvalidField(
+  state: CreateLeadFormState,
+  activeStepsOverride?: WizardStepId[],
+  leads?: Lead[],
+  excludeLeadId?: string
+): {
   step: WizardStepId;
   field: keyof CreateLeadFormState;
 } | null {
   const activeSteps = activeStepsOverride ?? getActiveStepIds(state.leadType);
   for (const step of activeSteps) {
     if (step === 6) continue;
-    const fieldErrors = getStepFieldErrors(step, state);
+    const fieldErrors = getStepFieldErrors(step, state, leads, excludeLeadId);
     if (Object.keys(fieldErrors).length === 0) {
       continue;
     }
@@ -305,9 +330,11 @@ export function findFirstInvalidField(state: CreateLeadFormState, activeStepsOve
 
 function getFirstInvalidFieldForStep(
   step: WizardStepId,
-  state: CreateLeadFormState
+  state: CreateLeadFormState,
+  leads?: Lead[],
+  excludeLeadId?: string
 ): keyof CreateLeadFormState | null {
-  const fieldErrors = getStepFieldErrors(step, state);
+  const fieldErrors = getStepFieldErrors(step, state, leads, excludeLeadId);
   for (const field of STEP_FIELD_ORDER[step]) {
     if (fieldErrors[field]) {
       return field;
@@ -317,6 +344,9 @@ function getFirstInvalidFieldForStep(
 }
 
 export function useCreateLeadForm(lead?: Lead | null) {
+  const { leads } = useCrm();
+  const leadId = lead?.id;
+
   const [state, setState] = useState<CreateLeadFormState>(() => getInitialStateFromLead(lead));
 
   const activeSteps = useMemo(() => {
@@ -333,7 +363,7 @@ export function useCreateLeadForm(lead?: Lead | null) {
     if (lead) {
       const initialState = getInitialStateFromLead(lead);
       const localActive = initialState.leadType === "visa" ? ([3, 4, 5, 6] as WizardStepId[]) : ([4, 5, 6] as WizardStepId[]);
-      const firstInvalid = findFirstInvalidStep(initialState, localActive);
+      const firstInvalid = findFirstInvalidStep(initialState, localActive, leads, leadId);
       return firstInvalid ?? (initialState.leadType === "visa" ? 3 : 4);
     }
     return 1;
@@ -345,7 +375,7 @@ export function useCreateLeadForm(lead?: Lead | null) {
       const localActive = lead.visaType === "Study Abroad" ? ([4, 5, 6] as WizardStepId[]) : lead.visaType === "Passport" ? ([4, 5, 6] as WizardStepId[]) : ([3, 4, 5, 6] as WizardStepId[]);
       const initialState = getInitialStateFromLead(lead);
       for (const stepId of localActive) {
-        if (isStepValid(stepId, initialState)) {
+        if (isStepValid(stepId, initialState, leads, leadId)) {
           valid.add(stepId);
         }
       }
@@ -362,12 +392,12 @@ export function useCreateLeadForm(lead?: Lead | null) {
       const valid = new Set<WizardStepId>();
       const localActive = initialState.leadType === "visa" ? ([3, 4, 5, 6] as WizardStepId[]) : ([4, 5, 6] as WizardStepId[]);
       for (const stepId of localActive) {
-        if (isStepValid(stepId, initialState)) {
+        if (isStepValid(stepId, initialState, leads, leadId)) {
           valid.add(stepId);
         }
       }
       setCompletedSteps(valid);
-      const firstInvalid = findFirstInvalidStep(initialState, localActive);
+      const firstInvalid = findFirstInvalidStep(initialState, localActive, leads, leadId);
       setCurrentStep(firstInvalid ?? (initialState.leadType === "visa" ? 3 : 4));
     } else {
       setCompletedSteps(new Set());
@@ -377,7 +407,7 @@ export function useCreateLeadForm(lead?: Lead | null) {
     setValidationAttempted(false);
     setSubmitFieldErrors({});
     setTouchedFields({});
-  }, [lead]);
+  }, [lead, leads, leadId]);
 
   const [touchedFields, setTouchedFields] = useState<
     Partial<Record<keyof CreateLeadFormState, boolean>>
@@ -443,27 +473,33 @@ export function useCreateLeadForm(lead?: Lead | null) {
         return submitFieldErrors[field];
       }
 
+      // Check if we have an immediate phone duplicate error
+      const currentErrors = getStepFieldErrors(currentStep, state, leads, leadId);
+      if (field === "phone" && currentErrors.phone === "This phone number already exists.") {
+        return currentErrors.phone;
+      }
+
       if (!touchedFields[field] && !validationAttempted) {
         return undefined;
       }
 
-      return getStepFieldErrors(currentStep, state)[field];
+      return currentErrors[field];
     },
-    [currentStep, state, submitFieldErrors, touchedFields, validationAttempted]
+    [currentStep, state, submitFieldErrors, touchedFields, validationAttempted, leads, leadId]
   );
 
   const applyValidationFailure = useCallback(
     (step: WizardStepId) => {
-      const fieldErrors = getStepFieldErrors(step, state);
+      const fieldErrors = getStepFieldErrors(step, state, leads, leadId);
       setValidationAttempted(true);
       setSubmitFieldErrors(fieldErrors);
 
-      const firstField = getFirstInvalidFieldForStep(step, state);
+      const firstField = getFirstInvalidFieldForStep(step, state, leads, leadId);
       if (firstField) {
         setFocusFieldId(CREATE_LEAD_FIELD_IDS[firstField] ?? null);
       }
     },
-    [state]
+    [state, leads, leadId]
   );
 
   const clearFocusFieldId = useCallback(() => {
@@ -484,7 +520,7 @@ export function useCreateLeadForm(lead?: Lead | null) {
           continue;
         }
 
-        const isValid = isStepValid(step, state);
+        const isValid = isStepValid(step, state, leads, leadId);
 
         if (prev.has(step)) {
           if (!isValid) {
@@ -503,7 +539,7 @@ export function useCreateLeadForm(lead?: Lead | null) {
 
       return next ?? prev;
     });
-  }, [state, currentStep, activeSteps]);
+  }, [state, currentStep, activeSteps, leads, leadId]);
 
   const goToStep = useCallback((step: WizardStepId) => {
     setCurrentStep(step);

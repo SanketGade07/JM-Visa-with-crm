@@ -432,6 +432,7 @@ function CreateLeadWizardInner({
                 label="Client Full Name"
                 htmlFor="create-lead-client-name"
                 error={clientNameError}
+                required
               >
                 <input
                   id="create-lead-client-name"
@@ -449,6 +450,7 @@ function CreateLeadWizardInner({
                 label="Contact Number"
                 htmlFor="create-lead-phone"
                 error={phoneError}
+                required
               >
                 <PhoneInput
                   id="create-lead-phone"
@@ -977,7 +979,7 @@ function CreateLeadWizardInner({
     return null;
   }
 
-  const isLastStep = currentStep === 6;
+  const isLastStep = currentStep === activeStepIds[activeStepIds.length - 1];
   const canProceed = isStepValid();
   const showSaveToReview = returnToReview && !isLastStep;
 
@@ -1057,7 +1059,9 @@ function CreateLeadWizardInner({
                 disabled={isSubmitting}
                 className="py-2.5 px-6 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed font-bold text-white text-xs rounded-xl shadow-lg transition-all"
               >
-                {isSubmitting ? "Creating…" : "Create Lead"}
+                {editLeadId 
+                  ? (isSubmitting ? "Saving…" : "Complete Profile")
+                  : (isSubmitting ? "Creating…" : "Create Lead")}
               </button>
             ) : (
               <button
