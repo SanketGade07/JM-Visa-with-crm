@@ -393,85 +393,8 @@ export function CrmHeader() {
               </button>
             </div>
           )
-        ) : (
-          // Outside lead details (on dashboard/leads list)
-          incompleteLeads.length > 0 && (
-            <div className="relative" ref={incompleteRef}>
-              <button
-                type="button"
-                onClick={() => setIsIncompletePopoverOpen((open) => !open)}
-                title="Incomplete Profiles"
-                aria-label="Incomplete lead profiles warning list"
-                className="relative p-2 rounded-xl border transition-all flex items-center justify-center shadow-md cursor-pointer bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500/20"
-              >
-                <FiUserX className="text-sm" />
-                <span className="absolute -top-1 -right-1 min-w-[1.125rem] h-[1.125rem] px-1 flex items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-slate-950 leading-none">
-                  {incompleteLeads.length}
-                </span>
-              </button>
+        ) : null}
 
-              {isIncompletePopoverOpen && (
-                <div
-                  className={`absolute right-0 top-full mt-2 w-80 rounded-xl border shadow-xl z-50 overflow-hidden ${
-                    theme === "light"
-                      ? "border-slate-200 bg-white shadow-slate-300/40"
-                      : "border-slate-700/80 bg-[#0f0f22] shadow-black/40"
-                  }`}
-                >
-                  <div
-                    className={`px-4 py-3 border-b ${
-                      theme === "light" ? "border-slate-200" : "border-slate-800/80"
-                    }`}
-                  >
-                    <p
-                      className={`text-sm font-semibold ${
-                        theme === "light" ? "text-slate-900" : "text-white"
-                      }`}
-                    >
-                      Incomplete Profiles
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {incompleteLeads.length} lead{incompleteLeads.length === 1 ? "" : "s"} require attention
-                    </p>
-                  </div>
-
-                  <ul className={`max-h-64 overflow-y-auto ${CRM_DROPDOWN_SCROLL_CLASS}`}>
-                    {incompleteLeads.map((item) => (
-                      <li key={item.id}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsIncompletePopoverOpen(false);
-                            openLeadDetail(item.id);
-                            setTimeout(() => {
-                              openEditLead();
-                            }, 100);
-                          }}
-                          className={`w-full px-4 py-3 text-left transition-colors border-b last:border-b-0 cursor-pointer ${
-                            theme === "light"
-                              ? "hover:bg-slate-50 border-slate-100"
-                              : "hover:bg-slate-800/50 border-slate-800/40"
-                          }`}
-                        >
-                          <p
-                            className={`text-sm font-semibold truncate ${
-                              theme === "light" ? "text-slate-800" : "text-slate-200"
-                            }`}
-                          >
-                            {item.name}
-                          </p>
-                          <p className="text-[11px] text-amber-500 font-medium mt-0.5">
-                            Missing: {getMissingFieldsString(item)}
-                          </p>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )
-        )}
 
         <button
           onClick={toggleTheme}
