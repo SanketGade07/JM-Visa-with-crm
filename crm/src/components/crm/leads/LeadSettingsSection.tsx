@@ -1359,34 +1359,23 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
             ) : (
               <div className="flex flex-col gap-2">
                 {paymentSummary.pending > 0 ? (
-                  <>
-                    <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center justify-between gap-4 mt-1">
+                    <div className="text-xs">
                       <span className="text-gray-500 dark:text-slate-400">Pending outstanding: </span>
                       <span className="font-bold text-rose-600 dark:text-rose-400">
                         ₹{paymentSummary.pending.toLocaleString("en-IN")}
                       </span>
                     </div>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        placeholder="Enter deposit amount"
-                        value={depositAmountInput}
-                        onChange={(e) => setDepositAmountInput(e.target.value)}
-                        disabled={!canManagePayments}
-                        className="flex-1 min-w-0 px-3 py-1.5 text-xs bg-slate-50 border border-slate-250 rounded-xl dark:bg-slate-900/60 dark:text-white border-slate-200 dark:border-slate-800"
-                      />
+                    {canManagePayments && (
                       <button
                         type="button"
-                        disabled={!canManagePayments || !depositAmountInput.trim()}
-                        onClick={handleRecordDirectDeposit}
-                        className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow cursor-pointer transition-colors"
+                        onClick={() => openProfileDepositModal(lead.id)}
+                        className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow cursor-pointer transition-colors"
                       >
                         Record deposit
                       </button>
-                    </div>
-                  </>
+                    )}
+                  </div>
                 ) : (
                   <div className="mt-1 flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 rounded-xl border border-emerald-250 dark:border-emerald-500/20">
                     <FaCheckCircle className="text-sm shrink-0" />
