@@ -66,8 +66,13 @@ export function LeadDetailPage() {
       setHighlightSummary(false);
     }, 3600);
 
+    const bannerTimer = window.setTimeout(() => {
+      setShowCreatedBanner(false);
+    }, 5000);
+
     return () => {
       window.clearTimeout(unhighlightTimer);
+      window.clearTimeout(bannerTimer);
     };
   }, [selectedLeadId, router]);
 
@@ -99,20 +104,19 @@ export function LeadDetailPage() {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col space-y-4">
-      {/* Banner */}
       {showCreatedBanner && (
-        <div className="relative overflow-hidden p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-350 shadow-sm flex items-center justify-between text-xs font-semibold">
+        <div className="relative overflow-hidden py-3 px-4 w-full max-w-md rounded-2xl bg-emerald-50 dark:bg-emerald-950/10 border border-emerald-200/60 dark:border-emerald-900/20 text-emerald-800 dark:text-emerald-400 shadow-sm flex items-center justify-between text-xs font-semibold">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <span>Lead initialized successfully! Copy credentials or notes below.</span>
+            <span>Lead created successfully!</span>
           </div>
           <button
             type="button"
             onClick={() => setShowCreatedBanner(false)}
             aria-label="Dismiss banner"
-            className="text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-300 font-bold"
+            className="p-1 rounded-lg text-emerald-600/70 hover:text-emerald-800 dark:text-emerald-400/70 dark:hover:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors flex items-center justify-center shrink-0"
           >
-            Dismiss
+            <FaTimes className="text-xs" />
           </button>
         </div>
       )}

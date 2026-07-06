@@ -98,11 +98,12 @@ export const CREATE_LEAD_FIELD_IDS: Partial<Record<keyof CreateLeadFormState, st
   packageAmount: "create-lead-package-amount",
   annualIncome: "create-lead-annual-income",
   referredBy: "create-lead-referred-by",
+  notes: "create-lead-notes",
 };
 
 const STEP_FIELD_ORDER: Record<WizardStepId, (keyof CreateLeadFormState)[]> = {
   1: ["leadType", "visaSubtype"],
-  2: ["clientName", "email", "phone"],
+  2: ["clientName", "phone", "immigrationCountry", "caseOfficer", "leadSource", "referredBy", "notes"],
   3: ["passportNumber", "passportIssueDate", "passportExpiryDate", "passportPlaceOfIssue"],
   4: [
     "immigrationCountry",
@@ -116,7 +117,7 @@ const STEP_FIELD_ORDER: Record<WizardStepId, (keyof CreateLeadFormState)[]> = {
     "usaSecurityFood",
     "usaSecurityCity",
   ],
-  5: ["visaSubtype", "caseOfficer", "leadSource", "employmentCategory", "packageAmount", "annualIncome"],
+  5: ["visaSubtype", "employmentCategory", "packageAmount", "annualIncome", "email"],
   6: [],
 };
 
@@ -167,9 +168,6 @@ export function getStepFieldErrors(
       if (!state.clientName.trim()) {
         errors.clientName = "Client name is required.";
       }
-      if (state.email.trim() && !isValidEmail(state.email)) {
-        errors.email = "Enter a valid email address.";
-      }
       if (!isValidE164Phone(state.phone)) {
         errors.phone = "Enter a valid phone number.";
       } else if (leads) {
@@ -178,6 +176,9 @@ export function getStepFieldErrors(
         if (exists) {
           errors.phone = "This phone number already exists.";
         }
+      }
+      if (!state.leadSource) {
+        errors.leadSource = "Select a lead source.";
       }
       break;
     }
@@ -239,9 +240,6 @@ export function getStepFieldErrors(
       if (!state.visaSubtype.trim()) {
         errors.visaSubtype = "Visa subtype is required.";
       }
-      if (!state.leadSource) {
-        errors.leadSource = "Select a lead source.";
-      }
       if (!state.employmentCategory) {
         errors.employmentCategory = "Select an employment category.";
       }
@@ -250,6 +248,9 @@ export function getStepFieldErrors(
       }
       if (!isValidAnnualIncome(state.annualIncome)) {
         errors.annualIncome = "Annual income must be a valid non-negative number.";
+      }
+      if (state.email.trim() && !isValidEmail(state.email)) {
+        errors.email = "Enter a valid email address.";
       }
       break;
     }

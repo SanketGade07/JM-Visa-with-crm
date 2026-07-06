@@ -74,7 +74,7 @@ export function CreateLeadReviewStep({ state, onEditStep }: CreateLeadReviewStep
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 items-stretch">
-        <SummaryCard title="Service Selection" step={1} onEdit={onEditStep}>
+        {/* <SummaryCard title="Service Selection" step={1} onEdit={onEditStep}>
           <SummaryRow
             label="Service type"
             value={serviceLabel ? summaryText(serviceLabel) : summaryNotSet()}
@@ -82,13 +82,13 @@ export function CreateLeadReviewStep({ state, onEditStep }: CreateLeadReviewStep
           {state.leadType === "visa" && (
             <SummaryRow label="Visa subtype" value={summaryText(state.visaSubtype)} />
           )}
-        </SummaryCard>
+        </SummaryCard> */}
 
-        <SummaryCard title="Client Information" step={2} onEdit={onEditStep}>
+        {/* <SummaryCard title="Client Information" step={2} onEdit={onEditStep}>
           <SummaryRow label="Full name" value={summaryText(state.clientName)} />
           <SummaryRow label="Email" value={summaryText(state.email)} />
           <SummaryRow label="Phone" value={summaryText(state.phone)} />
-        </SummaryCard>
+        </SummaryCard> */}
 
         {(state.leadType === "visa" ||
           state.passportNumber.trim() ||
@@ -145,9 +145,13 @@ export function CreateLeadReviewStep({ state, onEditStep }: CreateLeadReviewStep
             label="Lead source"
             value={summaryText(LEAD_SOURCE_LABELS[state.leadSource] ?? state.leadSource)}
           />
+          {state.leadSource === "REFERRAL" && (
+            <SummaryRow label="Referred by" value={summaryText(state.referredBy)} />
+          )}
           <SummaryRow label="Employment category" value={summaryText(employmentLabel)} />
           <SummaryRow label="Service charges" value={formatCurrencyAmount(state.packageAmount)} />
           <SummaryRow label="Annual income" value={formatCurrencyAmount(state.annualIncome)} />
+          <SummaryRow label="Email" value={summaryText(state.email)} />
           <SummaryRow
             label="Initial notes"
             value={

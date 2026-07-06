@@ -306,7 +306,7 @@ function CreateLeadWizardInner({
         }
       } else {
         const newId = addLead(payload);
-        showToast("Lead initialized successfully!");
+        showToast("Lead created successfully!");
         openLeadDetail(newId, "details", { created: true });
         if (isInline) {
           onClose?.();
@@ -423,8 +423,11 @@ function CreateLeadWizardInner({
 
       case 2: {
         const clientNameError = getFieldError("clientName");
-        const emailError = getFieldError("email");
         const phoneError = getFieldError("phone");
+        const immigrationCountryError = getFieldError("immigrationCountry");
+        const caseOfficerError = getFieldError("caseOfficer");
+        const leadSourceError = getFieldError("leadSource");
+        const referredByError = getFieldError("referredBy");
         return (
           <div className="space-y-4">
             <FormSectionGrid>
@@ -460,21 +463,92 @@ function CreateLeadWizardInner({
                 />
               </FormSection>
             </FormSectionGrid>
-            <FormSection
-              label="Email Address (optional)"
-              htmlFor="create-lead-email"
-              error={emailError}
-            >
-              <input
-                id="create-lead-email"
-                value={state.email}
-                onChange={(e) => updateField("email", e.target.value)}
-                onBlur={() => markFieldTouched("email")}
-                placeholder="e.g. john.doe@example.com"
-                type="email"
-                className={`${FORM_INPUT_CLASS}${
-                  emailError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
-                }`}
+            <FormSectionGrid>
+              <CountrySelector
+                inputId="create-lead-immigration-country"
+                value={state.immigrationCountry}
+                onChange={(value) =>
+                  updateField("immigrationCountry", value as CountryType | "")
+                }
+                error={immigrationCountryError}
+              />
+              <FormSection
+                label="Case Officer (Assignee)"
+                htmlFor="create-lead-case-officer"
+                error={caseOfficerError}
+              >
+                <select
+                  id="create-lead-case-officer"
+                  value={selfAssign ? currentUser!.name : state.caseOfficer}
+                  onChange={(e) => updateField("caseOfficer", e.target.value)}
+                  onBlur={() => markFieldTouched("caseOfficer")}
+                  disabled={!canAssignLeads}
+                  className={`${FORM_SELECT_CLASS}${
+                    caseOfficerError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                  } disabled:opacity-60 disabled:cursor-not-allowed`}
+                >
+                  {caseOfficerSelectOptions.map((officer) => (
+                    <option key={officer.value} value={officer.value}>
+                      {officer.label}
+                    </option>
+                  ))}
+                </select>
+              </FormSection>
+            </FormSectionGrid>
+            <FormSectionGrid>
+              <FormSection
+                label="Lead Source"
+                htmlFor="create-lead-lead-source"
+                error={leadSourceError}
+              >
+                <select
+                  id="create-lead-lead-source"
+                  value={state.leadSource}
+                  onChange={(e) =>
+                    updateField("leadSource", e.target.value as LeadSource)
+                  }
+                  onBlur={() => markFieldTouched("leadSource")}
+                  className={`${FORM_SELECT_CLASS}${
+                    leadSourceError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                  }`}
+                >
+                  <option value="MANUAL">Manual Entry</option>
+                  <option value="WEBSITE">Website</option>
+                  <option value="REFERRAL">Referral</option>
+                  <option value="WALK_IN">Walk-In</option>
+                  <option value="SOCIAL_MEDIA">Social Media</option>
+                </select>
+              </FormSection>
+              {state.leadSource === "REFERRAL" ? (
+                <FormSection
+                  label="Referred By"
+                  htmlFor="create-lead-referred-by"
+                  error={referredByError}
+                >
+                  <input
+                    id="create-lead-referred-by"
+                    value={state.referredBy}
+                    onChange={(e) => updateField("referredBy", e.target.value)}
+                    onBlur={() => markFieldTouched("referredBy")}
+                    placeholder="Enter referral name"
+                    type="text"
+                    className={`${FORM_INPUT_CLASS}${
+                      referredByError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                    }`}
+                  />
+                </FormSection>
+              ) : (
+                <div />
+              )}
+            </FormSectionGrid>
+            <FormSection label="Comment / Notes" htmlFor="create-lead-notes">
+              <textarea
+                id="create-lead-notes"
+                rows={3}
+                value={state.notes}
+                onChange={(e) => updateField("notes", e.target.value)}
+                placeholder="Enter initial comments / notes..."
+                className={FORM_TEXTAREA_CLASS}
               />
             </FormSection>
           </div>
@@ -815,8 +889,7 @@ function CreateLeadWizardInner({
 
       case 5: {
         const visaSubtypeError = getFieldError("visaSubtype");
-        const caseOfficerError = getFieldError("caseOfficer");
-        const leadSourceError = getFieldError("leadSource");
+        const emailError = getFieldError("email");
         const employmentCategoryError = getFieldError("employmentCategory");
         const packageAmountError = getFieldError("packageAmount");
         const annualIncomeError = getFieldError("annualIncome");
@@ -840,53 +913,6 @@ function CreateLeadWizardInner({
                 }`}
               />
             </FormSection>
-            <FormSectionGrid>
-              <FormSection
-                label="Case Officer"
-                htmlFor="create-lead-case-officer"
-                error={caseOfficerError}
-              >
-                <select
-                  id="create-lead-case-officer"
-                  value={selfAssign ? currentUser!.name : state.caseOfficer}
-                  onChange={(e) => updateField("caseOfficer", e.target.value)}
-                  onBlur={() => markFieldTouched("caseOfficer")}
-                  disabled={!canAssignLeads}
-                  className={`${FORM_SELECT_CLASS}${
-                    caseOfficerError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
-                  } disabled:opacity-60 disabled:cursor-not-allowed`}
-                >
-                  {caseOfficerSelectOptions.map((officer) => (
-                    <option key={officer.value} value={officer.value}>
-                      {officer.label}
-                    </option>
-                  ))}
-                </select>
-              </FormSection>
-              <FormSection
-                label="Lead Source"
-                htmlFor="create-lead-lead-source"
-                error={leadSourceError}
-              >
-                <select
-                  id="create-lead-lead-source"
-                  value={state.leadSource}
-                  onChange={(e) =>
-                    updateField("leadSource", e.target.value as LeadSource)
-                  }
-                  onBlur={() => markFieldTouched("leadSource")}
-                  className={`${FORM_SELECT_CLASS}${
-                    leadSourceError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
-                  }`}
-                >
-                  <option value="MANUAL">Manual Entry</option>
-                  <option value="WEBSITE">Website</option>
-                  <option value="REFERRAL">Referral</option>
-                  <option value="WALK_IN">Walk-In</option>
-                  <option value="SOCIAL_MEDIA">Social Media</option>
-                </select>
-              </FormSection>
-            </FormSectionGrid>
             <FormSectionGrid>
               <FormSection
                 label="Employment Category"
@@ -952,7 +978,23 @@ function CreateLeadWizardInner({
                   }`}
                 />
               </FormSection>
-              <div />
+              <FormSection
+                label="Email Address (optional)"
+                htmlFor="create-lead-email"
+                error={emailError}
+              >
+                <input
+                  id="create-lead-email"
+                  value={state.email}
+                  onChange={(e) => updateField("email", e.target.value)}
+                  onBlur={() => markFieldTouched("email")}
+                  placeholder="e.g. john.doe@example.com"
+                  type="email"
+                  className={`${FORM_INPUT_CLASS}${
+                    emailError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                  }`}
+                />
+              </FormSection>
             </FormSectionGrid>
             <FormSection label="Description">
               <textarea

@@ -27,17 +27,26 @@ function getStepState(
   stepId: WizardStepId,
   currentStep: WizardStepId,
   allowFullNavigation: boolean,
-  completedSteps: ReadonlySet<WizardStepId>
+  completedSteps: ReadonlySet<WizardStepId>,
+  activeStepIds: WizardStepId[]
 ) {
+  const stepIndex = activeStepIds.indexOf(stepId);
+  const currentIndex = activeStepIds.indexOf(currentStep);
+
+  const allPriorStepsValid = activeStepIds
+    .slice(0, stepIndex)
+    .every((id) => completedSteps.has(id) || (!allowFullNavigation && id < currentStep));
+
   const isComplete =
     stepId !== currentStep &&
     stepId !== 6 &&
-    (completedSteps.has(stepId) || (!allowFullNavigation && stepId < currentStep));
+    (completedSteps.has(stepId) || (!allowFullNavigation && stepId < currentStep)) &&
+    allPriorStepsValid;
 
   return {
     isComplete,
     isCurrent: stepId === currentStep,
-    isFuture: !allowFullNavigation && stepId > currentStep,
+    isFuture: !allowFullNavigation && stepIndex > currentIndex,
   };
 }
 
@@ -74,7 +83,8 @@ export function WizardProgress({
             step.id,
             currentStep,
             allowFullNavigation,
-            completedSteps
+            completedSteps,
+            activeStepIds
           );
           const isClickable =
             step.id !== currentStep &&
@@ -167,7 +177,8 @@ export function WizardProgress({
               step.id,
               currentStep,
               allowFullNavigation,
-              completedSteps
+              completedSteps,
+              activeStepIds
             );
             const isClickable =
               step.id !== currentStep &&
