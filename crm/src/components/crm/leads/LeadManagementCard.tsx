@@ -7,7 +7,7 @@ import { StatusSelectPill } from "@/components/ui/StatusSelectPill";
 import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
 import { isUsaCountry } from "@/utils/countryUtils";
 import { canRecordLeadDeposit, getLeadPaymentSummary } from "@/utils/leadPaymentUtils";
-import { FiUser, FiLock, FiPhone } from "react-icons/fi";
+import { FiUser, FiLock, FiPhone, FiHelpCircle } from "react-icons/fi";
 import { FaCar, FaUtensils, FaCity } from "react-icons/fa";
 
 type LeadManagementCardProps = {
@@ -229,30 +229,52 @@ export function LeadManagementCard({
                   toastMessage="Slots tracking mobile number copied"
                   showToast={showToast}
                 />
-                <CredentialField
-                  value={lead.usaSlots?.securityCar?.trim() ?? ""}
-                  icon={FaCar}
-                  iconColorClass="text-blue-500 dark:text-blue-400"
-                  tooltipText="Copy slots car security answer"
-                  toastMessage="Car security answer copied"
-                  showToast={showToast}
-                />
-                <CredentialField
-                  value={lead.usaSlots?.securityFood?.trim() ?? ""}
-                  icon={FaUtensils}
-                  iconColorClass="text-blue-500 dark:text-blue-400"
-                  tooltipText="Copy slots food security answer"
-                  toastMessage="Food security answer copied"
-                  showToast={showToast}
-                />
-                <CredentialField
-                  value={lead.usaSlots?.securityCity?.trim() ?? ""}
-                  icon={FaCity}
-                  iconColorClass="text-blue-500 dark:text-blue-400"
-                  tooltipText="Copy slots city security answer"
-                  toastMessage="City security answer copied"
-                  showToast={showToast}
-                />
+                {lead.usaSlots?.securityQuestions && lead.usaSlots.securityQuestions.length > 0 ? (
+                  lead.usaSlots.securityQuestions.map((q, idx) => {
+                    const icon = q.question.toLowerCase().includes("car") ? FaCar :
+                                 q.question.toLowerCase().includes("food") ? FaUtensils :
+                                 q.question.toLowerCase().includes("city") ? FaCity :
+                                 FiHelpCircle;
+                    return (
+                      <CredentialField
+                        key={idx}
+                        value={q.answer?.trim() ?? ""}
+                        icon={icon}
+                        iconColorClass="text-blue-500 dark:text-blue-400"
+                        tooltipText={`Copy ${q.question} security answer`}
+                        toastMessage={`${q.question} answer copied`}
+                        showToast={showToast}
+                      />
+                    );
+                  })
+                ) : (
+                  <>
+                    <CredentialField
+                      value={lead.usaSlots?.securityCar?.trim() ?? ""}
+                      icon={FaCar}
+                      iconColorClass="text-blue-500 dark:text-blue-400"
+                      tooltipText="Copy slots car security answer"
+                      toastMessage="Car security answer copied"
+                      showToast={showToast}
+                    />
+                    <CredentialField
+                      value={lead.usaSlots?.securityFood?.trim() ?? ""}
+                      icon={FaUtensils}
+                      iconColorClass="text-blue-500 dark:text-blue-400"
+                      tooltipText="Copy slots food security answer"
+                      toastMessage="Food security answer copied"
+                      showToast={showToast}
+                    />
+                    <CredentialField
+                      value={lead.usaSlots?.securityCity?.trim() ?? ""}
+                      icon={FaCity}
+                      iconColorClass="text-blue-500 dark:text-blue-400"
+                      tooltipText="Copy slots city security answer"
+                      toastMessage="City security answer copied"
+                      showToast={showToast}
+                    />
+                  </>
+                )}
               </div>
             </div>
           </div>

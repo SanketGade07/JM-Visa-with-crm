@@ -579,15 +579,31 @@ export function useCrmLayoutState() {
   const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
   const [createLeadSession, setCreateLeadSession] = useState(0);
 
+  const [isCreateUsaLeadOpen, setIsCreateUsaLeadOpen] = useState(false);
+  const [createUsaLeadSession, setCreateUsaLeadSession] = useState(0);
+
   const openCreateLead = useCallback(() => {
     if (!canModifyLeads) return;
     setCurrentTab("Leads");
+    setIsCreateUsaLeadOpen(false);
     setCreateLeadSession((session) => session + 1);
     setIsCreateLeadOpen(true);
   }, [canModifyLeads, setCurrentTab]);
 
   const closeCreateLead = useCallback(() => {
     setIsCreateLeadOpen(false);
+  }, []);
+
+  const openCreateUsaLead = useCallback(() => {
+    if (!canModifyLeads) return;
+    setCurrentTab("USASlots");
+    setIsCreateLeadOpen(false);
+    setCreateUsaLeadSession((session) => session + 1);
+    setIsCreateUsaLeadOpen(true);
+  }, [canModifyLeads, setCurrentTab]);
+
+  const closeCreateUsaLead = useCallback(() => {
+    setIsCreateUsaLeadOpen(false);
   }, []);
 
   const [isEditLeadOpen, setIsEditLeadOpen] = useState(false);
@@ -1372,6 +1388,7 @@ export function useCrmLayoutState() {
     openLeadDetail, closeLeadDetail, leadDetailTab, setLeadDetailTab,
     openLeadChecklist, closeLeadChecklist, navigateToTab,
     isCreateLeadOpen, createLeadSession, openCreateLead, closeCreateLead,
+    isCreateUsaLeadOpen, createUsaLeadSession, openCreateUsaLead, closeCreateUsaLead,
     isEditLeadOpen, editLeadSession, openEditLead, closeEditLead,
     isLeadsListRoute, isLeadNewRoute, isLeadDetailRoute, isLeadChecklistRoute,
     isAddPaymentOpen, setIsAddPaymentOpen, isAddMeetingOpen, setIsAddMeetingOpen,

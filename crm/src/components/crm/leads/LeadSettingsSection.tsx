@@ -533,9 +533,7 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
   const [savingSlotPortal, setSavingSlotPortal] = useState(false);
 
   const [trackingMobile, setTrackingMobile] = useState(lead.usaSlots?.trackingMobile ?? "");
-  const [securityCar, setSecurityCar] = useState(lead.usaSlots?.securityCar ?? "");
-  const [securityFood, setSecurityFood] = useState(lead.usaSlots?.securityFood ?? "");
-  const [securityCity, setSecurityCity] = useState(lead.usaSlots?.securityCity ?? "");
+  const [securityQuestions, setSecurityQuestions] = useState<Array<{ question: string; answer: string }>>([]);
   const [savingUsaTracking, setSavingUsaTracking] = useState(false);
 
   useEffect(() => {
@@ -551,16 +549,44 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
 
   useEffect(() => {
     setTrackingMobile(lead.usaSlots?.trackingMobile ?? "");
-    setSecurityCar(lead.usaSlots?.securityCar ?? "");
-    setSecurityFood(lead.usaSlots?.securityFood ?? "");
-    setSecurityCity(lead.usaSlots?.securityCity ?? "");
+    const questions = lead.usaSlots?.securityQuestions || [
+      { question: "Car", answer: lead.usaSlots?.securityCar ?? "" },
+      { question: "Food", answer: lead.usaSlots?.securityFood ?? "" },
+      { question: "City", answer: lead.usaSlots?.securityCity ?? "" }
+    ];
+    setSecurityQuestions(questions);
   }, [
     lead.id,
     lead.usaSlots?.trackingMobile,
+    lead.usaSlots?.securityQuestions,
     lead.usaSlots?.securityCar,
     lead.usaSlots?.securityFood,
     lead.usaSlots?.securityCity,
   ]);
+
+  const handleSecurityQuestionChange = (index: number, val: string) => {
+    const list = [...securityQuestions];
+    list[index] = { ...list[index], question: val };
+    setSecurityQuestions(list);
+  };
+
+  const handleSecurityAnswerChange = (index: number, val: string) => {
+    const list = [...securityQuestions];
+    list[index] = { ...list[index], answer: val };
+    setSecurityQuestions(list);
+  };
+
+  const handleAddSecurityQuestion = () => {
+    setSecurityQuestions([
+      ...securityQuestions,
+      { question: "", answer: "" },
+    ]);
+  };
+
+  const handleRemoveSecurityQuestion = (index: number) => {
+    const list = securityQuestions.filter((_, i) => i !== index);
+    setSecurityQuestions(list);
+  };
 
   const handleSlotStatusChange = (value: SlotStatus) => {
     if (!canModifyLeads) return;
@@ -585,11 +611,20 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
   const handleSaveUsaTracking = () => {
     if (!canModifyLeads) return;
     setSavingUsaTracking(true);
+
+    const legacyCar = (securityQuestions.find(q => q.question.toLowerCase().includes("car"))?.answer || "").trim();
+    const legacyFood = (securityQuestions.find(q => q.question.toLowerCase().includes("food"))?.answer || "").trim();
+    const legacyCity = (securityQuestions.find(q => q.question.toLowerCase().includes("city"))?.answer || "").trim();
+
     updateUsaSlots(lead.id, {
       trackingMobile: trackingMobile.trim(),
-      securityCar: securityCar.trim(),
-      securityFood: securityFood.trim(),
-      securityCity: securityCity.trim(),
+      securityCar: legacyCar,
+      securityFood: legacyFood,
+      securityCity: legacyCity,
+      securityQuestions: securityQuestions.map(q => ({
+        question: q.question.trim(),
+        answer: q.answer.trim()
+      }))
     });
     setSavingUsaTracking(false);
     showToast("USA tracking details saved", "success");
@@ -1467,51 +1502,77 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
                     autoComplete="off"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className={fieldLabelCls} htmlFor={`settings-usa-car-${lead.id}`}>
-                    Car
+                <div />
+              </div>
+              <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <label className={fieldLabelCls}>
+                    Security Questions
                   </label>
-                  <input
-                    id={`settings-usa-car-${lead.id}`}
-                    type="text"
-                    value={securityCar}
-                    onChange={(e) => setSecurityCar(e.target.value)}
+                  <button
+                    type="button"
                     disabled={!canModifyLeads}
-                    placeholder="e.g. BMW"
-                    className={fieldInputCls}
-                    autoComplete="off"
-                  />
+                    onClick={handleAddSecurityQuestion}
+                    className="text-xs text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 font-semibold flex items-center gap-1 transition-colors disabled:opacity-50"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Question
+                  </button>
                 </div>
-                <div className="space-y-1.5">
-                  <label className={fieldLabelCls} htmlFor={`settings-usa-food-${lead.id}`}>
-                    Food
-                  </label>
-                  <input
-                    id={`settings-usa-food-${lead.id}`}
-                    type="text"
-                    value={securityFood}
-                    onChange={(e) => setSecurityFood(e.target.value)}
-                    disabled={!canModifyLeads}
-                    placeholder="e.g. FISH"
-                    className={fieldInputCls}
-                    autoComplete="off"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className={fieldLabelCls} htmlFor={`settings-usa-city-${lead.id}`}>
-                    City
-                  </label>
-                  <input
-                    id={`settings-usa-city-${lead.id}`}
-                    type="text"
-                    value={securityCity}
-                    onChange={(e) => setSecurityCity(e.target.value)}
-                    disabled={!canModifyLeads}
-                    placeholder="e.g. MUMBAI"
-                    className={fieldInputCls}
-                    autoComplete="off"
-                  />
-                </div>
+
+                {securityQuestions.length === 0 ? (
+                  <p className="text-xs text-slate-400 dark:text-slate-500 italic">
+                    No security questions added. Click "Add Question" to add one.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {securityQuestions.map((q, idx) => (
+                      <div key={idx} className="flex gap-2 items-start bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800/80">
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                              Question {idx + 1}
+                            </label>
+                            <input
+                              type="text"
+                              value={q.question}
+                              onChange={(e) => handleSecurityQuestionChange(idx, e.target.value)}
+                              disabled={!canModifyLeads}
+                              placeholder="e.g. Car"
+                              className={fieldInputCls}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                              Answer
+                            </label>
+                            <input
+                              type="text"
+                              value={q.answer}
+                              onChange={(e) => handleSecurityAnswerChange(idx, e.target.value)}
+                              disabled={!canModifyLeads}
+                              placeholder="Enter answer"
+                              className={fieldInputCls}
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!canModifyLeads}
+                          onClick={() => handleRemoveSecurityQuestion(idx)}
+                          className="mt-5 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+                          title="Remove question"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <button
                 type="button"

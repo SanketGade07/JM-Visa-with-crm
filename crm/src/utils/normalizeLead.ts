@@ -23,6 +23,7 @@ export const DEFAULT_USA_SLOTS: UsaSlotTracking = {
   securityCar: "",
   securityFood: "",
   securityCity: "",
+  securityQuestions: [],
 };
 
 const isEmploymentCategory = (value: unknown): value is EmploymentCategory =>
@@ -33,6 +34,12 @@ export function normalizeUsaSlots(raw: unknown): UsaSlotTracking {
     return { ...DEFAULT_USA_SLOTS };
   }
   const slots = raw as Partial<UsaSlotTracking>;
+  const questions = slots.securityQuestions || [
+    { question: "Car", answer: slots.securityCar ?? "" },
+    { question: "Food", answer: slots.securityFood ?? "" },
+    { question: "City", answer: slots.securityCity ?? "" }
+  ];
+
   return {
     credentialsProvided: !!slots.credentialsProvided,
     slotsAvailable: !!slots.slotsAvailable,
@@ -49,6 +56,7 @@ export function normalizeUsaSlots(raw: unknown): UsaSlotTracking {
     securityCity: slots.securityCity ?? "",
     slotPortalUsername: slots.slotPortalUsername ?? "",
     slotPortalPassword: slots.slotPortalPassword ?? "",
+    securityQuestions: questions,
   };
 }
 

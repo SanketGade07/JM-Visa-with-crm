@@ -61,6 +61,11 @@ function getInitialStateFromLead(lead: Lead | null | undefined): CreateLeadFormS
     usaSecurityCar: lead.usaSlots?.securityCar || "",
     usaSecurityFood: lead.usaSlots?.securityFood || "",
     usaSecurityCity: lead.usaSlots?.securityCity || "",
+    securityQuestions: lead.usaSlots?.securityQuestions || [
+      { question: "Car", answer: lead.usaSlots?.securityCar || "" },
+      { question: "Food", answer: lead.usaSlots?.securityFood || "" },
+      { question: "City", answer: lead.usaSlots?.securityCity || "" }
+    ],
     slotStatus,
     caseOfficer: lead.counselor || UNASSIGNED_COUNSELOR,
     leadSource: lead.source || "MANUAL",
@@ -180,6 +185,20 @@ export function getStepFieldErrors(
       if (!state.leadSource) {
         errors.leadSource = "Select a lead source.";
       }
+      if (isUsaCountry(state.immigrationCountry)) {
+        if (state.loginId.trim() && !state.password.trim()) {
+          errors.password = "Visa portal password is required when username is entered.";
+        }
+        if (!state.loginId.trim() && state.password.trim()) {
+          errors.loginId = "Visa portal login ID is required when password is entered.";
+        }
+        if (state.slotPortalLoginId.trim() && !state.slotPortalPassword.trim()) {
+          errors.slotPortalPassword = "Slot portal password is required when username is entered.";
+        }
+        if (!state.slotPortalLoginId.trim() && state.slotPortalPassword.trim()) {
+          errors.slotPortalLoginId = "Slot portal login ID is required when password is entered.";
+        }
+      }
       break;
     }
     case 3: {
@@ -224,15 +243,14 @@ export function getStepFieldErrors(
         if (!state.usaTrackingMobile.trim()) {
           errors.usaTrackingMobile = "Mobile number is required.";
         }
-        if (!state.usaSecurityCar.trim()) {
-          errors.usaSecurityCar = "Car is required.";
-        }
-        if (!state.usaSecurityFood.trim()) {
-          errors.usaSecurityFood = "Food is required.";
-        }
-        if (!state.usaSecurityCity.trim()) {
-          errors.usaSecurityCity = "City is required.";
-        }
+        state.securityQuestions.forEach((q, idx) => {
+          if (!q.question.trim()) {
+            (errors as any)[`securityQuestion_${idx}_question`] = "Question is required.";
+          }
+          if (!q.answer.trim()) {
+            (errors as any)[`securityQuestion_${idx}_answer`] = "Answer is required.";
+          }
+        });
       }
       break;
     }
@@ -448,8 +466,11 @@ export function useCreateLeadForm(lead?: Lead | null) {
     []
   );
 
-  const reset = useCallback(() => {
-    setState(CREATE_LEAD_INITIAL_STATE);
+  const reset = useCallback((initialStateOverrides?: Partial<CreateLeadFormState>) => {
+    setState({
+      ...CREATE_LEAD_INITIAL_STATE,
+      ...initialStateOverrides,
+    });
     setCurrentStep(1);
     setHasCompletedWizard(false);
     setCompletedSteps(new Set());

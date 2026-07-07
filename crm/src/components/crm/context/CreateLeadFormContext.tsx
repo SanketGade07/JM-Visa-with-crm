@@ -21,16 +21,22 @@ export const CreateLeadFormContext = createContext<CreateLeadFormValue | null>(n
  */
 export function CreateLeadFormProvider({ children }: { children: React.ReactNode }) {
   const form = useCreateLeadForm();
-  const { createLeadSession } = useCrmLayoutContext();
+  const { createLeadSession, createUsaLeadSession } = useCrmLayoutContext();
 
-  // Reset the wizard each time a fresh session is opened (the "Add Lead" button
-  // bumps createLeadSession). This provider never unmounts on tab change, so a
-  // plain tab switch leaves createLeadSession untouched and the data is kept.
+  // Reset the wizard each time a fresh session is opened
   const formRef = useRef(form);
   formRef.current = form;
+  
+  const prevSessionsRef = useRef({ createLeadSession, createUsaLeadSession });
+
   useEffect(() => {
-    formRef.current.reset();
-  }, [createLeadSession]);
+    if (createUsaLeadSession !== prevSessionsRef.current.createUsaLeadSession) {
+      formRef.current.reset({ immigrationCountry: "USA" });
+    } else if (createLeadSession !== prevSessionsRef.current.createLeadSession) {
+      formRef.current.reset();
+    }
+    prevSessionsRef.current = { createLeadSession, createUsaLeadSession };
+  }, [createLeadSession, createUsaLeadSession]);
 
   return (
     <CreateLeadFormContext.Provider value={form}>

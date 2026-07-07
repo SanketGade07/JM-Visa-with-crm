@@ -62,6 +62,8 @@ export function CrmHeader() {
     isLeadDetailRoute,
     isCreateLeadOpen,
     openCreateLead,
+    isCreateUsaLeadOpen,
+    openCreateUsaLead,
     setIsMobileSidebarOpen,
     theme,
     toggleTheme,
@@ -287,6 +289,8 @@ export function CrmHeader() {
 
   const showNewButton =
     currentTab === "Leads" && !isLeadDetailRoute && canModifyLeads;
+  const showNewUsaButton =
+    currentTab === "USASlots" && canModifyLeads;
   const showExportButton =
     (currentTab === "Leads" && !isLeadDetailRoute) ||
     currentTab === "USASlots" ||
@@ -694,6 +698,23 @@ export function CrmHeader() {
           >
             <FaPlus className="text-[10px]" />
             <span className="hidden sm:inline">New</span>
+          </button>
+        )}
+
+        {showNewUsaButton && (
+          <button
+            onClick={openCreateUsaLead}
+            disabled={isCreateUsaLeadOpen}
+            title="New USA Lead"
+            aria-label="New USA Lead"
+            className={`flex items-center gap-1 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-xs p-2 sm:py-1.5 sm:px-2 rounded-xl transition-all shadow-md shadow-violet-500/10 ${
+              isCreateUsaLeadOpen
+                ? "opacity-40 cursor-not-allowed"
+                : "hover:from-violet-500 hover:to-indigo-500"
+            }`}
+          >
+            <FaPlus className="text-[10px]" />
+            <span className="hidden sm:inline">New USA Lead</span>
           </button>
         )}
       </div>

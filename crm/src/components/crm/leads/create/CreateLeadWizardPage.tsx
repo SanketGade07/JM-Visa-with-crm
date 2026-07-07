@@ -335,6 +335,30 @@ function CreateLeadWizardInner({
   const showVisaSubtypePicker =
     state.leadType === "visa" && !state.visaSubtype.trim();
 
+  const handleSecurityQuestionChange = (index: number, val: string) => {
+    const list = [...state.securityQuestions];
+    list[index] = { ...list[index], question: val };
+    updateField("securityQuestions", list);
+  };
+
+  const handleSecurityAnswerChange = (index: number, val: string) => {
+    const list = [...state.securityQuestions];
+    list[index] = { ...list[index], answer: val };
+    updateField("securityQuestions", list);
+  };
+
+  const handleAddSecurityQuestion = () => {
+    updateField("securityQuestions", [
+      ...state.securityQuestions,
+      { question: "", answer: "" },
+    ]);
+  };
+
+  const handleRemoveSecurityQuestion = (index: number) => {
+    const list = state.securityQuestions.filter((_, i) => i !== index);
+    updateField("securityQuestions", list);
+  };
+
   const stepContent = (() => {
     switch (currentStep) {
       case 1: {
@@ -432,6 +456,15 @@ function CreateLeadWizardInner({
         const caseOfficerError = getFieldError("caseOfficer");
         const leadSourceError = getFieldError("leadSource");
         const referredByError = getFieldError("referredBy");
+        const loginIdError = getFieldError("loginId");
+        const passwordError = getFieldError("password");
+        const slotStatusError = getFieldError("slotStatus");
+        const slotPortalLoginIdError = getFieldError("slotPortalLoginId");
+        const slotPortalPasswordError = getFieldError("slotPortalPassword");
+        const usaTrackingMobileError = getFieldError("usaTrackingMobile");
+        const usaSecurityCarError = getFieldError("usaSecurityCar");
+        const usaSecurityFoodError = getFieldError("usaSecurityFood");
+        const usaSecurityCityError = getFieldError("usaSecurityCity");
         return (
           <div className="space-y-4">
             <FormSectionGrid>
@@ -467,84 +500,368 @@ function CreateLeadWizardInner({
                 />
               </FormSection>
             </FormSectionGrid>
-            <FormSectionGrid>
-              <CountrySelector
-                inputId="create-lead-immigration-country"
-                value={state.immigrationCountry}
-                onChange={(value) =>
-                  updateField("immigrationCountry", value as CountryType | "")
-                }
-                error={immigrationCountryError}
-              />
-              <FormSection
-                label="Case Officer (Assignee)"
-                htmlFor="create-lead-case-officer"
-                error={caseOfficerError}
-              >
-                <select
-                  id="create-lead-case-officer"
-                  value={selfAssign ? currentUser!.name : state.caseOfficer}
-                  onChange={(e) => updateField("caseOfficer", e.target.value)}
-                  onBlur={() => markFieldTouched("caseOfficer")}
-                  disabled={!canAssignLeads}
-                  className={`${FORM_SELECT_CLASS}${
-                    caseOfficerError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
-                  } disabled:opacity-60 disabled:cursor-not-allowed`}
-                >
-                  {caseOfficerSelectOptions.map((officer) => (
-                    <option key={officer.value} value={officer.value}>
-                      {officer.label}
-                    </option>
-                  ))}
-                </select>
-              </FormSection>
-            </FormSectionGrid>
-            <FormSectionGrid>
-              <FormSection
-                label="Lead Source"
-                htmlFor="create-lead-lead-source"
-                error={leadSourceError}
-              >
-                <select
-                  id="create-lead-lead-source"
-                  value={state.leadSource}
-                  onChange={(e) =>
-                    updateField("leadSource", e.target.value as LeadSource)
-                  }
-                  onBlur={() => markFieldTouched("leadSource")}
-                  className={`${FORM_SELECT_CLASS}${
-                    leadSourceError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
-                  }`}
-                >
-                  <option value="MANUAL">Manual Entry</option>
-                  <option value="WEBSITE">Website</option>
-                  <option value="REFERRAL">Referral</option>
-                  <option value="WALK_IN">Walk-In</option>
-                  <option value="SOCIAL_MEDIA">Social Media</option>
-                </select>
-              </FormSection>
-              {state.leadSource === "REFERRAL" ? (
-                <FormSection
-                  label="Referred By"
-                  htmlFor="create-lead-referred-by"
-                  error={referredByError}
-                >
-                  <input
-                    id="create-lead-referred-by"
-                    value={state.referredBy}
-                    onChange={(e) => updateField("referredBy", e.target.value)}
-                    onBlur={() => markFieldTouched("referredBy")}
-                    placeholder="Enter referral name"
-                    type="text"
-                    className={`${FORM_INPUT_CLASS}${
-                      referredByError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
-                    }`}
+            {state.immigrationCountry !== "USA" ? (
+              <>
+                <FormSectionGrid>
+                  <CountrySelector
+                    inputId="create-lead-immigration-country"
+                    value={state.immigrationCountry}
+                    onChange={(value) =>
+                      updateField("immigrationCountry", value as CountryType | "")
+                    }
+                    error={immigrationCountryError}
                   />
-                </FormSection>
-              ) : (
-                <div />
-              )}
-            </FormSectionGrid>
+                  <FormSection
+                    label="Case Officer (Assignee)"
+                    htmlFor="create-lead-case-officer"
+                    error={caseOfficerError}
+                  >
+                    <select
+                      id="create-lead-case-officer"
+                      value={selfAssign ? currentUser!.name : state.caseOfficer}
+                      onChange={(e) => updateField("caseOfficer", e.target.value)}
+                      onBlur={() => markFieldTouched("caseOfficer")}
+                      disabled={!canAssignLeads}
+                      className={`${FORM_SELECT_CLASS}${
+                        caseOfficerError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                      } disabled:opacity-60 disabled:cursor-not-allowed`}
+                    >
+                      {caseOfficerSelectOptions.map((officer) => (
+                        <option key={officer.value} value={officer.value}>
+                          {officer.label}
+                        </option>
+                      ))}
+                    </select>
+                  </FormSection>
+                </FormSectionGrid>
+                <FormSectionGrid>
+                  <FormSection
+                    label="Lead Source"
+                    htmlFor="create-lead-lead-source"
+                    error={leadSourceError}
+                  >
+                    <select
+                      id="create-lead-lead-source"
+                      value={state.leadSource}
+                      onChange={(e) =>
+                        updateField("leadSource", e.target.value as LeadSource)
+                      }
+                      onBlur={() => markFieldTouched("leadSource")}
+                      className={`${FORM_SELECT_CLASS}${
+                        leadSourceError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                      }`}
+                    >
+                      <option value="MANUAL">Manual Entry</option>
+                      <option value="WEBSITE">Website</option>
+                      <option value="REFERRAL">Referral</option>
+                      <option value="WALK_IN">Walk-In</option>
+                      <option value="SOCIAL_MEDIA">Social Media</option>
+                    </select>
+                  </FormSection>
+                  {state.leadSource === "REFERRAL" ? (
+                    <FormSection
+                      label="Referred By"
+                      htmlFor="create-lead-referred-by"
+                      error={referredByError}
+                    >
+                      <input
+                        id="create-lead-referred-by"
+                        value={state.referredBy}
+                        onChange={(e) => updateField("referredBy", e.target.value)}
+                        onBlur={() => markFieldTouched("referredBy")}
+                        placeholder="Enter referral name"
+                        type="text"
+                        className={`${FORM_INPUT_CLASS}${
+                          referredByError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                        }`}
+                      />
+                    </FormSection>
+                  ) : (
+                    <div />
+                  )}
+                </FormSectionGrid>
+              </>
+            ) : (
+              <>
+                <FormSectionGrid>
+                  <FormSection
+                    label="Case Officer (Assignee)"
+                    htmlFor="create-lead-case-officer"
+                    error={caseOfficerError}
+                  >
+                    <select
+                      id="create-lead-case-officer"
+                      value={selfAssign ? currentUser!.name : state.caseOfficer}
+                      onChange={(e) => updateField("caseOfficer", e.target.value)}
+                      onBlur={() => markFieldTouched("caseOfficer")}
+                      disabled={!canAssignLeads}
+                      className={`${FORM_SELECT_CLASS}${
+                        caseOfficerError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                      } disabled:opacity-60 disabled:cursor-not-allowed`}
+                    >
+                      {caseOfficerSelectOptions.map((officer) => (
+                        <option key={officer.value} value={officer.value}>
+                          {officer.label}
+                        </option>
+                      ))}
+                    </select>
+                  </FormSection>
+                  <FormSection
+                    label="Lead Source"
+                    htmlFor="create-lead-lead-source"
+                    error={leadSourceError}
+                  >
+                    <select
+                      id="create-lead-lead-source"
+                      value={state.leadSource}
+                      onChange={(e) =>
+                        updateField("leadSource", e.target.value as LeadSource)
+                      }
+                      onBlur={() => markFieldTouched("leadSource")}
+                      className={`${FORM_SELECT_CLASS}${
+                        leadSourceError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                      }`}
+                    >
+                      <option value="MANUAL">Manual Entry</option>
+                      <option value="WEBSITE">Website</option>
+                      <option value="REFERRAL">Referral</option>
+                      <option value="WALK_IN">Walk-In</option>
+                      <option value="SOCIAL_MEDIA">Social Media</option>
+                    </select>
+                  </FormSection>
+                </FormSectionGrid>
+                {state.leadSource === "REFERRAL" && (
+                  <FormSectionGrid>
+                    <div />
+                    <FormSection
+                      label="Referred By"
+                      htmlFor="create-lead-referred-by"
+                      error={referredByError}
+                    >
+                      <input
+                        id="create-lead-referred-by"
+                        value={state.referredBy}
+                        onChange={(e) => updateField("referredBy", e.target.value)}
+                        onBlur={() => markFieldTouched("referredBy")}
+                        placeholder="Enter referral name"
+                        type="text"
+                        className={`${FORM_INPUT_CLASS}${
+                          referredByError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                        }`}
+                      />
+                    </FormSection>
+                  </FormSectionGrid>
+                )}
+              </>
+            )}
+
+
+            {isUsaCountry(state.immigrationCountry) && (
+              <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <div className="space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Visa Portal
+                  </p>
+                  <FormSectionGrid>
+                    <FormSection
+                      label="Login ID"
+                      htmlFor="create-lead-login-id-step2"
+                      error={loginIdError}
+                    >
+                      <input
+                        id="create-lead-login-id-step2"
+                        value={state.loginId}
+                        onChange={(e) => updateField("loginId", e.target.value)}
+                        onBlur={() => markFieldTouched("loginId")}
+                        placeholder="Visa portal username"
+                        type="text"
+                        className={`${FORM_INPUT_CLASS}${
+                          loginIdError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                        }`}
+                        autoComplete="off"
+                      />
+                    </FormSection>
+                    <FormSection
+                      label="Password"
+                      htmlFor="create-lead-password-step2"
+                      error={passwordError}
+                    >
+                      <input
+                        id="create-lead-password-step2"
+                        value={state.password}
+                        onChange={(e) => updateField("password", e.target.value)}
+                        onBlur={() => markFieldTouched("password")}
+                        placeholder="Visa portal password"
+                        type="text"
+                        className={`${FORM_INPUT_CLASS}${
+                          passwordError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                        }`}
+                        autoComplete="new-password"
+                      />
+                    </FormSection>
+                  </FormSectionGrid>
+                </div>
+
+                <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Slot Portal
+                  </p>
+                  <FormSection label="Portal Type">
+                    <CompactRadioGroup
+                      name="slotStatus"
+                      value={state.slotStatus}
+                      options={SLOT_STATUS_OPTIONS}
+                      onChange={(value) => updateField("slotStatus", value)}
+                      firstOptionId="create-lead-slot-status-step2"
+                      error={slotStatusError}
+                    />
+                  </FormSection>
+                  <FormSectionGrid>
+                    <FormSection
+                      label="Login ID"
+                      htmlFor="create-lead-slot-login-id-step2"
+                      error={slotPortalLoginIdError}
+                    >
+                      <input
+                        id="create-lead-slot-login-id-step2"
+                        value={state.slotPortalLoginId}
+                        onChange={(e) => updateField("slotPortalLoginId", e.target.value)}
+                        onBlur={() => markFieldTouched("slotPortalLoginId")}
+                        placeholder="Slot portal username"
+                        type="text"
+                        className={`${FORM_INPUT_CLASS}${
+                          slotPortalLoginIdError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                        }`}
+                        autoComplete="off"
+                      />
+                    </FormSection>
+                    <FormSection
+                      label="Password"
+                      htmlFor="create-lead-slot-password-step2"
+                      error={slotPortalPasswordError}
+                    >
+                      <input
+                        id="create-lead-slot-password-step2"
+                        value={state.slotPortalPassword}
+                        onChange={(e) => updateField("slotPortalPassword", e.target.value)}
+                        onBlur={() => markFieldTouched("slotPortalPassword")}
+                        placeholder="Slot portal password"
+                        type="text"
+                        className={`${FORM_INPUT_CLASS}${
+                          slotPortalPasswordError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                        }`}
+                        autoComplete="new-password"
+                      />
+                    </FormSection>
+                  </FormSectionGrid>
+                </div>
+
+                <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    USA Slot Tracking
+                  </p>
+                  <FormSectionGrid>
+                    <FormSection
+                      label="Mobile Number"
+                      htmlFor="create-lead-usa-mobile-step2"
+                      error={usaTrackingMobileError}
+                    >
+                      <input
+                        id="create-lead-usa-mobile-step2"
+                        value={state.usaTrackingMobile}
+                        onChange={(e) => updateField("usaTrackingMobile", e.target.value)}
+                        onBlur={() => markFieldTouched("usaTrackingMobile")}
+                        placeholder="Tracking mobile number"
+                        type="text"
+                        className={`${FORM_INPUT_CLASS}${
+                          usaTrackingMobileError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                        }`}
+                        autoComplete="off"
+                      />
+                    </FormSection>
+                    <div />
+                  </FormSectionGrid>
+
+                  <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Security Questions
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleAddSecurityQuestion}
+                        className="text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-semibold flex items-center gap-1 transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Question
+                      </button>
+                    </div>
+
+                    {state.securityQuestions.length === 0 ? (
+                      <p className="text-xs text-slate-400 dark:text-slate-500 italic">
+                        No security questions added. Click "Add Question" to add one.
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {state.securityQuestions.map((q, idx) => {
+                          const questionError = getFieldError(`securityQuestion_${idx}_question` as any);
+                          const answerError = getFieldError(`securityQuestion_${idx}_answer` as any);
+                          return (
+                            <div key={idx} className="flex gap-3 items-start bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg border border-slate-100 dark:border-slate-800/80">
+                              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-[11px] font-medium text-slate-400 dark:text-slate-500 mb-1">
+                                    Question {idx + 1}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={q.question}
+                                    onChange={(e) => handleSecurityQuestionChange(idx, e.target.value)}
+                                    placeholder="e.g. Mother's maiden name"
+                                    className={`${FORM_INPUT_CLASS} text-sm`}
+                                  />
+                                  {questionError && (
+                                    <p className="text-xs text-red-500 mt-1">{questionError}</p>
+                                  )}
+                                </div>
+                                <div>
+                                  <label className="block text-[11px] font-medium text-slate-400 dark:text-slate-500 mb-1">
+                                    Answer
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={q.answer}
+                                    onChange={(e) => handleSecurityAnswerChange(idx, e.target.value)}
+                                    placeholder="Enter answer"
+                                    className={`${FORM_INPUT_CLASS} text-sm`}
+                                  />
+                                  {answerError && (
+                                    <p className="text-xs text-red-500 mt-1">{answerError}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveSecurityQuestion(idx)}
+                                className="mt-6 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                title="Remove question"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <FormSection label="Comment / Notes" htmlFor="create-lead-notes">
               <textarea
                 id="create-lead-notes"
@@ -807,9 +1124,6 @@ function CreateLeadWizardInner({
                   </FormSection>
                 </FormSectionGrid>
                 <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    USA Slot Tracking
-                  </p>
                   <FormSectionGrid>
                     <FormSection
                       label="Mobile Number"
@@ -829,61 +1143,85 @@ function CreateLeadWizardInner({
                         autoComplete="off"
                       />
                     </FormSection>
-                    <FormSection
-                      label="Car"
-                      htmlFor="create-lead-usa-car"
-                      error={usaSecurityCarError}
-                    >
-                      <input
-                        id="create-lead-usa-car"
-                        value={state.usaSecurityCar}
-                        onChange={(e) => updateField("usaSecurityCar", e.target.value)}
-                        onBlur={() => markFieldTouched("usaSecurityCar")}
-                        placeholder="Security car"
-                        type="text"
-                        className={`${FORM_INPUT_CLASS}${
-                          usaSecurityCarError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
-                        }`}
-                        autoComplete="off"
-                      />
-                    </FormSection>
-                    <FormSection
-                      label="Food"
-                      htmlFor="create-lead-usa-food"
-                      error={usaSecurityFoodError}
-                    >
-                      <input
-                        id="create-lead-usa-food"
-                        value={state.usaSecurityFood}
-                        onChange={(e) => updateField("usaSecurityFood", e.target.value)}
-                        onBlur={() => markFieldTouched("usaSecurityFood")}
-                        placeholder="Security food"
-                        type="text"
-                        className={`${FORM_INPUT_CLASS}${
-                          usaSecurityFoodError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
-                        }`}
-                        autoComplete="off"
-                      />
-                    </FormSection>
-                    <FormSection
-                      label="City"
-                      htmlFor="create-lead-usa-city"
-                      error={usaSecurityCityError}
-                    >
-                      <input
-                        id="create-lead-usa-city"
-                        value={state.usaSecurityCity}
-                        onChange={(e) => updateField("usaSecurityCity", e.target.value)}
-                        onBlur={() => markFieldTouched("usaSecurityCity")}
-                        placeholder="Security city"
-                        type="text"
-                        className={`${FORM_INPUT_CLASS}${
-                          usaSecurityCityError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
-                        }`}
-                        autoComplete="off"
-                      />
-                    </FormSection>
+                    <div />
                   </FormSectionGrid>
+
+                  <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Security Questions
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleAddSecurityQuestion}
+                        className="text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-semibold flex items-center gap-1 transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Question
+                      </button>
+                    </div>
+
+                    {state.securityQuestions.length === 0 ? (
+                      <p className="text-xs text-slate-400 dark:text-slate-500 italic">
+                        No security questions added. Click "Add Question" to add one.
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {state.securityQuestions.map((q, idx) => {
+                          const questionError = getFieldError(`securityQuestion_${idx}_question` as any);
+                          const answerError = getFieldError(`securityQuestion_${idx}_answer` as any);
+                          return (
+                            <div key={idx} className="flex gap-3 items-start bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg border border-slate-100 dark:border-slate-800/80">
+                              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-[11px] font-medium text-slate-400 dark:text-slate-500 mb-1">
+                                    Question {idx + 1}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={q.question}
+                                    onChange={(e) => handleSecurityQuestionChange(idx, e.target.value)}
+                                    placeholder="e.g. Mother's maiden name"
+                                    className={`${FORM_INPUT_CLASS} text-sm`}
+                                  />
+                                  {questionError && (
+                                    <p className="text-xs text-red-500 mt-1">{questionError}</p>
+                                  )}
+                                </div>
+                                <div>
+                                  <label className="block text-[11px] font-medium text-slate-400 dark:text-slate-500 mb-1">
+                                    Answer
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={q.answer}
+                                    onChange={(e) => handleSecurityAnswerChange(idx, e.target.value)}
+                                    placeholder="Enter answer"
+                                    className={`${FORM_INPUT_CLASS} text-sm`}
+                                  />
+                                  {answerError && (
+                                    <p className="text-xs text-red-500 mt-1">{answerError}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveSecurityQuestion(idx)}
+                                className="mt-6 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                title="Remove question"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

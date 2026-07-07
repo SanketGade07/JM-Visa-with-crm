@@ -64,6 +64,10 @@ export function buildCreateLeadPayload(state: CreateLeadFormState): CreateLeadPa
   }
 
   if (isUsaCountry(country)) {
+    const legacyCar = (state.securityQuestions.find(q => q.question.toLowerCase().includes("car"))?.answer || "").trim();
+    const legacyFood = (state.securityQuestions.find(q => q.question.toLowerCase().includes("food"))?.answer || "").trim();
+    const legacyCity = (state.securityQuestions.find(q => q.question.toLowerCase().includes("city"))?.answer || "").trim();
+
     payload.usaSlots = {
       ...DEFAULT_USA_SLOTS,
       slotLocation: "Delhi",
@@ -75,9 +79,13 @@ export function buildCreateLeadPayload(state: CreateLeadFormState): CreateLeadPa
         slotPortalPassword: slotPortalPassword,
       }),
       trackingMobile: state.usaTrackingMobile.trim(),
-      securityCar: state.usaSecurityCar.trim(),
-      securityFood: state.usaSecurityFood.trim(),
-      securityCity: state.usaSecurityCity.trim(),
+      securityCar: legacyCar || state.usaSecurityCar.trim(),
+      securityFood: legacyFood || state.usaSecurityFood.trim(),
+      securityCity: legacyCity || state.usaSecurityCity.trim(),
+      securityQuestions: state.securityQuestions.map((q) => ({
+        question: q.question.trim(),
+        answer: q.answer.trim(),
+      })),
     };
   }
 

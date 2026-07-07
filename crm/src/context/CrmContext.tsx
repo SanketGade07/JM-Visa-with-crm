@@ -85,6 +85,7 @@ export interface UsaSlotTracking {
   securityCity: string;
   slotPortalUsername?: string;
   slotPortalPassword?: string;
+  securityQuestions?: Array<{ question: string; answer: string; }>;
 }
 
 export interface Activity {

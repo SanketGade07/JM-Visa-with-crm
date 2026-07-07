@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import type { Lead } from "@/context/CrmContext";
 import { FaTimes, FaTrash, FaCar, FaUtensils, FaCity } from "react-icons/fa";
-import { FiSettings, FiPhone, FiMail, FiCopy, FiUser, FiLock, FiSmartphone } from "react-icons/fi";
+import { FiSettings, FiPhone, FiMail, FiCopy, FiUser, FiLock, FiSmartphone, FiKey, FiChevronDown, FiCheck } from "react-icons/fi";
 import DataTable, { exportRowsToCsv } from "@/components/ui/DataTable";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
+import { CollapsiblePanel } from "@/components/ui/CollapsiblePanel";
+import { CreateLeadWizardPage } from "@/components/crm/leads/create/CreateLeadWizardPage";
 import { useUsaSlotTabs } from "@/hooks/useUsaSlotTabs";
 import { useColumnSearch } from "@/hooks/useColumnSearch";
 import { applyColumnSearch } from "@/utils/columnSearch";
@@ -106,18 +108,19 @@ function UsaSlotSettingsModal({
     lead.usaSlots?.slotPortalPassword ?? ""
   );
   const [savingSlotPortal, setSavingSlotPortal] = useState(false);
-  const [securityCar, setSecurityCar] = useState(lead.usaSlots?.securityCar ?? "");
-  const [securityFood, setSecurityFood] = useState(lead.usaSlots?.securityFood ?? "");
-  const [securityCity, setSecurityCity] = useState(lead.usaSlots?.securityCity ?? "");
+  const [securityQuestions, setSecurityQuestions] = useState<Array<{ question: string; answer: string }>>([]);
   const [trackingMobile, setTrackingMobile] = useState(lead.usaSlots?.trackingMobile ?? "");
 
   useEffect(() => {
     setCredUsername(lead.visaCredentials?.username ?? "");
     setCredPassword(lead.visaCredentials?.password ?? "");
-    setSecurityCar(lead.usaSlots?.securityCar ?? "");
-    setSecurityFood(lead.usaSlots?.securityFood ?? "");
-    setSecurityCity(lead.usaSlots?.securityCity ?? "");
     setTrackingMobile(lead.usaSlots?.trackingMobile ?? "");
+    const questions = lead.usaSlots?.securityQuestions || [
+      { question: "Car", answer: lead.usaSlots?.securityCar ?? "" },
+      { question: "Food", answer: lead.usaSlots?.securityFood ?? "" },
+      { question: "City", answer: lead.usaSlots?.securityCity ?? "" }
+    ];
+    setSecurityQuestions(questions);
   }, [lead.id, lead.visaCredentials, lead.usaSlots]);
 
   useEffect(() => {
@@ -146,12 +149,44 @@ function UsaSlotSettingsModal({
     showToast("Slot portal credentials saved", "success");
   };
 
+  const handleSecurityQuestionChange = (index: number, val: string) => {
+    const list = [...securityQuestions];
+    list[index] = { ...list[index], question: val };
+    setSecurityQuestions(list);
+  };
+
+  const handleSecurityAnswerChange = (index: number, val: string) => {
+    const list = [...securityQuestions];
+    list[index] = { ...list[index], answer: val };
+    setSecurityQuestions(list);
+  };
+
+  const handleAddSecurityQuestion = () => {
+    setSecurityQuestions([
+      ...securityQuestions,
+      { question: "", answer: "" },
+    ]);
+  };
+
+  const handleRemoveSecurityQuestion = (index: number) => {
+    const list = securityQuestions.filter((_, i) => i !== index);
+    setSecurityQuestions(list);
+  };
+
   const handleSaveSecurity = () => {
+    const legacyCar = (securityQuestions.find(q => q.question.toLowerCase().includes("car"))?.answer || "").trim();
+    const legacyFood = (securityQuestions.find(q => q.question.toLowerCase().includes("food"))?.answer || "").trim();
+    const legacyCity = (securityQuestions.find(q => q.question.toLowerCase().includes("city"))?.answer || "").trim();
+
     updateUsaSlots(lead.id, {
-      securityCar: securityCar.trim(),
-      securityFood: securityFood.trim(),
-      securityCity: securityCity.trim(),
+      securityCar: legacyCar,
+      securityFood: legacyFood,
+      securityCity: legacyCity,
       trackingMobile: trackingMobile.trim(),
+      securityQuestions: securityQuestions.map(q => ({
+        question: q.question.trim(),
+        answer: q.answer.trim()
+      }))
     });
     showToast("Security answers & mobile saved", "success");
   };
@@ -291,37 +326,71 @@ function UsaSlotSettingsModal({
                 className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none focus:ring-1 focus:ring-violet-500"
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">Car</label>
-                <input
-                  type="text"
-                  value={securityCar}
-                  onChange={(e) => setSecurityCar(e.target.value)}
-                  placeholder="e.g. BMW"
-                  className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none"
-                />
+            <div className="space-y-3 pt-2 border-t border-slate-800">
+              <div className="flex items-center justify-between">
+                <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">
+                  Security Questions
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAddSecurityQuestion}
+                  className="text-xs text-violet-400 hover:text-violet-300 font-semibold flex items-center gap-1 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Question
+                </button>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">Food</label>
-                <input
-                  type="text"
-                  value={securityFood}
-                  onChange={(e) => setSecurityFood(e.target.value)}
-                  placeholder="e.g. FISH"
-                  className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">City</label>
-                <input
-                  type="text"
-                  value={securityCity}
-                  onChange={(e) => setSecurityCity(e.target.value)}
-                  placeholder="e.g. MUMBAI"
-                  className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-2 px-3 focus:outline-none"
-                />
-              </div>
+
+              {securityQuestions.length === 0 ? (
+                <p className="text-xs text-slate-500 italic">
+                  No security questions added. Click "Add Question" to add one.
+                </p>
+              ) : (
+                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                  {securityQuestions.map((q, idx) => (
+                    <div key={idx} className="flex gap-2 items-start bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/80">
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-medium text-slate-500">
+                            Question {idx + 1}
+                          </label>
+                          <input
+                            type="text"
+                            value={q.question}
+                            onChange={(e) => handleSecurityQuestionChange(idx, e.target.value)}
+                            placeholder="e.g. Car"
+                            className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-1.5 px-2.5 focus:outline-none focus:border-slate-700"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-medium text-slate-500">
+                            Answer
+                          </label>
+                          <input
+                            type="text"
+                            value={q.answer}
+                            onChange={(e) => handleSecurityAnswerChange(idx, e.target.value)}
+                            placeholder="Enter answer"
+                            className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl py-1.5 px-2.5 focus:outline-none focus:border-slate-700"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSecurityQuestion(idx)}
+                        className="mt-5 text-slate-500 hover:text-red-400 p-1 rounded hover:bg-slate-850 transition-colors"
+                        title="Remove question"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <button
@@ -399,6 +468,125 @@ function UsaSlotSettingsModal({
   );
 }
 
+function CopyableSecurityQuestionsCell({ lead, showToast }: { lead: Lead; showToast: any }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const questions = lead.usaSlots?.securityQuestions || [
+    { question: "Car", answer: lead.usaSlots?.securityCar ?? "" },
+    { question: "Food", answer: lead.usaSlots?.securityFood ?? "" },
+    { question: "City", answer: lead.usaSlots?.securityCity ?? "" }
+  ];
+
+  const filledQuestions = questions.filter(q => q.question.trim() || q.answer.trim());
+  const count = filledQuestions.length;
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const handleToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!isOpen) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      // If the button is in the bottom 45% of the screen, open it upward
+      setOpenUpward(rect.bottom > windowHeight * 0.55);
+    }
+    setIsOpen(!isOpen);
+  };
+
+  const handleCopy = async (text: string, idx: number, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(idx);
+      showToast(`${label} answer copied`, "success");
+      setTimeout(() => setCopiedIndex(null), 1500);
+    } catch {
+      showToast("Failed to copy", "error");
+    }
+  };
+
+  return (
+    <div className="relative inline-block text-left" ref={containerRef}>
+      <button
+        type="button"
+        onClick={handleToggle}
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700/90 text-slate-700 dark:text-slate-300 text-[11px] font-semibold rounded-xl border border-slate-200 dark:border-slate-850 transition-all duration-200 shadow-sm cursor-pointer"
+      >
+        <FiKey className="text-violet-500 text-[12px]" />
+        <span>{count} Answer{count !== 1 ? "s" : ""}</span>
+        <FiChevronDown className={`text-slate-400 text-[10px] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      {isOpen && (
+        <div className={`absolute right-0 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl shadow-slate-100 dark:shadow-black/60 p-3.5 z-40 transition-all animate-fadeIn ${
+          openUpward ? "bottom-full mb-2 origin-bottom" : "mt-2 origin-top"
+        }`}>
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80 mb-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Security Answers
+            </span>
+            <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500">
+              Click answer to copy
+            </span>
+          </div>
+
+          {filledQuestions.length === 0 ? (
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 italic py-1 text-center">
+              No security answers entered.
+            </p>
+          ) : (
+            <div className="space-y-2.5 max-h-[220px] overflow-y-auto crm-slim-scrollbar">
+              {filledQuestions.map((q, idx) => {
+                const isCopied = copiedIndex === idx;
+                const value = q.answer || "—";
+                return (
+                  <div key={idx} className="flex items-center justify-between gap-3 text-[11px]">
+                    <div className="flex-1 min-w-0">
+                      <span className="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide truncate">
+                        {q.question || `Question ${idx + 1}`}
+                      </span>
+                      <span className="block font-semibold text-slate-700 dark:text-slate-300 truncate">
+                        {value}
+                      </span>
+                    </div>
+                    {q.answer && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(q.answer, idx, q.question || "Security")}
+                        className={`p-1.5 rounded-lg border transition-all duration-200 shrink-0 cursor-pointer ${
+                          isCopied
+                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
+                            : "bg-slate-50 hover:bg-slate-100 border-slate-150 text-slate-450 dark:bg-slate-950 dark:hover:bg-slate-850 dark:border-slate-800 dark:text-slate-400"
+                        }`}
+                        title="Copy answer"
+                      >
+                        {isCopied ? <FiCheck className="w-3 h-3" /> : <FiCopy className="w-3 h-3" />}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function USASlotsTab() {
   const {
     setSelectedLeadId,
@@ -416,6 +604,9 @@ export function USASlotsTab() {
     showConfirm,
     showAlert,
     isAdmin,
+    isCreateUsaLeadOpen,
+    createUsaLeadSession,
+    closeCreateUsaLead,
   } = useCrmLayoutContext();
 
   const { usaLeads, filteredUsaLeads } = useUsaSlotTabs();
@@ -466,6 +657,16 @@ export function USASlotsTab() {
 
   return (
     <div className="-m-4 md:-m-8 pt-0 pl-0 pr-0 pb-4 md:pt-0 md:pl-0 md:pr-0 md:pb-6 space-y-6">
+      <CollapsiblePanel open={isCreateUsaLeadOpen && canModifyLeads}>
+        <div className="mb-4">
+          <CreateLeadWizardPage
+            key={createUsaLeadSession}
+            variant="inline"
+            onClose={closeCreateUsaLead}
+          />
+        </div>
+      </CollapsiblePanel>
+
       <DataTable
         borderless={true}
         pagination={true}
@@ -555,38 +756,11 @@ export function USASlotsTab() {
             ),
           },
           {
-            header: "Car",
+            header: "Security",
             render: (lead) => (
-              <CopyableCredentialCell
-                value={lead.usaSlots?.securityCar}
-                label="Car"
+              <CopyableSecurityQuestionsCell
+                lead={lead}
                 showToast={showToast}
-                icon={<FaCar className="text-[12.5px]" />}
-                variant="blue"
-              />
-            ),
-          },
-          {
-            header: "Food",
-            render: (lead) => (
-              <CopyableCredentialCell
-                value={lead.usaSlots?.securityFood}
-                label="Food"
-                showToast={showToast}
-                icon={<FaUtensils className="text-[12px]" />}
-                variant="blue"
-              />
-            ),
-          },
-          {
-            header: "City",
-            render: (lead) => (
-              <CopyableCredentialCell
-                value={lead.usaSlots?.securityCity}
-                label="City"
-                showToast={showToast}
-                icon={<FaCity className="text-[12px]" />}
-                variant="blue"
               />
             ),
           },

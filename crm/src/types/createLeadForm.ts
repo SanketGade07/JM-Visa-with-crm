@@ -26,6 +26,7 @@ export type CreateLeadFormState = {
   usaSecurityCar: string;
   usaSecurityFood: string;
   usaSecurityCity: string;
+  securityQuestions: Array<{ question: string; answer: string }>;
   slotStatus: CreateLeadSlotStatus;
   caseOfficer: string;
   leadSource: LeadSource;
@@ -55,6 +56,11 @@ export const CREATE_LEAD_INITIAL_STATE: CreateLeadFormState = {
   usaSecurityCar: "",
   usaSecurityFood: "",
   usaSecurityCity: "",
+  securityQuestions: [
+    { question: "Car", answer: "" },
+    { question: "Food", answer: "" },
+    { question: "City", answer: "" }
+  ],
   slotStatus: "",
   caseOfficer: UNASSIGNED_COUNSELOR,
   leadSource: "MANUAL",
