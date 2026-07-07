@@ -78,38 +78,15 @@ export const readLeads = async (): Promise<Lead[]> => {
 
 export const writeLeads = async (leads: Lead[]): Promise<boolean> => {
   const supabase = getSupabase();
-
-  const omittedColumns = new Set<string>();
-  let attempts = 0;
-  const maxAttempts = 10;
-
-  while (attempts < maxAttempts) {
-    const rows = leads.map((lead) => serializeLeadForDb(lead, { omitColumns: omittedColumns }));
-    const { error } = await supabase.from("leads").upsert(rows);
-
-    if (!error) {
-      return true;
-    }
-
-    const errMsg = typeof error.message === "string" ? error.message : "";
-    const columnMatch =
-      errMsg.match(/Could not find the '([^']+)' column/) ||
-      errMsg.match(/column "([^"]+)" of relation/) ||
-      errMsg.match(/column "([^"]+)" does not exist/);
-
-    if (columnMatch && columnMatch[1]) {
-      const missingColumn = columnMatch[1];
-      console.warn(`Column '${missingColumn}' is missing from the Supabase table — retrying without it.`);
-      omittedColumns.add(missingColumn);
-      attempts++;
-    } else {
-      console.error("Error writing leads to Supabase:", error);
-      return false;
-    }
+  const rows = leads.map((lead) => serializeLeadForDb(lead));
+  
+  const { error } = await supabase.from("leads").upsert(rows);
+  if (error) {
+    console.error("CRITICAL: Error writing leads to Supabase:", error);
+    return false;
   }
-
-  console.error("Failed to write leads to Supabase: reached maximum retry attempts");
-  return false;
+  
+  return true;
 };
 
 export const updateLeadCredentials = async (

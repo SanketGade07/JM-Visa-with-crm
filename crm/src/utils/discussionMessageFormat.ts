@@ -24,11 +24,10 @@ const ALLOWED_TAGS = new Set([
 
 const HTML_CONTENT_PATTERN = /<\/?(?:b|strong|i|em|u|a|ul|ol|li|br|p|div)\b/i;
 
-export function applyEditorFormat(editor: HTMLElement, action: DiscussionFormatAction): void {
+export function applyEditorFormat(editor: HTMLElement, action: DiscussionFormatAction, url?: string): void {
   editor.focus();
 
   if (action === "link") {
-    const url = window.prompt("Enter URL:", "https://");
     if (url?.trim()) {
       document.execCommand("createLink", false, url.trim());
     }

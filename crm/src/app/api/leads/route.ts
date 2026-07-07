@@ -11,6 +11,7 @@ import {
   EMPLOYMENT_CATEGORIES,
   type EmploymentCategory,
 } from "@/utils/documentChecklistConfig";
+import { verifySession, generateId } from "@/utils/session";
 
 export async function GET(req: NextRequest) {
   try {
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
     // Single manual lead creation
     const today = new Date().toISOString().split("T")[0];
     const now = new Date().toISOString();
-    const leadId = `lead-${Date.now()}`;
+    const leadId = generateId("lead");
     const country = body.country || "UK";
     const employmentCategory: EmploymentCategory =
       typeof body.employmentCategory === "string" &&
@@ -130,11 +131,11 @@ export async function POST(req: NextRequest) {
       newLead.usaSlots = { ...DEFAULT_USA_SLOTS, slotLocation: "Delhi" };
     }
 
-    const ok = await writeLeads([...existingLeads, newLead]);
+    const ok = await writeLeads([newLead]);
     if (!ok) return NextResponse.json({ error: "Failed to save lead" }, { status: 500 });
 
     const activity: Activity = {
-      id: `act-${Date.now()}`,
+      id: generateId("act"),
       leadId,
       type: "lead_created",
       content: `Lead created manually (source: ${newLead.source})`,
@@ -166,7 +167,9 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const role = req.cookies.get("crm_role")?.value;
+    const sessionToken = req.cookies.get("crm_session")?.value ?? "";
+    const session = sessionToken ? await verifySession(sessionToken) : null;
+    const role = session?.role ?? null;
     if (role !== "ADMIN") {
       return NextResponse.json({ error: "Only admins are allowed to delete leads" }, { status: 403 });
     }

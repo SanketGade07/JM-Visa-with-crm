@@ -45,6 +45,9 @@ export const DiscussionMessageComposer = forwardRef<
     () => new Set()
   );
   const [isEmpty, setIsEmpty] = useState(true);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("https://");
+  const [savedRange, setSavedRange] = useState<Range | null>(null);
 
   const syncEmpty = () => {
     const empty = isDiscussionEditorEmpty(editorRef.current);
@@ -86,6 +89,15 @@ export const DiscussionMessageComposer = forwardRef<
   const handleFormat = (action: DiscussionFormatAction) => {
     const editor = editorRef.current;
     if (!editor) return;
+
+    if (action === "link") {
+      const selection = window.getSelection();
+      const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+      setSavedRange(range);
+      setLinkUrl("https://");
+      setShowLinkModal(true);
+      return;
+    }
 
     applyEditorFormat(editor, action);
     syncActiveFormats();
@@ -142,6 +154,61 @@ export const DiscussionMessageComposer = forwardRef<
           isEmpty ? "is-empty" : ""
         }`}
       />
+
+      {showLinkModal && (
+        <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-[#0a0a1a] border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
+            <h3 className="text-xs font-bold text-white">Insert Link URL</h3>
+            <div className="space-y-1.5 text-left text-xs">
+              <input
+                type="text"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="https://example.com"
+                className="w-full bg-slate-950 border border-slate-800 py-2 px-3 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-500 text-slate-200 font-mono text-[11px]"
+              />
+            </div>
+            <div className="flex justify-end space-x-2 text-[10px]">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLinkModal(false);
+                  setSavedRange(null);
+                }}
+                className="px-3 py-1.5 border border-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const editor = editorRef.current;
+                  if (!editor) return;
+                  editor.focus();
+                  if (savedRange) {
+                    const selection = window.getSelection();
+                    if (selection) {
+                      selection.removeAllRanges();
+                      selection.addRange(savedRange);
+                    }
+                  }
+                  if (linkUrl.trim()) {
+                    document.execCommand("createLink", false, linkUrl.trim());
+                  }
+                  setShowLinkModal(false);
+                  setLinkUrl("https://");
+                  setSavedRange(null);
+                  syncActiveFormats();
+                  syncEmpty();
+                }}
+                className="px-3 py-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold rounded-lg transition-colors"
+              >
+                Insert Link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

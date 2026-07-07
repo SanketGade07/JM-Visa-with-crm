@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifySession } from "./session";
 
-export function getSessionRole(req: NextRequest): string | null {
-  return req.cookies.get("crm_role")?.value ?? null;
+export async function getSessionRole(req: NextRequest): Promise<string | null> {
+  const sessionToken = req.cookies.get("crm_session")?.value ?? "";
+  const session = sessionToken ? await verifySession(sessionToken) : null;
+  return session?.role ?? null;
 }
 
-export function requireLoggedIn(req: NextRequest): string | null {
+export async function requireLoggedIn(req: NextRequest): Promise<string | null> {
   return getSessionRole(req);
 }
 
-export function requireAdmin(req: NextRequest): string | null {
-  const role = getSessionRole(req);
+export async function requireAdmin(req: NextRequest): Promise<string | null> {
+  const role = await getSessionRole(req);
   if (role !== "ADMIN") return null;
   return role;
 }

@@ -72,6 +72,9 @@ export function DriveTab() {
   const [newFileName, setNewFileName] = useState("");
   const [isCreatingFile, setIsCreatingFile] = useState(false);
 
+  const [googleFileTypeToCreate, setGoogleFileTypeToCreate] = useState<"document" | "spreadsheet" | "presentation" | null>(null);
+  const [googleFileNameValue, setGoogleFileNameValue] = useState("");
+
   const [renameItem, setRenameItem] = useState<DriveItem | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
@@ -439,32 +442,38 @@ export function DriveTab() {
   };
 
   const handleCreateGoogleFile = useCallback(
-    async (type: "document" | "spreadsheet" | "presentation") => {
-      if (!currentFolderId) return;
-      const name = prompt(`Name for new ${type}:`);
-      if (!name?.trim()) return;
-      try {
-        const res = await fetch("/api/drive/browse", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            parentId: currentFolderId,
-            folderName: name.trim(),
-            type,
-          }),
-        });
-        if (!res.ok) {
-          showToast(await parseApiError(res), "error");
-          return;
-        }
-        showToast("Google file created");
-        refreshCurrent();
-      } catch (err) {
-        showToast(err instanceof Error ? err.message : "Failed to create file", "error");
-      }
+    (type: "document" | "spreadsheet" | "presentation") => {
+      setGoogleFileTypeToCreate(type);
+      setGoogleFileNameValue("");
     },
-    [currentFolderId, refreshCurrent, showToast]
+    []
   );
+
+  const submitCreateGoogleFile = async () => {
+    if (!currentFolderId || !googleFileTypeToCreate || !googleFileNameValue.trim()) return;
+    const type = googleFileTypeToCreate;
+    const name = googleFileNameValue.trim();
+    setGoogleFileTypeToCreate(null);
+    try {
+      const res = await fetch("/api/drive/browse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          parentId: currentFolderId,
+          folderName: name,
+          type,
+        }),
+      });
+      if (!res.ok) {
+        showToast(await parseApiError(res), "error");
+        return;
+      }
+      showToast("Google file created");
+      refreshCurrent();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to create file", "error");
+    }
+  };
 
   const handleRename = async () => {
     if (!renameItem || !renameValue.trim()) return;
@@ -855,6 +864,48 @@ export function DriveTab() {
           autoFocus
           className={inputCls}
           onKeyDown={(e) => e.key === "Enter" && void handleCreateBlankFile()}
+        />
+      </DriveModal>
+
+      <DriveModal
+        open={!!googleFileTypeToCreate}
+        isMounted={isMounted}
+        title={`New Google ${
+          googleFileTypeToCreate === "document"
+            ? "Doc"
+            : googleFileTypeToCreate === "spreadsheet"
+            ? "Sheet"
+            : "Slide"
+        }`}
+        onClose={() => setGoogleFileTypeToCreate(null)}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setGoogleFileTypeToCreate(null)}
+              className={DRIVE_BTN_SECONDARY}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void submitCreateGoogleFile()}
+              disabled={!googleFileNameValue.trim()}
+              className={DRIVE_BTN_PRIMARY}
+            >
+              Create
+            </button>
+          </>
+        }
+      >
+        <input
+          type="text"
+          value={googleFileNameValue}
+          onChange={(e) => setGoogleFileNameValue(e.target.value)}
+          placeholder="File name"
+          autoFocus
+          className={inputCls}
+          onKeyDown={(e) => e.key === "Enter" && void submitCreateGoogleFile()}
         />
       </DriveModal>
 

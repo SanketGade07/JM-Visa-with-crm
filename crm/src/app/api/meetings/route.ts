@@ -5,13 +5,7 @@ import { Meeting } from "@/context/CrmContext";
 export async function GET() {
   try {
     const meetings = await readMeetings();
-    return NextResponse.json(meetings, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    });
+    return NextResponse.json(meetings);
   } catch (error) {
     console.error("GET /api/meetings error:", error);
     return NextResponse.json({ error: "Failed to read meetings" }, { status: 500 });
@@ -53,11 +47,7 @@ export async function POST(req: NextRequest) {
     const success = await writeMeetings(updatedMeetings);
 
     if (success) {
-      return NextResponse.json({ success: true, meeting: newMeeting }, {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-        },
-      });
+      return NextResponse.json({ success: true, meeting: newMeeting });
     } else {
       return NextResponse.json({ error: "Failed to append meeting to disk" }, { status: 500 });
     }
@@ -65,16 +55,4 @@ export async function POST(req: NextRequest) {
     console.error("POST /api/meetings error:", error);
     return NextResponse.json({ error: "Failed to process request" }, { status: 500 });
   }
-}
-
-// OPTIONS handler for CORS preflight
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    },
-  });
 }

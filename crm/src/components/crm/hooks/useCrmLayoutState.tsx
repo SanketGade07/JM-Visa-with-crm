@@ -854,10 +854,10 @@ export function useCrmLayoutState() {
         if (res.ok && data.signedUrl) {
           window.open(data.signedUrl, "_blank", "noopener,noreferrer");
         } else {
-          alert(data.error || "Failed to load document");
+          showToast(data.error || "Failed to load document", "error");
         }
       } catch {
-        alert("Network error loading document");
+        showToast("Network error loading document", "error");
       }
     } else {
       // External URL (e.g., Google Drive link) — open directly

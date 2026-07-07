@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifySession } from "@/utils/session";
 
 const PUBLIC_PATHS = ["/login", "/api/webhook", "/api/auth"];
 
-// Reads a lightweight session cookie set after login.
-// Replace this with NextAuth `auth()` once NextAuth is wired up (guide §7).
-function getSessionRole(req: NextRequest): string | null {
-  return req.cookies.get("crm_role")?.value ?? null;
-}
-
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Always allow public paths and Next.js internals
@@ -20,10 +15,16 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const role = getSessionRole(req);
+  // Retrieve and verify session token
+  const sessionToken = req.cookies.get("crm_session")?.value ?? "";
+  const session = sessionToken ? await verifySession(sessionToken) : null;
+  const role = session?.role ?? null;
 
-  // Unauthenticated — redirect to login for dashboard pages
-  if (!role && !pathname.startsWith("/api/")) {
+  // Block unauthenticated requests:
+  if (!session) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
@@ -46,9 +47,6 @@ export function middleware(req: NextRequest) {
   // assigned lead's folder even without a Drive grant. Mutations (create/upload/
   // rename/delete) remain admin-only — the Drive UIs only expose them to admins.
   if (pathname.startsWith("/api/drive/browse")) {
-    if (!role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     if (req.method !== "GET" && role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

@@ -21,7 +21,7 @@ function formatStorageLabel(bytes: number): string {
 // GET /api/drive/quota — Google Drive storage usage for the connected account
 export async function GET(req: NextRequest) {
   // Storage usage is a read-only stat shown on the Drive tab's storage card.
-  if (!requireLoggedIn(req)) {
+  if (!(await requireLoggedIn(req))) {
     return unauthorizedResponse();
   }
 

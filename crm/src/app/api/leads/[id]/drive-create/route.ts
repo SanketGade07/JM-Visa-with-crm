@@ -10,7 +10,7 @@ type Params = { params: Promise<{ id: string }> };
 
 // POST /api/leads/:id/drive-create — provision per-lead Drive folder under Clients/
 export async function POST(req: NextRequest, { params }: Params) {
-  if (!requireLoggedIn(req)) {
+  if (!(await requireLoggedIn(req))) {
     return unauthorizedResponse();
   }
 

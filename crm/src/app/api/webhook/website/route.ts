@@ -3,6 +3,7 @@ import { readLeads, writeLeads, appendActivity } from "@/utils/db";
 import { Lead, Activity } from "@/context/CrmContext";
 import { provisionLeadDriveFolder } from "@/lib/provisionLeadDriveFolder";
 import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
+import { generateId } from "@/utils/session";
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
     }
 
     const today = new Date().toISOString().split("T")[0];
-    const leadId = `lead-${Date.now()}`;
+    const leadId = generateId("lead");
 
     const newLead: Lead = {
       id: leadId,
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
     const leadsOk = await writeLeads([...existingLeads, newLead]);
 
     const activityEntry: Activity = {
-      id: `act-${Date.now()}`,
+      id: generateId("act"),
       leadId,
       type: "lead_created",
       content: "Lead received from website form",

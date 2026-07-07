@@ -37,18 +37,18 @@ function toDriveItem(item: DriveFileItem): DriveItem {
   };
 }
 
-function assertAdmin(req: NextRequest): NextResponse | null {
-  const role = requireAdmin(req);
+async function assertAdmin(req: NextRequest): Promise<NextResponse | null> {
+  const role = await requireAdmin(req);
   if (!role) {
-    return getSessionRole(req) ? forbiddenResponse() : unauthorizedResponse();
+    return (await getSessionRole(req)) ? forbiddenResponse() : unauthorizedResponse();
   }
   return null;
 }
 
 // Reads only require an authenticated session — needed for Drive-granted staff and
 // for counselors viewing their assigned lead's folder. Writes still call assertAdmin.
-function assertLoggedIn(req: NextRequest): NextResponse | null {
-  if (!requireLoggedIn(req)) {
+async function assertLoggedIn(req: NextRequest): Promise<NextResponse | null> {
+  if (!(await requireLoggedIn(req))) {
     return unauthorizedResponse();
   }
   return null;
@@ -69,7 +69,7 @@ function assertDriveConfigured(): NextResponse | null {
 
 // GET /api/drive/browse?folderId= — list folder contents
 export async function GET(req: NextRequest) {
-  const authError = assertLoggedIn(req);
+  const authError = await assertLoggedIn(req);
   if (authError) return authError;
 
   const configError = assertDriveConfigured();
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/drive/browse — create folder/file or upload binary
 export async function POST(req: NextRequest) {
-  const authError = assertAdmin(req);
+  const authError = await assertAdmin(req);
   if (authError) return authError;
 
   const configError = assertDriveConfigured();
@@ -222,7 +222,7 @@ export async function POST(req: NextRequest) {
 
 // PATCH /api/drive/browse — rename file or folder
 export async function PATCH(req: NextRequest) {
-  const authError = assertAdmin(req);
+  const authError = await assertAdmin(req);
   if (authError) return authError;
 
   const configError = assertDriveConfigured();
@@ -253,7 +253,7 @@ export async function PATCH(req: NextRequest) {
 
 // DELETE /api/drive/browse?id=&isFolder= — trash file or folder
 export async function DELETE(req: NextRequest) {
-  const authError = assertAdmin(req);
+  const authError = await assertAdmin(req);
   if (authError) return authError;
 
   const configError = assertDriveConfigured();

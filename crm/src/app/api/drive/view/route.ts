@@ -9,7 +9,7 @@ import {
 
 // GET /api/drive/view?fileId= — stream file for in-app preview
 export async function GET(req: NextRequest) {
-  if (!requireLoggedIn(req)) {
+  if (!(await requireLoggedIn(req))) {
     return unauthorizedResponse();
   }
 

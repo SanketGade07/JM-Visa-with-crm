@@ -2,17 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { readUsers, writeUsers } from "@/utils/db";
 import { CrmUser } from "@/context/CrmContext";
 import { normalizeAllowedTabs, normalizePermissions } from "@/utils/crmConstants";
+import { hashPassword } from "@/utils/session";
 
 // GET /api/users — Retrieve all user accounts
 export async function GET(req: NextRequest) {
   try {
-    const users = (await readUsers()).map((user) => ({
-      ...user,
-      allowedTabs: normalizeAllowedTabs(user.allowedTabs),
-      permissions: normalizePermissions(user.permissions, user.role),
-    }));
-    // Return all users. In a production app we'd strip passwords, 
-    // but in this mock sandbox it helps verification.
+    const users = (await readUsers()).map((user) => {
+      return {
+        ...user,
+        allowedTabs: normalizeAllowedTabs(user.allowedTabs),
+        permissions: normalizePermissions(user.permissions, user.role),
+      };
+    });
     return NextResponse.json(users);
   } catch (error) {
     console.error("GET /api/users error:", error);
@@ -28,11 +29,16 @@ export async function POST(req: NextRequest) {
 
     // 1. Bulk sync/overwrite users
     if (Array.isArray(body.users)) {
-      const normalizedUsers = body.users.map((user: CrmUser) => ({
-        ...user,
-        allowedTabs: normalizeAllowedTabs(user.allowedTabs),
-        permissions: normalizePermissions(user.permissions, user.role),
-      }));
+      const existingById = new Map(existingUsers.map((u) => [u.id, u]));
+      const normalizedUsers = body.users.map((user: CrmUser) => {
+        const prev = existingById.get(user.id);
+        return {
+          ...user,
+          password: user.password || prev?.password || "",
+          allowedTabs: normalizeAllowedTabs(user.allowedTabs),
+          permissions: normalizePermissions(user.permissions, user.role),
+        };
+      });
       const ok = await writeUsers(normalizedUsers);
       return ok
         ? NextResponse.json({ success: true })
@@ -75,6 +81,9 @@ export async function POST(req: NextRequest) {
       if (!userId) {
         return NextResponse.json({ error: "id is required for delete" }, { status: 400 });
       }
+      if (userId === "user-admin") {
+        return NextResponse.json({ error: "Cannot delete the primary admin account" }, { status: 400 });
+      }
       
       const updatedUsers = existingUsers.filter((u) => u.id !== userId);
       const ok = await writeUsers(updatedUsers);
@@ -88,7 +97,6 @@ export async function POST(req: NextRequest) {
     const userEmail = body.email;
     const userName = body.name || "Unnamed User";
     const userRole = body.role || "COUNSELOR";
-    const userPassword = body.password || "password123";
     const userAllowedTabs = normalizeAllowedTabs(body.allowedTabs || ["Dashboard"]);
     const userPermissions = normalizePermissions(body.permissions, userRole);
 
@@ -96,19 +104,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "email is required" }, { status: 400 });
     }
 
+    const existingUser = existingUsers.find((u) => u.id === userId);
+    const isExisting = !!existingUser;
+
+    let finalPassword = "";
+    if (isExisting && existingUser) {
+      if (body.password && body.password.trim() !== "") {
+        finalPassword = body.password.trim();
+      } else {
+        finalPassword = existingUser.password || "";
+      }
+    } else {
+      const rawPassword = body.password || "password123";
+      finalPassword = rawPassword;
+    }
+
     const updatedUser: CrmUser = {
       id: userId,
       name: userName,
       email: userEmail,
       role: userRole,
-      password: userPassword,
+      password: finalPassword,
       allowedTabs: userAllowedTabs,
       permissions: userPermissions,
       createdAt: body.createdAt || new Date().toISOString(),
     };
 
     let updatedUsersList: CrmUser[] = [];
-    const isExisting = existingUsers.some((u) => u.id === userId);
 
     if (isExisting) {
       updatedUsersList = existingUsers.map((u) => (u.id === userId ? updatedUser : u));
@@ -126,7 +148,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to save user" }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, user: updatedUser }, { status: isExisting ? 200 : 201 });
+    const { password: _, ...userWithoutPassword } = updatedUser;
+    return NextResponse.json({ success: true, user: userWithoutPassword }, { status: isExisting ? 200 : 201 });
   } catch (error) {
     console.error("POST /api/users error:", error);
     return NextResponse.json({ error: "Failed to process request" }, { status: 500 });

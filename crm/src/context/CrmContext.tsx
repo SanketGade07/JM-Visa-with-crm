@@ -9,6 +9,7 @@ import {
   type EmploymentCategory,
 } from "@/utils/documentChecklistConfig";
 import { normalizeAllowedTabs, normalizePermissions } from "@/utils/crmConstants";
+import { generateId } from "@/utils/session";
 import {
   isCounselorAssigned,
   reconcileOrphanCounselorAssignments,
@@ -409,12 +410,41 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       return merged;
     });
+
     try {
-      const res = await fetch("/api/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leads: merged }),
+      const changed = merged.filter((lead) => {
+        const prev = previousLeads.find((l) => l.id === lead.id);
+        if (!prev) return true;
+        return JSON.stringify(lead) !== JSON.stringify(prev);
       });
+
+      if (changed.length === 0) return true;
+
+      let res: Response;
+      if (changed.length === 1) {
+        const target = changed[0];
+        const isNew = !previousLeads.some((l) => l.id === target.id);
+        if (isNew) {
+          res = await fetch("/api/leads", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(target),
+          });
+        } else {
+          res = await fetch(`/api/leads/${target.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(target),
+          });
+        }
+      } else {
+        res = await fetch("/api/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leads: merged }),
+        });
+      }
+
       if (!res.ok) {
         console.error("Failed to sync leads:", await res.text());
         setLeads(previousLeads);
@@ -464,7 +494,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logActivity = async (entry: Omit<Activity, "id" | "createdAt">) => {
     const activity: Activity = {
       ...entry,
-      id: `act-${Date.now()}`,
+      id: generateId("act"),
       createdAt: new Date().toISOString(),
     };
     setActivities((prev) => [...prev, activity]);
@@ -490,7 +520,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       employmentCategory: category,
       checklist: mergeChecklist(newLeadData.checklist, category),
       status: newLeadData.status,
-      id: `lead-${Date.now()}`,
+      id: generateId("lead"),
       dateCreated: today,
       lastUpdated: today,
       ...(isCounselorAssigned(newLeadData.counselor) ? { assignedAt: now } : {}),
@@ -921,7 +951,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addMeeting = (meetingData: Omit<Meeting, "id">) => {
-    const newMeeting: Meeting = { ...meetingData, id: `meet-${Date.now()}` };
+    const newMeeting: Meeting = { ...meetingData, id: generateId("meet") };
     syncMeetings([...meetings, newMeeting]);
   };
 

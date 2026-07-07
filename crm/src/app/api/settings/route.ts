@@ -42,7 +42,7 @@ async function readAllSettings(): Promise<Record<string, string>> {
 
 // GET /api/settings — read app_settings key-value map
 export async function GET(req: NextRequest) {
-  if (!requireLoggedIn(req)) {
+  if (!(await requireLoggedIn(req))) {
     return unauthorizedResponse();
   }
 
@@ -63,8 +63,8 @@ export async function GET(req: NextRequest) {
 
 // PATCH /api/settings — validate and save drive_root_folder_id (ADMIN only)
 export async function PATCH(req: NextRequest) {
-  if (!requireAdmin(req)) {
-    return requireLoggedIn(req) ? forbiddenResponse() : unauthorizedResponse();
+  if (!(await requireAdmin(req))) {
+    return (await requireLoggedIn(req)) ? forbiddenResponse() : unauthorizedResponse();
   }
 
   if (!isSupabaseConfigured()) {

@@ -3,19 +3,27 @@ import { readLeads, writeLeads, readActivities, appendActivity } from "@/utils/d
 import { Activity, VisaStatus } from "@/context/CrmContext";
 import { normalizeLeadStatus } from "@/utils/leadStatusConfig";
 import { getSupabase } from "@/utils/supabase";
+import { verifySession } from "@/utils/session";
+import { normalizeLead } from "@/utils/normalizeLead";
 
 type Params = { params: Promise<{ id: string }> };
 
 // GET /api/leads/:id — full lead profile with activity timeline
 export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
-  const leads = await readLeads();
-  const lead = leads.find((l) => l.id === id);
+  
+  const supabase = getSupabase();
+  const { data: dbLead, error: fetchError } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
 
-  if (!lead) {
+  if (fetchError || !dbLead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
+  const lead = normalizeLead(dbLead);
   const activities = (await readActivities()).filter((a) => a.leadId === id);
   return NextResponse.json({ lead, activities });
 }
@@ -24,35 +32,29 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const body = await req.json();
-  const leads = await readLeads();
-  const index = leads.findIndex((l) => l.id === id);
+  
+  const supabase = getSupabase();
+  const { data: dbLead, error: fetchError } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
 
-  if (index === -1) {
+  if (fetchError || !dbLead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
-  const prev = leads[index];
+  const prev = normalizeLead(dbLead);
   const today = new Date().toISOString().split("T")[0];
 
   const updated = {
     ...prev,
-    ...(body.status !== undefined && {
-      status: normalizeLeadStatus(String(body.status)) as VisaStatus,
-    }),
-    ...(body.counselor !== undefined && { counselor: body.counselor }),
-    ...(body.notes !== undefined && { notes: body.notes }),
-    ...(body.email !== undefined && { email: body.email }),
-    ...(body.phone !== undefined && { phone: body.phone }),
-    ...(body.country !== undefined && { country: body.country }),
-    ...(body.visaType !== undefined && { visaType: body.visaType }),
-    ...(body.driveFolderId !== undefined && {
-      driveFolderId: body.driveFolderId === "" ? null : (body.driveFolderId as string | null),
-    }),
+    ...body, // Overwrite with any updated properties sent by the client
+    id,      // Force identity consistency
     lastUpdated: today,
   };
 
-  leads[index] = updated;
-  const ok = await writeLeads(leads);
+  const ok = await writeLeads([updated]);
   if (!ok) return NextResponse.json({ error: "Failed to update lead" }, { status: 500 });
 
   // Log status change activity if status changed
@@ -73,7 +75,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
 // DELETE /api/leads/:id — hard delete lead completely from database (restricted to ADMIN)
 export async function DELETE(req: NextRequest, { params }: Params) {
-  const role = req.cookies.get("crm_role")?.value;
+  const sessionToken = req.cookies.get("crm_session")?.value ?? "";
+  const session = sessionToken ? await verifySession(sessionToken) : null;
+  const role = session?.role ?? null;
   if (role !== "ADMIN") {
     return NextResponse.json({ error: "Only admins are allowed to delete leads" }, { status: 403 });
   }
