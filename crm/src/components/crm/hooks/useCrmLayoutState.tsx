@@ -568,7 +568,6 @@ export function useCrmLayoutState() {
   );
 
   const closeLeadDetail = useCallback(() => {
-    setSelectedLeadId(null);
     setCurrentTab("Leads");
     router.push("/leads");
   }, [router, setCurrentTab]);
@@ -643,7 +642,10 @@ export function useCrmLayoutState() {
 
   useEffect(() => {
     const leadId = getLeadIdFromPathname(pathname);
-    if (!leadId) return;
+    if (!leadId) {
+      setSelectedLeadId((prev) => (prev !== null ? null : prev));
+      return;
+    }
 
     if (!canViewLeads) {
       router.replace("/");

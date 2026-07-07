@@ -170,7 +170,7 @@ function UsaSlotSettingsModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-800"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer transition-colors"
           >
             <FaTimes className="text-xs" />
           </button>
@@ -470,6 +470,7 @@ export function USASlotsTab() {
         borderless={true}
         pagination={true}
         defaultPageSize={10}
+        showToolbar={false}
         columnSearch={columnSearch}
         rows={tableRows}
         getRowId={(l) => l.id}

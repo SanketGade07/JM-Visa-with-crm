@@ -429,11 +429,6 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
                   {isSending ? "Sending…" : "Send Message"}
                 </button>
               </div>
-              {currentUser?.name ? (
-                <p className="mt-2 text-[10px] text-gray-400 dark:text-slate-500">
-                  Posting as {currentUser.name}
-                </p>
-              ) : null}
             </div>
           </div>
         </section>

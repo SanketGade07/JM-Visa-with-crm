@@ -499,7 +499,12 @@ export function LeadsTab() {
                         ),
                       },
                       {
-                        header: "Doc verifications",
+                        header:
+                          statusFilter === "VISA_APPROVED"
+                            ? "Visa copy"
+                            : statusFilter === "VISA_REJECTED"
+                              ? "Refusal letter"
+                              : "Doc verifications",
                         render: (lead) => <StatusDocumentCell lead={lead} />,
                       },
                       {
