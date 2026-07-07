@@ -470,7 +470,6 @@ function UsaSlotSettingsModal({
 
 function CopyableSecurityQuestionsCell({ lead, showToast }: { lead: Lead; showToast: any }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [openUpward, setOpenUpward] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -497,16 +496,6 @@ function CopyableSecurityQuestionsCell({ lead, showToast }: { lead: Lead; showTo
     };
   }, [isOpen]);
 
-  const handleToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (!isOpen) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const windowHeight = window.innerHeight;
-      // If the button is in the bottom 45% of the screen, open it upward
-      setOpenUpward(rect.bottom > windowHeight * 0.55);
-    }
-    setIsOpen(!isOpen);
-  };
-
   const handleCopy = async (text: string, idx: number, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -522,7 +511,7 @@ function CopyableSecurityQuestionsCell({ lead, showToast }: { lead: Lead; showTo
     <div className="relative inline-block text-left" ref={containerRef}>
       <button
         type="button"
-        onClick={handleToggle}
+        onClick={() => setIsOpen(!isOpen)}
         className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700/90 text-slate-700 dark:text-slate-300 text-[11px] font-semibold rounded-xl border border-slate-200 dark:border-slate-850 transition-all duration-200 shadow-sm cursor-pointer"
       >
         <FiKey className="text-violet-500 text-[12px]" />
@@ -531,9 +520,7 @@ function CopyableSecurityQuestionsCell({ lead, showToast }: { lead: Lead; showTo
       </button>
 
       {isOpen && (
-        <div className={`absolute right-0 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl shadow-slate-100 dark:shadow-black/60 p-3.5 z-40 transition-all animate-fadeIn ${
-          openUpward ? "bottom-full mb-2 origin-bottom" : "mt-2 origin-top"
-        }`}>
+        <div className="absolute left-0 mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl shadow-slate-100 dark:shadow-black/60 p-3.5 z-40 transition-all animate-fadeIn">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80 mb-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Security Answers
