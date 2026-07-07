@@ -94,6 +94,7 @@ type DataTableProps<T> = {
   onBulkDelete?: (ids: string[]) => void;
   /** Label for the bulk delete button (default "Delete"). */
   bulkDeleteLabel?: string;
+  borderless?: boolean;
 };
 
 const alignClass = (a?: "left" | "right" | "center") =>
@@ -235,6 +236,7 @@ export default function DataTable<T>({
   columnSearch,
   onBulkDelete,
   bulkDeleteLabel = "Delete",
+  borderless = false,
 }: DataTableProps<T>) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -273,8 +275,9 @@ export default function DataTable<T>({
   const totalCols =
     columns.length + (showCheckbox ? 1 : 0) + (showIndex ? 1 : 0) + (actions ? 1 : 0);
 
-  const cardCls =
-    `bg-white dark:bg-slate-900/50 rounded-2xl border border-gray-200/70 dark:border-slate-800 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-16px_rgba(16,24,40,0.12)] dark:shadow-none ${className}`;
+  const cardCls = borderless
+    ? `bg-white dark:bg-slate-900/50 rounded-2xl ${className}`
+    : `bg-white dark:bg-slate-900/50 rounded-2xl border border-gray-200/70 dark:border-slate-800 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-16px_rgba(16,24,40,0.12)] dark:shadow-none ${className}`;
 
   return (
     <div className={`${cardCls} w-full min-w-0 overflow-visible`}>

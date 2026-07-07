@@ -70,6 +70,27 @@ function findCounselorUser(users: CrmUser[], counselorName: string): CrmUser | u
   return users.find((user) => user.name.trim().toLowerCase() === normalized);
 }
 
+const ASSIGNMENT_LOGS_KEY = "crm-assignment-logs";
+
+export type AssignmentLog = {
+  leadId: string;
+  leadName: string;
+  assignedAt: string;
+  counselorName: string;
+};
+
+function appendAssignmentLog(entry: AssignmentLog) {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(ASSIGNMENT_LOGS_KEY);
+    const prev = raw ? (JSON.parse(raw) as AssignmentLog[]) : [];
+    const next = [entry, ...prev].slice(0, 100);
+    localStorage.setItem(ASSIGNMENT_LOGS_KEY, JSON.stringify(next));
+  } catch {
+    // ignore
+  }
+}
+
 function getLeadIdFromPathname(pathname: string | null | undefined): string | null {
   const match = pathname?.match(LEAD_ID_PATTERN);
   if (!match) return null;
@@ -459,6 +480,12 @@ export function useCrmLayoutState() {
       assignCounselor(leadId, counselor);
       if (prev && prev.counselor !== counselor) {
         pushAssignmentNotificationForCounselor(counselor, leadId, prev.name);
+        appendAssignmentLog({
+          leadId,
+          leadName: prev.name,
+          assignedAt: new Date().toISOString(),
+          counselorName: counselor,
+        });
       }
     },
     [assignCounselor, leads, canAssignLeads, pushAssignmentNotificationForCounselor]
@@ -467,17 +494,23 @@ export function useCrmLayoutState() {
   const wrappedAddLead = useCallback(
     (newLeadData: Parameters<typeof addLead>[0]): string => {
       const newId = addLead(newLeadData);
-      if (newLeadData.counselor?.trim()) {
+      const counselor = newLeadData.counselor?.trim();
+      if (counselor) {
         pushAssignmentNotificationForCounselor(
-          newLeadData.counselor,
+          counselor,
           newId,
           newLeadData.name
         );
+        appendAssignmentLog({
+          leadId: newId,
+          leadName: newLeadData.name,
+          assignedAt: new Date().toISOString(),
+          counselorName: counselor,
+        });
       }
-      pushAssignmentNotificationForAdmin(newId, newLeadData.name);
       return newId;
     },
-    [addLead, pushAssignmentNotificationForCounselor, pushAssignmentNotificationForAdmin]
+    [addLead, pushAssignmentNotificationForCounselor]
   );
 
   const assignedLeadCount = useMemo(() => {

@@ -145,6 +145,7 @@ export interface Lead {
   notes: string;
   lastUpdated: string;
   isDeleted: boolean;
+  profileCompleted?: boolean;
   passportNumber?: string;
   passportIssueDate?: string;
   passportExpiryDate?: string;

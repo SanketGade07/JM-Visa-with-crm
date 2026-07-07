@@ -126,11 +126,11 @@ export function LeadManagementCard({
   };
 
   const cardCls =
-    "w-full rounded-2xl border border-gray-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/60 p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(148,163,184,0.08)] transition-all duration-300";
+    "w-full rounded-2xl border bg-white dark:bg-slate-900/60 p-5 transition-all duration-300";
 
   const highlightRingCls = highlighted
-    ? "ring-2 ring-violet-500/70 ring-offset-2 ring-offset-white dark:ring-offset-slate-950 animate-lead-created-highlight"
-    : "";
+    ? "border-violet-500 shadow-[0_0_15px_rgba(37,99,235,0.3)] dark:shadow-[0_0_15px_rgba(37,99,235,0.3)] animate-lead-created-highlight"
+    : "border-gray-200 dark:border-slate-700/80 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(148,163,184,0.08)]";
 
   return (
     <div className={`space-y-4 ${className}`}>

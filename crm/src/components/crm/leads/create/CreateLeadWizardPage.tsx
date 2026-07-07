@@ -294,7 +294,11 @@ function CreateLeadWizardInner({
 
     setIsSubmitting(true);
     try {
-      const payload = buildCreateLeadPayload(state);
+      const basePayload = buildCreateLeadPayload(state);
+      const payload = {
+        ...basePayload,
+        profileCompleted: !!editLeadId,
+      };
       if (editLeadId) {
         const ok = await updateLeadFromWizard(editLeadId, payload);
         if (ok) {

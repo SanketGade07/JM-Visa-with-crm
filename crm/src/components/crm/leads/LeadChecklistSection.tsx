@@ -53,6 +53,7 @@ export function LeadChecklistSection({
   }, [lead.id]);
 
   const incompleteFields = React.useMemo(() => {
+    if (lead.profileCompleted || lead.passportNumber?.trim()) return [];
     const fields = [];
     if (!lead.email?.trim()) fields.push("Email");
     if (!lead.passportNumber?.trim()) fields.push("Passport Number");
@@ -133,6 +134,7 @@ export function LeadChecklistSection({
                 type="button"
                 onClick={() => {
                   setDismissedAlert(true);
+                  setLeadDetailTab("details");
                   openEditLead();
                 }}
                 className="flex-1 py-3 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all text-center select-none cursor-pointer"

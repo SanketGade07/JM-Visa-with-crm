@@ -95,6 +95,7 @@ export function CrmHeader() {
     setEndDate,
     openEditLead,
     isEditLeadOpen,
+    showConfirm,
   } = useCrmLayoutContext();
 
   const { toolbarProps: mainDriveToolbarProps } = useMainDriveToolbar();
@@ -150,6 +151,7 @@ export function CrmHeader() {
     return leads.filter((l) => {
       if (l.isDeleted) return false;
       if (l.status === "DROPPED") return false;
+      if (l.profileCompleted || l.passportNumber?.trim()) return false;
       const hasMissingEmail = !l.email?.trim();
       const hasMissingPassportNum = !l.passportNumber?.trim();
       const hasMissingPassportIssue = !l.passportIssueDate?.trim();
@@ -188,6 +190,7 @@ export function CrmHeader() {
 
   const selectedLeadIsIncomplete = useMemo(() => {
     if (!selectedLead) return false;
+    if (selectedLead.profileCompleted || selectedLead.passportNumber?.trim()) return false;
     return (
       !selectedLead.email?.trim() ||
       !selectedLead.passportNumber?.trim() ||
@@ -231,6 +234,55 @@ export function CrmHeader() {
     dismissAssignmentNotification(leadId);
     setIsNotificationOpen(false);
     openLeadDetail(leadId);
+  };
+
+  const [activeNotifTab, setActiveNotifTab] = useState<"assignments" | "chats">("assignments");
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [logSearch, setLogSearch] = useState("");
+
+  const unreadAssignmentsCount = useMemo(() => {
+    return assignmentNotifications.filter((n) => n.kind !== "discussion").length;
+  }, [assignmentNotifications]);
+
+  const unreadChatsCount = useMemo(() => {
+    return assignmentNotifications.filter((n) => n.kind === "discussion").length;
+  }, [assignmentNotifications]);
+
+  const assignmentLogs = useMemo(() => {
+    if (typeof window === "undefined" || !isLogModalOpen) return [];
+    try {
+      const raw = localStorage.getItem("crm-assignment-logs");
+      const allLogs = raw ? (JSON.parse(raw) as any[]) : [];
+      if (currentUser?.role === "ADMIN") {
+        return allLogs;
+      }
+      return allLogs.filter(
+        (log) =>
+          log.counselorName?.trim().toLowerCase() ===
+          currentUser?.name.trim().toLowerCase()
+      );
+    } catch {
+      return [];
+    }
+  }, [isLogModalOpen, currentUser]);
+
+  const filteredLogs = useMemo(() => {
+    const query = logSearch.toLowerCase().trim();
+    if (!query) return assignmentLogs;
+    return assignmentLogs.filter(
+      (log) =>
+        log.leadName?.toLowerCase().includes(query) ||
+        log.counselorName?.toLowerCase().includes(query)
+    );
+  }, [assignmentLogs, logSearch]);
+
+  const handleMarkAllRead = () => {
+    const toClear = assignmentNotifications.filter((n) => {
+      const kind = n.kind ?? "assignment";
+      return activeNotifTab === "assignments" ? kind !== "discussion" : kind === "discussion";
+    });
+    toClear.forEach((n) => dismissAssignmentNotification(n.leadId));
+    setIsNotificationOpen(false);
   };
 
   const showNewButton =
@@ -423,84 +475,200 @@ export function CrmHeader() {
               </span>
             )}
           </button>
-
-          {isNotificationOpen && (
+          {isNotificationOpen && (
             <div
-              className={`absolute right-0 top-full mt-2 w-72 rounded-xl border shadow-xl z-50 overflow-hidden ${
+              className={`absolute right-0 top-full mt-2 w-76 rounded-2xl border shadow-2xl z-50 overflow-hidden ${
                 theme === "light"
-                  ? "border-slate-200 bg-white shadow-slate-300/40"
-                  : "border-slate-700/80 bg-[#0f0f22] shadow-black/40"
+                  ? "border-slate-200 bg-white shadow-slate-350/50"
+                  : "border-slate-800/90 bg-[#0c0d1e] shadow-black/60"
               }`}
             >
+              {/* Header */}
               <div
-                className={`px-4 py-3 border-b ${
-                  theme === "light" ? "border-slate-200" : "border-slate-800/80"
+                className={`px-4 py-3 border-b flex items-center justify-between ${
+                  theme === "light" ? "border-slate-100 bg-slate-50" : "border-slate-800/60 bg-[#0e0f26]"
                 }`}
               >
-                <p
-                  className={`text-sm font-semibold ${
-                    theme === "light" ? "text-slate-900" : "text-white"
-                  }`}
-                >
-                  Assignments
-                </p>
-                {currentUser?.role === "COUNSELOR" && (
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {assignedLeadCount} assigned lead{assignedLeadCount === 1 ? "" : "s"}
-                    {unreadCount > 0
-                      ? ` · ${unreadCount} unread`
-                      : ""}
-                  </p>
-                )}
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Notifications
+                </span>
+                <span className="text-[10px] font-bold text-violet-500 dark:text-violet-400 tabular-nums">
+                  {unreadCount} unread
+                </span>
               </div>
 
-              {assignmentNotifications.length === 0 ? (
-                <p className="px-4 py-6 text-xs text-slate-500 text-center">No new assignments</p>
+              {/* Tabs Switcher */}
+              <div className={`flex border-b text-xs font-bold ${
+                theme === "light" ? "border-slate-100 bg-white" : "border-slate-800/50 bg-[#0a0a1a]"
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => setActiveNotifTab("assignments")}
+                  className={`flex-1 py-2.5 transition-all border-b-2 text-center flex items-center justify-center gap-1.5 cursor-pointer ${
+                    activeNotifTab === "assignments"
+                      ? "border-violet-500 text-violet-600 dark:text-violet-400"
+                      : "border-transparent text-slate-400 hover:text-slate-300"
+                  }`}
+                >
+                  <span>Assignments</span>
+                  {unreadAssignmentsCount > 0 && (
+                    <span className="px-1.5 py-0.5 bg-violet-650 dark:bg-violet-600 text-[9px] font-extrabold text-white rounded-md">
+                      {unreadAssignmentsCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveNotifTab("chats")}
+                  className={`flex-1 py-2.5 transition-all border-b-2 text-center flex items-center justify-center gap-1.5 cursor-pointer ${
+                    activeNotifTab === "chats"
+                      ? "border-violet-500 text-violet-600 dark:text-violet-400"
+                      : "border-transparent text-slate-400 hover:text-slate-300"
+                  }`}
+                >
+                  <span>Chats</span>
+                  {unreadChatsCount > 0 && (
+                    <span className="px-1.5 py-0.5 bg-violet-650 dark:bg-violet-600 text-[9px] font-extrabold text-white rounded-md">
+                      {unreadChatsCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Tab Content */}
+              {activeNotifTab === "assignments" ? (
+                <div className="flex flex-col max-h-80 overflow-y-auto">
+                  {/* Unread Assignments Section */}
+                  <div className={`px-4 py-2 border-b ${
+                    theme === "light" ? "bg-slate-50/70 border-slate-100" : "bg-[#0b0c20]/45 border-slate-800/40"
+                  }`}>
+                    <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                      New Assignments
+                    </span>
+                  </div>
+                  {assignmentNotifications.filter((n) => n.kind !== "discussion").length === 0 ? (
+                    <p className="px-4 py-5 text-xs text-slate-400 dark:text-slate-500 text-center italic">
+                      No new assignments
+                    </p>
+                  ) : (
+                    <ul className="border-b border-slate-100 dark:border-slate-800/40">
+                      {assignmentNotifications
+                        .filter((n) => n.kind !== "discussion")
+                        .map((item) => (
+                          <li key={item.leadId}>
+                            <button
+                              type="button"
+                              onClick={() => handleNotificationClick(item.leadId)}
+                              className={`w-full px-4 py-3 text-left transition-colors border-b last:border-b-0 border-slate-100/60 dark:border-slate-800/30 cursor-pointer ${
+                                theme === "light"
+                                  ? "hover:bg-slate-50 bg-violet-50/20"
+                                  : "hover:bg-slate-800/50 bg-violet-500/5"
+                              }`}
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <p className={`text-xs font-semibold ${theme === "light" ? "text-slate-800" : "text-slate-200"} truncate flex-1`}>
+                                  {item.leadName}
+                                </p>
+                                <span className="text-[9px] text-slate-400 dark:text-slate-500 shrink-0 font-medium mt-0.5">
+                                  {formatAssignedAt(item.assignedAt)}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                Assigned to you
+                              </p>
+                            </button>
+                          </li>
+                        ))}
+                    </ul>
+                  )}
+
+                  {/* View Assignment Logs (History) */}
+                  <div className={`px-4 py-3.5 flex flex-col items-center justify-center text-center gap-2 ${
+                    theme === "light" ? "bg-slate-50/50" : "bg-[#0b0c21]/30"
+                  }`}>
+                    <p className="text-[10px] text-slate-450 dark:text-slate-500 font-medium">
+                      Want to check past lead assign history?
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsNotificationOpen(false);
+                        setIsLogModalOpen(true);
+                      }}
+                      className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer ${
+                        theme === "light"
+                          ? "bg-white text-violet-600 border-slate-200 hover:bg-slate-50 hover:border-violet-300"
+                          : "bg-[#0f1131] text-violet-400 border-slate-800 hover:bg-[#141640] hover:border-violet-700/80"
+                      }`}
+                    >
+                      <FiFileText className="text-xs" />
+                      <span>View Assignment Logs</span>
+                    </button>
+                  </div>
+                </div>
               ) : (
-                <ul className={`max-h-64 overflow-y-auto ${CRM_DROPDOWN_SCROLL_CLASS}`}>
-                  {assignmentNotifications.map((item) => (
-                    <li key={item.leadId}>
-                      <button
-                        type="button"
-                        onClick={() => handleNotificationClick(item.leadId)}
-                        className={`w-full px-4 py-3 text-left transition-colors border-b last:border-b-0 cursor-pointer ${
-                          theme === "light"
-                            ? "hover:bg-slate-50 border-slate-100"
-                            : "hover:bg-slate-800/50 border-slate-800/40"
-                        }`}
-                      >
-                        <p
-                          className={`text-sm font-medium truncate ${
-                            theme === "light" ? "text-slate-800" : "text-slate-200"
-                          }`}
-                        >
-                          {item.leadName}
-                        </p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          {item.kind === "discussion" ? "New message" : "Assigned"} ·{" "}
-                          {formatAssignedAt(item.assignedAt)}
-                        </p>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                /* Chats Tab Content */
+                <div className="flex flex-col max-h-80 overflow-y-auto">
+                  <div className={`px-4 py-2 border-b ${
+                    theme === "light" ? "bg-slate-50/70 border-slate-100" : "bg-[#0b0c20]/45 border-slate-800/40"
+                  }`}>
+                    <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                      Unread Chat Messages
+                    </span>
+                  </div>
+                  {assignmentNotifications.filter((n) => n.kind === "discussion").length === 0 ? (
+                    <p className="px-4 py-8 text-xs text-slate-400 dark:text-slate-500 text-center italic">
+                      No new messages
+                    </p>
+                  ) : (
+                    <ul className={`max-h-64 overflow-y-auto ${CRM_DROPDOWN_SCROLL_CLASS}`}>
+                      {assignmentNotifications
+                        .filter((n) => n.kind === "discussion")
+                        .map((item) => (
+                          <li key={item.leadId}>
+                            <button
+                              type="button"
+                              onClick={() => handleNotificationClick(item.leadId)}
+                              className={`w-full px-4 py-3 text-left transition-colors border-b last:border-b-0 border-slate-100/60 dark:border-slate-800/30 cursor-pointer ${
+                                theme === "light"
+                                  ? "hover:bg-slate-50 bg-violet-50/20"
+                                  : "hover:bg-slate-800/50 bg-violet-500/5"
+                              }`}
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <p className={`text-xs font-semibold ${theme === "light" ? "text-slate-800" : "text-slate-200"} truncate flex-1`}>
+                                  {item.leadName}
+                                </p>
+                                <span className="text-[9px] text-slate-400 dark:text-slate-500 shrink-0 font-medium mt-0.5">
+                                  {formatAssignedAt(item.assignedAt)}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 italic line-clamp-1">
+                                New discussion message
+                              </p>
+                            </button>
+                          </li>
+                        ))}
+                    </ul>
+                  )}
+                </div>
               )}
 
-              {assignmentNotifications.length > 0 && (
+              {/* Footer */}
+              {assignmentNotifications.filter(
+                (n) => (activeNotifTab === "assignments" ? n.kind !== "discussion" : n.kind === "discussion")
+              ).length > 0 && (
                 <div
-                  className={`px-3 py-2 border-t ${
-                    theme === "light" ? "border-slate-200" : "border-slate-800/80"
+                  className={`px-3 py-2 ${
+                    theme === "light" ? "border-slate-150 bg-slate-50/50" : "border-slate-800/70 bg-[#0a0a1a]/20"
                   }`}
                 >
                   <button
                     type="button"
-                    onClick={() => {
-                      clearAssignmentNotifications();
-                      setIsNotificationOpen(false);
-                    }}
-                    className={`w-full text-xs font-medium py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    onClick={handleMarkAllRead}
+                    className={`w-full text-xs font-semibold py-1.5 rounded-lg transition-colors cursor-pointer ${
                       theme === "light"
-                        ? "text-violet-600 hover:text-violet-700 hover:bg-violet-50"
+                        ? "text-violet-600 hover:text-violet-750 hover:bg-violet-50"
                         : "text-violet-400 hover:text-violet-300 hover:bg-violet-500/10"
                     }`}
                   >
@@ -529,6 +697,179 @@ export function CrmHeader() {
           </button>
         )}
       </div>
+
+      {/* Assignment Logs Modal */}
+      {isLogModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div
+            className={`w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[85vh] transition-all transform scale-100 ${
+              theme === "light"
+                ? "bg-white border-slate-200 text-slate-800"
+                : "bg-[#0c0d21] border-slate-800 text-slate-100"
+            }`}
+          >
+            {/* Modal Header */}
+            <div
+              className={`px-6 py-4 border-b flex items-center justify-between ${
+                theme === "light" ? "border-slate-100 bg-slate-50" : "border-slate-800/80 bg-[#0e0f29]"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-violet-500/10 text-violet-500">
+                  <FiFileText className="text-lg" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">Assignment Logs</h3>
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    {currentUser?.role === "ADMIN"
+                      ? "Complete history of lead assignments across all counselors"
+                      : "History of leads assigned to you"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogModalOpen(false);
+                  setLogSearch("");
+                }}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  theme === "light"
+                    ? "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                    : "text-slate-500 hover:text-slate-300 hover:bg-slate-800"
+                }`}
+              >
+                <FiX className="text-base" />
+              </button>
+            </div>
+
+            {/* Modal Subheader / Search */}
+            <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800/50 flex items-center gap-4">
+              <div className="relative flex-1">
+                <FiGrid className="absolute left-3 top-2.5 text-slate-400 text-xs" />
+                <input
+                  type="text"
+                  placeholder="Filter by Lead name or Counselor..."
+                  value={logSearch}
+                  onChange={(e) => setLogSearch(e.target.value)}
+                  className={`w-full text-xs py-2 px-3 pl-9 rounded-lg border focus:outline-none transition-all ${
+                    theme === "light"
+                      ? "border-slate-200 bg-slate-50 focus:border-violet-500 text-slate-800 focus:bg-white"
+                      : "border-slate-800 bg-[#0e0f2d] focus:border-violet-500 text-slate-200 focus:bg-[#0c0d21]"
+                  }`}
+                />
+                {logSearch && (
+                  <button
+                    onClick={() => setLogSearch("")}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-250 text-xs cursor-pointer"
+                  >
+                    <FiX />
+                  </button>
+                )}
+              </div>
+              <div className="text-[11px] font-bold text-slate-400 shrink-0">
+                {filteredLogs.length} matching log{filteredLogs.length === 1 ? "" : "s"}
+              </div>
+            </div>
+
+            {/* Modal Body / Table */}
+            <div className="flex-1 overflow-y-auto crm-slim-scrollbar min-h-[300px]">
+              {filteredLogs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                  <FiGrid className="text-3xl text-slate-400/50 mb-3 animate-pulse" />
+                  <p className="text-xs font-semibold text-slate-400">No logs found</p>
+                  <p className="text-[10px] text-slate-550 mt-1">
+                    Try adjusting your filter search or assign new leads
+                  </p>
+                </div>
+              ) : (
+                <div className="p-6">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase font-bold tracking-wider text-slate-400 pb-2">
+                        <th className="pb-2 font-bold">Lead Name</th>
+                        <th className="pb-2 font-bold">Assigned Counselor</th>
+                        <th className="pb-2 font-bold text-right">Assigned Date & Time</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-800/40">
+                      {filteredLogs.map((log, idx) => (
+                        <tr
+                          key={idx}
+                          className={`group transition-colors ${
+                            theme === "light" ? "hover:bg-slate-50/50" : "hover:bg-slate-800/20"
+                          }`}
+                        >
+                          <td className="py-3 font-semibold text-violet-650 dark:text-violet-400">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsLogModalOpen(false);
+                                openLeadDetail(log.leadId);
+                              }}
+                              className="text-left font-bold hover:underline cursor-pointer focus:outline-none"
+                            >
+                              {log.leadName}
+                            </button>
+                          </td>
+                          <td className="py-3 font-medium text-slate-600 dark:text-slate-350">
+                            {log.counselorName}
+                          </td>
+                          <td className="py-3 text-right text-slate-450 dark:text-slate-500 tabular-nums">
+                            {formatAssignedAt(log.assignedAt)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              className={`px-6 py-3 border-t flex items-center justify-between ${
+                theme === "light" ? "border-slate-100 bg-slate-50" : "border-slate-800 bg-[#0e0f29]"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  showConfirm(
+                    "Clear Logs",
+                    "Are you sure you want to clear all assignment logs? This cannot be undone.",
+                    () => {
+                      localStorage.removeItem("crm-assignment-logs");
+                      setIsLogModalOpen(false);
+                    }
+                  );
+                }}
+                className={`text-[10px] font-bold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                  theme === "light"
+                    ? "text-red-650 border-red-200 bg-white hover:bg-red-50"
+                    : "text-red-450 border-red-900/60 bg-red-950/20 hover:bg-red-950/40"
+                }`}
+              >
+                Clear All Logs
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogModalOpen(false);
+                  setLogSearch("");
+                }}
+                className={`text-xs font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+                  theme === "light"
+                    ? "bg-slate-200 text-slate-850 hover:bg-slate-300"
+                    : "bg-slate-800 text-slate-200 hover:bg-slate-700"
+                }`}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

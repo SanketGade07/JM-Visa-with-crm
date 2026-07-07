@@ -553,9 +553,10 @@ export function SubmissionsTab() {
   }, [submissionView, readyColumns, dispatchedColumns, approvedColumns, rejectedColumns]);
 
   return (
-    <div className="-m-4 md:-m-8 p-4 md:p-6 bg-gray-50 dark:bg-transparent min-h-[calc(100vh-4rem)] space-y-5">
+    <div className="-m-4 md:-m-8 pt-0 pl-0 pr-4 pb-4 md:pt-0 md:pl-0 md:pr-6 md:pb-6 bg-gray-50 dark:bg-transparent min-h-[calc(100vh-4rem)] space-y-5">
       <div className="min-w-0">
         <DataTable
+          borderless={true}
           pagination={true}
           defaultPageSize={10}
           showToolbar={false}
