@@ -6,6 +6,7 @@ import { FaTimes, FaTrash, FaCar, FaUtensils, FaCity } from "react-icons/fa";
 import { FiSettings, FiPhone, FiMail, FiCopy, FiUser, FiLock, FiSmartphone, FiKey, FiChevronDown, FiCheck } from "react-icons/fi";
 import DataTable, { exportRowsToCsv } from "@/components/ui/DataTable";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
+import { createPortal } from "react-dom";
 import { CollapsiblePanel } from "@/components/ui/CollapsiblePanel";
 import { CreateLeadWizardPage } from "@/components/crm/leads/create/CreateLeadWizardPage";
 import { useUsaSlotTabs } from "@/hooks/useUsaSlotTabs";
@@ -472,6 +473,8 @@ function CopyableSecurityQuestionsCell({ lead, showToast }: { lead: Lead; showTo
   const [isOpen, setIsOpen] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 });
 
   const questions = lead.usaSlots?.securityQuestions || [
     { question: "Car", answer: lead.usaSlots?.securityCar ?? "" },
@@ -485,6 +488,10 @@ function CopyableSecurityQuestionsCell({ lead, showToast }: { lead: Lead; showTo
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        const portalPopover = document.getElementById(`security-portal-${lead.id}`);
+        if (portalPopover && portalPopover.contains(event.target as Node)) {
+          return;
+        }
         setIsOpen(false);
       }
     }
@@ -494,7 +501,41 @@ function CopyableSecurityQuestionsCell({ lead, showToast }: { lead: Lead; showTo
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
+  }, [isOpen, lead.id]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClose = () => setIsOpen(false);
+    window.addEventListener("scroll", handleClose, true);
+    window.addEventListener("resize", handleClose);
+    return () => {
+      window.removeEventListener("scroll", handleClose, true);
+      window.removeEventListener("resize", handleClose);
+    };
   }, [isOpen]);
+
+  const handleToggle = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const popoverHeight = 220;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      
+      let top = 0;
+      if (spaceBelow < popoverHeight + 20) {
+        top = rect.top + window.scrollY - popoverHeight - 8;
+      } else {
+        top = rect.bottom + window.scrollY + 8;
+      }
+      
+      let left = rect.left + window.scrollX;
+      if (left + 288 > window.innerWidth) {
+        left = window.innerWidth - 288 - 16;
+      }
+      
+      setPopoverPos({ top, left });
+    }
+    setIsOpen(!isOpen);
+  };
 
   const handleCopy = async (text: string, idx: number, label: string) => {
     try {
@@ -510,17 +551,26 @@ function CopyableSecurityQuestionsCell({ lead, showToast }: { lead: Lead; showTo
   return (
     <div className="relative inline-block text-left" ref={containerRef}>
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700/90 text-slate-700 dark:text-slate-300 text-[11px] font-semibold rounded-xl border border-slate-200 dark:border-slate-850 transition-all duration-200 shadow-sm cursor-pointer"
+        onClick={handleToggle}
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700/90 text-slate-700 dark:text-slate-300 text-[11px] font-semibold rounded-xl border border-slate-200 dark:border-slate-800 transition-all duration-200 shadow-sm cursor-pointer"
       >
         <FiKey className="text-violet-500 text-[12px]" />
         <span>{count} Answer{count !== 1 ? "s" : ""}</span>
         <FiChevronDown className={`text-slate-400 text-[10px] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
-      {isOpen && (
-        <div className="absolute left-0 mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl shadow-slate-100 dark:shadow-black/60 p-3.5 z-40 transition-all animate-fadeIn">
+      {isOpen && typeof document !== "undefined" && createPortal(
+        <div
+          id={`security-portal-${lead.id}`}
+          style={{
+            position: "absolute",
+            top: `${popoverPos.top}px`,
+            left: `${popoverPos.left}px`,
+          }}
+          className="w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl shadow-slate-100 dark:shadow-black/60 p-3.5 z-[999] transition-all animate-fadeIn"
+        >
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80 mb-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Security Answers
@@ -556,9 +606,9 @@ function CopyableSecurityQuestionsCell({ lead, showToast }: { lead: Lead; showTo
                         className={`p-1.5 rounded-lg border transition-all duration-200 shrink-0 cursor-pointer ${
                           isCopied
                             ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
-                            : "bg-slate-50 hover:bg-slate-100 border-slate-150 text-slate-450 dark:bg-slate-950 dark:hover:bg-slate-850 dark:border-slate-800 dark:text-slate-400"
+                            : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-450 dark:bg-slate-950 dark:hover:bg-slate-800 dark:border-slate-800 dark:text-slate-400"
                         }`}
-                        title="Copy answer"
+                        data-tooltip={`Copy ${q.question || "answer"}`}
                       >
                         {isCopied ? <FiCheck className="w-3 h-3" /> : <FiCopy className="w-3 h-3" />}
                       </button>
@@ -568,7 +618,8 @@ function CopyableSecurityQuestionsCell({ lead, showToast }: { lead: Lead; showTo
               })}
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -399,6 +399,7 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
     "Study Abroad",
     "Work Visa",
     "Business Visa",
+    "Student Visa",
     "Residence Visa",
     "Tourist Visa",
   ], []);

@@ -20,6 +20,7 @@ export function getVisaServiceSelectOptions(
   return [
     { value: "Business Visa", label: "Business Visa" },
     { value: "Residence Visa", label: "Residence Visa" },
+    { value: "Student Visa", label: "Student Visa" },
     { value: "Study Abroad", label: "Study Abroad" },
     { value: "Tourist Visa", label: "Tourist Visa" },
     { value: "Work Visa", label: "Work Visa" },

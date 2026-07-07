@@ -4,4 +4,4 @@ export const SELECTION_CARD_CLASS =
 export const SELECTION_CHEVRON_CLASS =
   "text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 group-hover:translate-x-0.5 transition-all";
 
-export const VISA_SUBTYPE_OPTIONS = ["Work", "Business", "Residence", "Tourist"] as const;
+export const VISA_SUBTYPE_OPTIONS = ["Work", "Business", "Student", "Residence", "Tourist"] as const;
