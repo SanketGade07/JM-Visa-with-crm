@@ -56,6 +56,10 @@ export function DocumentChecklistItemRow({
   const [email, setEmail] = useState(lead.email ?? "");
   const [isSending, setIsSending] = useState(false);
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+  const isEmailInvalid = email.trim() !== "" && !emailRegex.test(email.trim());
+  const isFormInvalid = !email.trim() || isEmailInvalid;
+
   // A document may be checked or unchecked freely by staff who have verification permissions.
   const checkboxDisabled = !canVerifyDocs;
 
@@ -221,6 +225,10 @@ export function DocumentChecklistItemRow({
                   showToast("Please enter an email address", "error");
                   return;
                 }
+                if (!emailRegex.test(email.trim())) {
+                  showToast("Please enter a valid email address", "error");
+                  return;
+                }
                 
                 setIsSending(true);
                 try {
@@ -276,13 +284,22 @@ export function DocumentChecklistItemRow({
                   value={email}
                   disabled={isSending}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-800/30 border border-gray-200 dark:border-slate-700 text-xs p-3 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-gray-800 dark:text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`w-full bg-white dark:bg-slate-800/30 border ${
+                    isEmailInvalid
+                      ? "border-rose-500 focus:ring-rose-500/20 text-rose-600 dark:text-rose-400"
+                      : "border-gray-200 dark:border-slate-700 focus:ring-blue-500/20 text-gray-800 dark:text-slate-200"
+                  } text-xs p-3 rounded-xl shadow-sm focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed`}
                 />
+                {isEmailInvalid && (
+                  <span className="text-[10px] font-semibold text-rose-500 block mt-1">
+                    Please enter a valid email address
+                  </span>
+                )}
               </div>
 
               <button
                 type="submit"
-                disabled={isSending}
+                disabled={isSending || isFormInvalid}
                 className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSending ? "Sending..." : "Send Email"}
