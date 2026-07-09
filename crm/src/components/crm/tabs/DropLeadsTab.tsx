@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { createPortal } from "react-dom";
 import { VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Meeting } from "@/context/CrmContext";
 import { ROLE_TABS, AVAILABLE_TABS } from "@/utils/crmConstants";
-import { docProgress, timeAgo, getStatusColor } from "@/utils/leadHelpers";
+import { docProgress, timeAgo, getStatusColor, sortLeadsByRecency } from "@/utils/leadHelpers";
 import { AustraliaFlag, MalaysiaFlag, IndonesiaFlag, SingaporeFlag } from "@/components/CountryFlags";
 import {
   FaUserFriends, FaGlobe, FaCheckSquare, FaCalendarAlt, FaHistory,
@@ -68,10 +68,10 @@ export function DropLeadsTab() {
     registerDroppedLeadsExport,
   } = useCrmLayoutContext();
 
-  const droppedLeads = useMemo(
-    () => leads.filter((l) => l.status === "DROPPED"),
-    [leads]
-  );
+  const droppedLeads = useMemo(() => {
+    const list = leads.filter((l) => l.status === "DROPPED");
+    return sortLeadsByRecency(list);
+  }, [leads]);
 
   useEffect(() => {
     registerDroppedLeadsExport(() =>

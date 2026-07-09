@@ -13,7 +13,7 @@ export function isLeadAssignedToCounselor(lead: Lead, counselorName: string): bo
 
 /** Milliseconds from lead id (`lead-<timestamp>`) or dateCreated. */
 export function getLeadCreatedTimestamp(lead: Lead): number {
-  const idMatch = lead.id.match(/^lead-(\d+)$/);
+  const idMatch = lead.id.match(/^lead-(\d+)/);
   if (idMatch) {
     const ts = Number(idMatch[1]);
     if (!Number.isNaN(ts)) return ts;

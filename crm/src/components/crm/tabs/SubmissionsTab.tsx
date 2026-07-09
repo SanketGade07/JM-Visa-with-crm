@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo } from "react";
 import type { Lead } from "@/context/CrmContext";
-import { scopeLeadsForUser, timeAgo } from "@/utils/leadHelpers";
+import { scopeLeadsForUser, timeAgo, sortLeadsByRecency } from "@/utils/leadHelpers";
 import { getCountryFlag } from "@/components/CountryFlags";
 import { FiSend, FiCheckCircle, FiXCircle, FiRefreshCw } from "react-icons/fi";
 import DataTable, { type Column } from "@/components/ui/DataTable";
@@ -132,11 +132,12 @@ export function SubmissionsTab() {
   }, [submissionView, readyLeads, dispatchedLeads, approvedLeads, rejectedLeads]);
 
   const tableRows = useMemo(() => {
-    return applyColumnSearch(
+    const searched = applyColumnSearch(
       baseRows,
       leadSearchColumns,
       columnSearch.debouncedFilters
     );
+    return sortLeadsByRecency(searched);
   }, [baseRows, leadSearchColumns, columnSearch.debouncedFilters]);
 
   const readyColumns = useMemo<Column<Lead>[]>(

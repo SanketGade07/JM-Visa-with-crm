@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { createPortal } from "react-dom";
 import { VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Meeting } from "@/context/CrmContext";
 import { ROLE_TABS, AVAILABLE_TABS } from "@/utils/crmConstants";
-import { docProgress, timeAgo, getStatusColor } from "@/utils/leadHelpers";
+import { docProgress, timeAgo, getStatusColor, sortLeadsByRecency } from "@/utils/leadHelpers";
 import { AustraliaFlag, MalaysiaFlag, IndonesiaFlag, SingaporeFlag } from "@/components/CountryFlags";
 import {
   FaUserFriends, FaGlobe, FaCheckSquare, FaCalendarAlt, FaHistory,
@@ -66,6 +66,13 @@ export function CountriesTab() {
     leadsMgmtData, topCountryStats, pipelineStats, cardMap, modalMap,
   } = useCrmLayoutContext();
 
+  const departmentRows = useMemo(() => {
+    const list = leads.filter(
+      (l) => l.status !== "DROPPED" && (countryFilter === "All" || l.country === countryFilter)
+    );
+    return sortLeadsByRecency(list);
+  }, [leads, countryFilter]);
+
   return (
     <>
             <div className="space-y-6">
@@ -106,15 +113,13 @@ export function CountriesTab() {
               {/* Department Specific Table */}
               <DataTable
                 title={countryFilter === "All" ? "Select a country above to filter files" : `${countryFilter} Desk - File Registrations`}
-                rows={leads.filter(l => l.status !== "DROPPED" && (countryFilter === "All" || l.country === countryFilter))}
+                rows={departmentRows}
                 getRowId={(l) => l.id}
                 onExport={() =>
                   exportRowsToCsv(
                     `${countryFilter.toLowerCase()}-files`,
                     ["#", "Client Name", "Sub Visa Type", "Status", "Counselor"],
-                    leads
-                      .filter(l => l.status !== "DROPPED" && (countryFilter === "All" || l.country === countryFilter))
-                      .map((l, i) => [i + 1, l.name, l.visaType, l.status, l.counselor])
+                    departmentRows.map((l, i) => [i + 1, l.name, l.visaType, l.status, l.counselor])
                   )
                 }
                 columns={[

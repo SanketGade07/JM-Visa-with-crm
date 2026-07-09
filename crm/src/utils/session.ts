@@ -199,9 +199,9 @@ export async function verifyPassword(password: string, storedHash: string): Prom
 }
 
 export function generateId(prefix: string): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return `${prefix}-${crypto.randomUUID()}`;
-  }
-  const rand = Math.random().toString(36).substring(2, 10);
-  return `${prefix}-${Date.now()}-${rand}`;
+  const timestamp = Date.now();
+  const rand = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : Math.random().toString(36).substring(2, 10);
+  return `${prefix}-${timestamp}-${rand}`;
 }

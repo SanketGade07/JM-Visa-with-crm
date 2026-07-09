@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
     // Single manual lead creation
     const today = new Date().toISOString().split("T")[0];
     const now = new Date().toISOString();
-    const leadId = generateId("lead");
+    const leadId = body.id || generateId("lead");
     const country = body.country || "UK";
     const employmentCategory: EmploymentCategory =
       typeof body.employmentCategory === "string" &&
@@ -107,27 +107,28 @@ export async function POST(req: NextRequest) {
         ? (body.employmentCategory as EmploymentCategory)
         : DEFAULT_EMPLOYMENT_CATEGORY;
 
-    const newLead: Lead = {
+    const newLead: Lead = normalizeLead({
+      ...body,
       id: leadId,
       name: body.name || body.firstName || "Unnamed Lead",
       email: body.email || "",
       phone: body.phone || body.phoneNumber || "",
       country,
       visaType: body.visaType || body.category || "General Inquiry",
-      status: normalizeLeadStatus(typeof body.status === "string" ? body.status : "NEW_LEAD"),
+      status: typeof body.status === "string" ? body.status : "NEW_LEAD",
       source: body.source || "MANUAL",
       counselor: body.counselor || "Unassigned",
-      dateCreated: today,
+      dateCreated: body.dateCreated || today,
       lastUpdated: today,
-      ...(isCounselorAssigned(body.counselor) ? { assignedAt: now } : {}),
       isDeleted: false,
       employmentCategory,
-      checklist: buildEmptyChecklist(employmentCategory),
-      payments: [],
+      checklist: body.checklist || buildEmptyChecklist(employmentCategory),
+      payments: body.payments || [],
       notes: body.notes || body.message || "",
-    };
+      assignedAt: body.assignedAt || (isCounselorAssigned(body.counselor) ? now : undefined),
+    });
 
-    if (country === "USA") {
+    if (country === "USA" && !newLead.usaSlots) {
       newLead.usaSlots = { ...DEFAULT_USA_SLOTS, slotLocation: "Delhi" };
     }
 

@@ -7,7 +7,7 @@ import DataTable, { type Column, exportRowsToCsv } from "@/components/ui/DataTab
 import { TableViewToggle } from "@/components/crm/ui/TableViewToggle";
 import { UpdatePackageModal } from "@/components/crm/modals/UpdatePackageModal";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
-import { getDeskCountriesFromLeads, scopeLeadsForUser } from "@/utils/leadHelpers";
+import { getDeskCountriesFromLeads, scopeLeadsForUser, sortLeadsByRecency } from "@/utils/leadHelpers";
 import { getCountryDisplayName } from "@/utils/countryUtils";
 import { getDepositPickerLeads, getLeadPaymentSummary } from "@/utils/leadPaymentUtils";
 import { useColumnSearch } from "@/hooks/useColumnSearch";
@@ -139,12 +139,14 @@ export function PaymentsTab() {
   );
 
   const ledgerTableRows = useMemo(
-    () =>
-      applyColumnSearch(
+    () => {
+      const searched = applyColumnSearch(
         ledgerFilteredRows,
         [{ searchKey: "client", getSearchValue: clientSearchGetter }],
         columnSearch.debouncedFilters
-      ),
+      );
+      return sortLeadsByRecency(searched);
+    },
     [ledgerFilteredRows, clientSearchGetter, columnSearch.debouncedFilters]
   );
 
