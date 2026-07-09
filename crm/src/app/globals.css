@@ -2345,11 +2345,7 @@ table.w-full.border-collapse td:first-child {
   padding-left: 20px !important;
 }
 
-/* Remove right border on the last column to prevent vertical line on the right end */
-table.w-full.border-collapse th:last-child,
-table.w-full.border-collapse td:last-child {
-  border-right: none !important;
-}
+
 
 /* Dark mode overrides */
 html.dark table.w-full.border-collapse {

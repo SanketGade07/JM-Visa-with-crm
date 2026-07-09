@@ -17,6 +17,9 @@ import {
   FiTrash,
   FiX,
   FiUserX,
+  FiFilter,
+  FiChevronLeft,
+  FiChevronRight,
 } from "react-icons/fi";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { LeadDetailTabBar } from "../leads/LeadDetailTabBar";
@@ -31,6 +34,7 @@ import type { PaymentsView, SubmissionView, UsaSlotView } from "../hooks/useCrmL
 import { DateRangeCalendarPopover } from "@/components/crm/ui/DateRangeCalendarPopover";
 import { DEFAULT_EMPLOYMENT_CATEGORY } from "@/utils/documentChecklistConfig";
 import { docProgress } from "@/utils/leadHelpers";
+import { SearchableFilterSelect, destinationFilterOptions } from "@/components/ui/FormInputs";
 import { CRM_DROPDOWN_SCROLL_CLASS } from "@/utils/dropdownScrollStyles";
 
 const QUICK_TAB_ICONS: Record<string, IconType> = {
@@ -55,6 +59,39 @@ function formatAssignedAt(iso: string) {
     return "";
   }
 }
+
+function isDateRangeActive(startDate: string, endDate: string): boolean {
+  return !!(startDate && endDate);
+}
+
+function parseDateParts(dateStr: string): { year: number; month: number } | null {
+  if (!dateStr) return null;
+  const [year, month] = dateStr.split("-").map(Number);
+  if (!year || !month) return null;
+  return { year, month: month - 1 };
+}
+
+function getDaysInMonth(year: number, month: number): (number | null)[] {
+  const date = new Date(year, month, 1);
+  const days: (number | null)[] = [];
+  const startDay = date.getDay();
+  for (let i = 0; i < startDay; i++) days.push(null);
+  const totalDays = new Date(year, month + 1, 0).getDate();
+  for (let i = 1; i <= totalDays; i++) days.push(i);
+  return days;
+}
+
+function formatShortDate(dateStr: string): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const WEEKDAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 export function CrmHeader() {
   const {
@@ -95,6 +132,8 @@ export function CrmHeader() {
     setStartDate,
     endDate,
     setEndDate,
+    paymentsCountryFilter,
+    setPaymentsCountryFilter,
     openEditLead,
     isEditLeadOpen,
     showConfirm,
@@ -106,6 +145,81 @@ export function CrmHeader() {
   const { usaSlotTabs } = useUsaSlotTabs();
   const { submissionTabs } = useSubmissionTabs();
   const { paymentsTabs } = usePaymentsTabs();
+
+  // Unified Filter Popover state inside CrmHeader component:
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterBtnRef = useRef<HTMLButtonElement>(null);
+  const filterPanelRef = useRef<HTMLDivElement>(null);
+
+  const initialParts = parseDateParts(startDate) ?? {
+    year: new Date().getFullYear(),
+    month: new Date().getMonth(),
+  };
+  const [calYear, setCalYear] = useState(initialParts.year);
+  const [calMonth, setCalMonth] = useState(initialParts.month);
+
+  useEffect(() => {
+    if (!filterOpen) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!document.body.contains(target)) return;
+      if (filterBtnRef.current?.contains(target) || filterPanelRef.current?.contains(target)) return;
+      if (target instanceof HTMLElement && target.closest('[class*="filter-select"]')) {
+        return;
+      }
+      setFilterOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFilterOpen(false);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [filterOpen]);
+
+  const handleDateClick = (day: number) => {
+    const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    if (!startDate || (startDate && endDate)) {
+      setStartDate(dateStr);
+      setEndDate("");
+    } else if (dateStr < startDate) {
+      setStartDate(dateStr);
+      setEndDate("");
+    } else {
+      setEndDate(dateStr);
+    }
+  };
+
+  const handlePrevMonth = () => {
+    if (calMonth === 0) {
+      setCalMonth(11);
+      setCalYear(calYear - 1);
+    } else {
+      setCalMonth(calMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (calMonth === 11) {
+      setCalMonth(0);
+      setCalYear(calYear + 1);
+    } else {
+      setCalMonth(calMonth + 1);
+    }
+  };
+
+  const handleClearFilters = () => {
+    setStartDate("");
+    setEndDate("");
+    setPaymentsCountryFilter("All");
+  };
+
+  const activeFilterCount =
+    (isDateRangeActive(startDate, endDate) ? 1 : 0) +
+    (paymentsCountryFilter !== "All" ? 1 : 0);
 
   const tabsWithIcons = useMemo(
     () =>
@@ -415,17 +529,222 @@ export function CrmHeader() {
         )}
 
         {currentTab === "Payments" && (
-          <DateRangeCalendarPopover
-            startDate={startDate}
-            endDate={endDate}
-            onStartChange={setStartDate}
-            onEndChange={setEndDate}
-            onClear={() => {
-              setStartDate("");
-              setEndDate("");
-            }}
-          />
+          <div className="relative shrink-0">
+            <button
+              ref={filterBtnRef}
+              type="button"
+              onClick={() => {
+                if (!filterOpen) {
+                  const parts = parseDateParts(startDate);
+                  if (parts) { setCalYear(parts.year); setCalMonth(parts.month); }
+                }
+                setFilterOpen((v) => !v);
+              }}
+              className={`relative flex items-center justify-center w-9 h-9 rounded-xl border text-sm transition-all shadow-md cursor-pointer ${
+                activeFilterCount > 0
+                  ? "bg-blue-500/10 border-blue-400/50 text-blue-600 dark:border-blue-500/40 dark:text-blue-400"
+                  : theme === "light"
+                    ? "bg-white border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-300"
+                    : "bg-slate-900 border-slate-800/80 text-slate-400 hover:text-blue-400 hover:border-blue-500/30"
+              }`}
+            >
+              <FiFilter className="shrink-0" />
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] flex items-center justify-center rounded-full bg-blue-600 text-[9px] font-bold !text-white leading-none px-1 shadow-sm ring-2 ring-white dark:ring-[#0c0d1e]">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {/* ── Combined filter popover panel ── */}
+            {filterOpen && (
+              <div
+                ref={filterPanelRef}
+                onMouseDown={(e) => e.stopPropagation()}
+                className={`absolute right-0 top-full mt-2 w-[300px] rounded-2xl border shadow-2xl z-50 overflow-hidden ${
+                  theme === "light"
+                    ? "bg-white border-gray-200 shadow-[0_8px_30px_rgba(0,0,0,0.10)]"
+                    : "bg-[#0c0d1e] border-slate-800/80 shadow-[0_8px_30px_rgba(0,0,0,0.3)]"
+                }`}
+              >
+                {/* Header */}
+                <div className={`px-4 py-3 border-b flex items-center justify-between ${
+                  theme === "light" ? "border-gray-100 bg-gray-50/70" : "border-slate-800/60 bg-[#0e0f26]"
+                }`}>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">
+                    Filter Cards & Table
+                  </span>
+                  {activeFilterCount > 0 ? (
+                    <button
+                      type="button"
+                      onClick={handleClearFilters}
+                      className="text-[10px] font-bold text-blue-500 hover:text-blue-400 px-2 py-0.5 rounded-lg border border-blue-500/20 hover:border-blue-500/40 bg-blue-500/5 transition-all cursor-pointer"
+                    >
+                      Clear All
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setFilterOpen(false)}
+                      className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                        theme === "light"
+                          ? "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                          : "text-slate-500 hover:text-slate-300 hover:bg-slate-850"
+                      }`}
+                      aria-label="Close filters"
+                    >
+                      <FiX className="text-xs" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Searchable Country Section */}
+                <div className="px-4 pt-4 pb-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className={`text-[9px] font-bold uppercase tracking-wider ${
+                      theme === "light" ? "text-gray-500" : "text-slate-500"
+                    }`}>
+                      Destination Country
+                    </label>
+                  </div>
+                  <SearchableFilterSelect
+                    value={paymentsCountryFilter}
+                    onChange={setPaymentsCountryFilter}
+                    options={destinationFilterOptions}
+                    placeholder="All Countries"
+                    portalId="payments-country-filter"
+                  />
+                </div>
+
+                {/* Divider */}
+                <div className={`mx-4 border-t ${theme === "light" ? "border-gray-100" : "border-slate-800/50"}`} />
+
+                {/* Date Range Section */}
+                <div className="px-4 pt-3 pb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className={`text-[9px] font-bold uppercase tracking-wider ${
+                      theme === "light" ? "text-gray-500" : "text-slate-500"
+                    }`}>
+                      Date Range
+                    </label>
+                    <div className="flex items-center gap-2">
+                    {isDateRangeActive(startDate, endDate) && (
+                      <>
+                        <span className={`text-[9px] font-semibold tabular-nums ${
+                          theme === "light" ? "text-blue-600" : "text-blue-400"
+                        }`}>
+                          {formatShortDate(startDate)} – {formatShortDate(endDate)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => { setStartDate(""); setEndDate(""); }}
+                          className={`p-0.5 rounded transition-colors cursor-pointer ${
+                            theme === "light"
+                              ? "text-gray-400 hover:text-red-500 hover:bg-gray-100"
+                              : "text-slate-500 hover:text-red-400 hover:bg-slate-800"
+                          }`}
+                          title="Clear date range"
+                        >
+                          <FiX className="text-[10px]" />
+                        </button>
+                      </>
+                    )}
+                    </div>
+                  </div>
+
+                  {/* Month nav */}
+                  <div className="flex items-center justify-between mb-2.5">
+                    <button
+                      type="button"
+                      onClick={handlePrevMonth}
+                      aria-label="Previous month"
+                      className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                        theme === "light" ? "text-gray-400 hover:text-gray-600 hover:bg-gray-100" : "text-slate-500 hover:text-slate-300 hover:bg-slate-800"
+                      }`}
+                    >
+                      <FiChevronLeft className="text-[12px]" />
+                    </button>
+                    <span className={`text-[12px] font-semibold tracking-wide ${
+                      theme === "light" ? "text-gray-800" : "text-slate-200"
+                    }`}>
+                      {MONTH_NAMES[calMonth]} {calYear}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleNextMonth}
+                      aria-label="Next month"
+                      className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                        theme === "light" ? "text-gray-400 hover:text-gray-600 hover:bg-gray-100" : "text-slate-500 hover:text-slate-300 hover:bg-slate-800"
+                      }`}
+                    >
+                      <FiChevronRight className="text-[12px]" />
+                    </button>
+                  </div>
+
+                  {/* Weekday labels */}
+                  <div className="grid grid-cols-7 text-center mb-1.5">
+                    {WEEKDAY_LABELS.map((day) => (
+                      <span key={day} className={`text-[9px] font-medium ${
+                        theme === "light" ? "text-gray-400/90" : "text-slate-500"
+                      }`}>
+                        {day}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Day grid */}
+                  <div className="grid grid-cols-7 text-center items-center gap-y-0.5">
+                    {getDaysInMonth(calYear, calMonth).map((day, idx) => {
+                      if (day === null) return <div key={`empty-${idx}`} className="h-7" />;
+
+                      const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                      const isStart = dateStr === startDate;
+                      const isEnd = dateStr === endDate;
+                      const inRange = startDate && endDate && dateStr > startDate && dateStr < endDate;
+                      const isToday = (() => {
+                        const t = new Date();
+                        return t.getFullYear() === calYear && t.getMonth() === calMonth && t.getDate() === day;
+                      })();
+
+                      return (
+                        <div key={day} className="flex justify-center items-center h-7 relative">
+                          {inRange && (
+                            <div className="absolute inset-y-0.5 left-0 right-0 bg-blue-500/10 dark:bg-blue-500/15" />
+                          )}
+                          {isStart && endDate && (
+                            <div className="absolute inset-y-0.5 left-1/2 right-0 bg-blue-500/10 dark:bg-blue-500/15" />
+                          )}
+                          {isEnd && startDate && (
+                            <div className="absolute inset-y-0.5 left-0 right-1/2 bg-blue-500/10 dark:bg-blue-500/15" />
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDateClick(day)}
+                            className={`w-[24px] h-[24px] flex items-center justify-center rounded-full text-[10px] font-medium transition-all duration-150 relative z-10 cursor-pointer ${
+                              isStart || isEnd
+                                ? "bg-blue-600 text-white shadow-[0_2px_6px_rgba(37,99,235,0.4)] font-bold scale-105"
+                                : inRange
+                                  ? "text-blue-600 dark:text-blue-400 font-semibold"
+                                  : isToday
+                                    ? "border border-blue-500 text-blue-600 dark:text-blue-400 font-semibold"
+                                    : theme === "light"
+                                      ? "text-gray-700 hover:bg-gray-100"
+                                      : "text-slate-300 hover:bg-slate-800"
+                            }`}
+                          >
+                            {day}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         )}
+
+
 
         {/* Incomplete Profiles warning button & popover */}
         {/* Incomplete Profiles warning button & popover */}

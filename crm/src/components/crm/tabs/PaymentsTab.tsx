@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { Lead, PaymentDetails } from "@/context/CrmContext";
 import { FaEnvelope, FaFileInvoiceDollar, FaTag } from "react-icons/fa";
+
 import DataTable, { type Column, exportRowsToCsv } from "@/components/ui/DataTable";
 import { TableViewToggle } from "@/components/crm/ui/TableViewToggle";
 import { UpdatePackageModal } from "@/components/crm/modals/UpdatePackageModal";
@@ -44,7 +45,7 @@ function isLeadUnpaid(lead: Lead): boolean {
   return totalPackage > 0 && pending > 0;
 }
 
-type LedgerPaymentFilter = "paid" | "unpaid";
+type LedgerPaymentFilter = "all" | "paid" | "unpaid";
 
 type DeskRevenueRow = {
   id: string;
@@ -52,6 +53,12 @@ type DeskRevenueRow = {
   realizedRevenue: number;
   clientCount: number;
 };
+
+function formatShortDate(dateStr: string): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
 export function PaymentsTab() {
   const {
@@ -61,6 +68,8 @@ export function PaymentsTab() {
     setStartDate,
     endDate,
     setEndDate,
+    paymentsCountryFilter,
+    setPaymentsCountryFilter,
     openPickerDepositModal,
     setInvoiceLeadId,
     setLeadPackage,
@@ -74,16 +83,17 @@ export function PaymentsTab() {
     showAlert,
     isAdmin,
     registerPaymentsExport,
+    theme,
   } = useCrmLayoutContext();
 
   const columnSearch = useColumnSearch();
   const [ledgerPaymentFilter, setLedgerPaymentFilter] =
-    useState<LedgerPaymentFilter>("unpaid");
+    useState<LedgerPaymentFilter>("all");
   const [packageLeadId, setPackageLeadId] = useState<string | null>(null);
 
   useEffect(() => {
     if (paymentsView === "desk-revenue") {
-      setLedgerPaymentFilter("unpaid");
+      setLedgerPaymentFilter("all");
     }
   }, [paymentsView]);
 
@@ -91,6 +101,10 @@ export function PaymentsTab() {
     () => scopeLeadsForUser(leads, currentUser),
     [leads, currentUser]
   );
+
+  const availableCountries = useMemo(() => {
+    return getDeskCountriesFromLeads(counselorScopedLeads);
+  }, [counselorScopedLeads]);
 
   const packageLead = useMemo(
     () =>
@@ -103,12 +117,17 @@ export function PaymentsTab() {
   const dateFilterActive = isDateRangeActive(startDate, endDate);
 
   const ledgerRows = useMemo(() => {
-    const active = counselorScopedLeads.filter((l) => l.status !== "DROPPED");
+    let active = counselorScopedLeads.filter((l) => l.status !== "DROPPED");
+    if (paymentsCountryFilter !== "All") {
+      active = active.filter((l) => l.country === paymentsCountryFilter);
+    }
     if (!dateFilterActive) return active;
     return active.filter((l) =>
       l.payments.some((p) => isPaymentInRange(p, startDate, endDate))
     );
-  }, [counselorScopedLeads, startDate, endDate, dateFilterActive]);
+  }, [counselorScopedLeads, startDate, endDate, dateFilterActive, paymentsCountryFilter]);
+
+  const allCount = useMemo(() => ledgerRows.length, [ledgerRows]);
 
   const paidCount = useMemo(
     () => ledgerRows.filter(isLeadPaid).length,
@@ -124,7 +143,10 @@ export function PaymentsTab() {
     if (ledgerPaymentFilter === "paid") {
       return ledgerRows.filter(isLeadPaid);
     }
-    return ledgerRows.filter(isLeadUnpaid);
+    if (ledgerPaymentFilter === "unpaid") {
+      return ledgerRows.filter(isLeadUnpaid);
+    }
+    return ledgerRows;
   }, [ledgerRows, ledgerPaymentFilter]);
 
   const clientSearchGetter = useMemo(
@@ -151,14 +173,24 @@ export function PaymentsTab() {
   );
 
   const financeMetrics = useMemo(() => {
-    const activeLeads = counselorScopedLeads.filter((l) => l.status !== "DROPPED");
+    let filteredLeads = counselorScopedLeads.filter((l) => l.status !== "DROPPED");
 
-    const grossInvoiced = activeLeads.reduce(
+    if (paymentsCountryFilter !== "All") {
+      filteredLeads = filteredLeads.filter((l) => l.country === paymentsCountryFilter);
+    }
+
+    if (dateFilterActive) {
+      filteredLeads = filteredLeads.filter((l) =>
+        l.payments.some((p) => isPaymentInRange(p, startDate, endDate))
+      );
+    }
+
+    const grossInvoiced = filteredLeads.reduce(
       (acc, l) => acc + (l.payments[0]?.totalPackage || 0),
       0
     );
 
-    const deposited = activeLeads.reduce(
+    const deposited = filteredLeads.reduce(
       (acc, l) =>
         acc +
         paymentsInRange(l.payments, startDate, endDate).reduce(
@@ -168,7 +200,7 @@ export function PaymentsTab() {
       0
     );
 
-    const pending = activeLeads.reduce((acc, l) => {
+    const pending = filteredLeads.reduce((acc, l) => {
       const total = l.payments[0]?.totalPackage || 0;
       const paid = paymentsInRange(l.payments, startDate, endDate).reduce(
         (a, p) => a + p.amountPaid,
@@ -178,7 +210,7 @@ export function PaymentsTab() {
     }, 0);
 
     return { grossInvoiced, deposited, pending };
-  }, [counselorScopedLeads, startDate, endDate]);
+  }, [counselorScopedLeads, paymentsCountryFilter, startDate, endDate, dateFilterActive]);
 
   const deskRevenueRows = useMemo<DeskRevenueRow[]>(
     () =>
@@ -210,19 +242,24 @@ export function PaymentsTab() {
     [counselorScopedLeads, startDate, endDate, dateFilterActive]
   );
 
+  const filteredDeskRevenueRows = useMemo(() => {
+    if (paymentsCountryFilter === "All") return deskRevenueRows;
+    return deskRevenueRows.filter((row) => row.country === paymentsCountryFilter);
+  }, [deskRevenueRows, paymentsCountryFilter]);
+
   const deskTableRows = useMemo(
     () =>
       applyColumnSearch(
-        deskRevenueRows,
+        filteredDeskRevenueRows,
         [{ searchKey: "desk", getSearchValue: deskSearchGetter }],
         columnSearch.debouncedFilters
       ),
-    [deskRevenueRows, deskSearchGetter, columnSearch.debouncedFilters]
+    [filteredDeskRevenueRows, deskSearchGetter, columnSearch.debouncedFilters]
   );
 
   const totalDeskRevenue = useMemo(
-    () => deskRevenueRows.reduce((sum, row) => sum + row.realizedRevenue, 0),
-    [deskRevenueRows]
+    () => filteredDeskRevenueRows.reduce((sum, row) => sum + row.realizedRevenue, 0),
+    [filteredDeskRevenueRows]
   );
 
   useEffect(() => {
@@ -251,7 +288,7 @@ export function PaymentsTab() {
         exportRowsToCsv(
           "payments-desk-revenue",
           ["Destination Desk", "Active Clients", "Realized Revenue", "Revenue Share"],
-          deskRevenueRows.map((row) => {
+          filteredDeskRevenueRows.map((row) => {
             const sharePct = totalDeskRevenue > 0 ? (row.realizedRevenue / totalDeskRevenue) * 100 : 0;
             return [
               row.country,
@@ -268,7 +305,7 @@ export function PaymentsTab() {
     registerPaymentsExport,
     paymentsView,
     ledgerRows,
-    deskRevenueRows,
+    filteredDeskRevenueRows,
     startDate,
     endDate,
     totalDeskRevenue,
@@ -369,8 +406,7 @@ export function PaymentsTab() {
     [startDate, endDate, canManagePayments, openLeadDetail, clientSearchGetter]
   );
 
-
-  const showRecordButton = paymentsView === "ledger" && ledgerPaymentFilter === "unpaid";
+  const showRecordButton = paymentsView === "ledger" && ledgerPaymentFilter !== "paid";
 
   const toolbarRight = showRecordButton ? (
     <button
@@ -394,6 +430,7 @@ export function PaymentsTab() {
       value={ledgerPaymentFilter}
       onChange={setLedgerPaymentFilter}
       options={[
+        { id: "all", label: "All", count: allCount },
         { id: "paid", label: "Paid", count: paidCount },
         { id: "unpaid", label: "Unpaid", count: unpaidCount },
       ]}
@@ -449,25 +486,27 @@ export function PaymentsTab() {
 
   const summaryCards = [
     {
-      label: "Gross Invoiced Revenue",
-      value: financeMetrics.grossInvoiced,
-      description: "Total value of all packaged contracts",
-    },
-    {
-      label: "Deposited Payments",
+      label: "Payment Received",
       value: financeMetrics.deposited,
-      description: "Total cash realized in bank",
+      description: "Collected cash realized in bank",
     },
     {
-      label: "Pending Receivables",
+      label: "Payment Pending",
       value: financeMetrics.pending,
-      description: "Outstanding credit from client packages",
+      description: "Remaining balance to be collected",
+    },
+    {
+      label: "Total Invoiced",
+      value: financeMetrics.grossInvoiced,
+      description: "Total value of all client packages",
     },
   ];
 
   return (
     <div className="-m-4 md:-m-8 p-4 md:p-6 bg-gray-50 dark:bg-transparent min-h-[calc(100vh-4rem)] space-y-5">
       <div className="min-w-0 space-y-6">
+
+        {/* ── Summary cards row ────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {summaryCards.map((card) => (
             <div
@@ -550,7 +589,7 @@ export function PaymentsTab() {
             columnSearch={columnSearch}
             columns={deskRevenueColumns}
             showCheckbox={false}
-            showIndex={false}
+            showIndex={true}
             emptyText="No desk revenue data available."
           />
         )}

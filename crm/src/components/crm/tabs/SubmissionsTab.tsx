@@ -562,7 +562,7 @@ export function SubmissionsTab() {
           getRowId={(l) => l.id}
           columns={tableColumns}
           showCheckbox={false}
-          showIndex={false}
+          showIndex={true}
           emptyText="No leads match your filters."
         />
       </div>

@@ -796,6 +796,7 @@ export function useCrmLayoutState() {
   // Revenue Date Filters
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [paymentsCountryFilter, setPaymentsCountryFilter] = useState("All");
 
   // Deposit Upload State
   const [profileDepositLeadId, setProfileDepositLeadId] = useState("");
@@ -1424,6 +1425,7 @@ export function useCrmLayoutState() {
     hoveredCountry, setHoveredCountry, tooltipRef, tooltipPosRef, isMounted,
     handleCountryMouseEnter, handleCountryMouseMove, handleCountryMouseLeave,
     handleCountryClick, resetMap, startDate, setStartDate, endDate, setEndDate,
+    paymentsCountryFilter, setPaymentsCountryFilter,
     profileDepositLeadId, pickerDepositLeadId, setPickerDepositLeadId,
     depositModalMode, setDepositModalMode,
     openProfileDepositModal, openPickerDepositModal, closeDepositModal,

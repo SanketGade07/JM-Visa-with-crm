@@ -279,7 +279,7 @@ export default function DataTable<T>({
     columns.length + (showCheckbox ? 1 : 0) + (showIndex ? 1 : 0) + (actions ? 1 : 0);
 
   const cardCls = borderless
-    ? `bg-white dark:bg-slate-900/50 rounded-2xl ${className}`
+    ? `bg-transparent rounded-2xl ${className}`
     : `bg-white dark:bg-slate-900/50 rounded-2xl border border-gray-200/70 dark:border-slate-800 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-16px_rgba(16,24,40,0.12)] dark:shadow-none ${className}`;
 
   return (
@@ -343,7 +343,7 @@ export default function DataTable<T>({
       <div className="flex-1 crm-x-scroll">
         <table className="w-full text-left border-collapse min-w-[1000px]">
           <thead>
-            <tr className="bg-gray-50/70 dark:bg-slate-800/30 border-y border-gray-100 dark:border-slate-800 text-[13px] font-semibold text-slate-500 dark:text-slate-400">
+            <tr className="bg-gray-50/70 dark:bg-transparent border-b border-gray-100 dark:border-slate-800 text-[13px] font-semibold text-slate-500 dark:text-slate-400">
               {showCheckbox && (
                 <th className="w-9 pl-5 pr-1 py-5">
                   <input
