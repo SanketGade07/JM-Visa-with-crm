@@ -205,7 +205,6 @@ export function SubmissionsTab() {
       },
       {
         header: "Action",
-        align: "right",
         render: (lead) => (
           <button
             type="button"
@@ -297,9 +296,8 @@ export function SubmissionsTab() {
       },
       {
         header: "Action",
-        align: "right",
         render: (lead) => (
-          <div className="flex items-center gap-3 justify-end">
+          <div className="flex items-center gap-3 justify-start">
             <button
               type="button"
               disabled={!canSubmitVisa}
@@ -424,7 +422,6 @@ export function SubmissionsTab() {
       },
       {
         header: "Action",
-        align: "right",
         render: (lead) => (
           <button
             type="button"
@@ -525,7 +522,6 @@ export function SubmissionsTab() {
       },
       {
         header: "Action",
-        align: "right",
         render: (lead) => (
           <button
             type="button"

@@ -74,6 +74,8 @@ function getInitialStateFromLead(lead: Lead | null | undefined): CreateLeadFormS
     annualIncome: lead.annualIncome || "",
     referredBy: lead.referredBy || "",
     notes: lead.notes || "",
+    isFromUsaSlotsTab: false,
+    isEdit: !!lead,
   };
 }
 
@@ -159,6 +161,8 @@ export function getStepFieldErrors(
   excludeLeadId?: string
 ): Partial<Record<keyof CreateLeadFormState, string>> {
   const errors: Partial<Record<keyof CreateLeadFormState, string>> = {};
+  const isEdit = !!excludeLeadId || !!state.isEdit;
+  const showUsaFields = isUsaCountry(state.immigrationCountry) && (state.isFromUsaSlotsTab || isEdit);
 
   switch (step) {
     case 1: {
@@ -185,7 +189,7 @@ export function getStepFieldErrors(
       if (!state.leadSource) {
         errors.leadSource = "Select a lead source.";
       }
-      if (isUsaCountry(state.immigrationCountry)) {
+      if (showUsaFields) {
         if (state.loginId.trim() && !state.password.trim()) {
           errors.password = "Visa portal password is required when username is entered.";
         }
@@ -230,7 +234,7 @@ export function getStepFieldErrors(
       if (!state.password.trim()) {
         errors.password = "Visa portal password is required.";
       }
-      if (isUsaCountry(state.immigrationCountry)) {
+      if (showUsaFields) {
         if (!state.slotStatus) {
           errors.slotStatus = "Select a slot portal type (Available or Paid).";
         }
@@ -369,6 +373,9 @@ export function useCreateLeadForm(lead?: Lead | null) {
   const [state, setState] = useState<CreateLeadFormState>(() => getInitialStateFromLead(lead));
 
   const activeSteps = useMemo(() => {
+    if (state.isFromUsaSlotsTab) {
+      return [2] as WizardStepId[];
+    }
     if (lead) {
       if (state.leadType === "visa") {
         return [3, 4, 5, 6] as WizardStepId[];
@@ -376,7 +383,7 @@ export function useCreateLeadForm(lead?: Lead | null) {
       return [4, 5, 6] as WizardStepId[];
     }
     return [1, 2] as WizardStepId[];
-  }, [lead, state.leadType]);
+  }, [lead, state.leadType, state.isFromUsaSlotsTab]);
 
   const [currentStep, setCurrentStep] = useState<WizardStepId>(() => {
     if (lead) {
@@ -384,6 +391,10 @@ export function useCreateLeadForm(lead?: Lead | null) {
       const localActive = initialState.leadType === "visa" ? ([3, 4, 5, 6] as WizardStepId[]) : ([4, 5, 6] as WizardStepId[]);
       const firstInvalid = findFirstInvalidStep(initialState, localActive, leads, leadId);
       return firstInvalid ?? (initialState.leadType === "visa" ? 3 : 4);
+    }
+    const initialState = getInitialStateFromLead(lead);
+    if (initialState.isFromUsaSlotsTab) {
+      return 2;
     }
     return 1;
   });
@@ -471,7 +482,7 @@ export function useCreateLeadForm(lead?: Lead | null) {
       ...CREATE_LEAD_INITIAL_STATE,
       ...initialStateOverrides,
     });
-    setCurrentStep(1);
+    setCurrentStep(initialStateOverrides?.isFromUsaSlotsTab ? 2 : 1);
     setHasCompletedWizard(false);
     setCompletedSteps(new Set());
     setReturnToReview(false);

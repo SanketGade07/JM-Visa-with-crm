@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import type { Lead } from "@/context/CrmContext";
-import { FaTimes, FaTrash, FaCar, FaUtensils, FaCity } from "react-icons/fa";
+import { FaTimes, FaTrash, FaCar, FaUtensils, FaCity, FaWhatsapp, FaRegStar } from "react-icons/fa";
 import { FiSettings, FiPhone, FiMail, FiCopy, FiUser, FiLock, FiSmartphone, FiKey, FiChevronDown, FiCheck } from "react-icons/fi";
 import DataTable, { exportRowsToCsv } from "@/components/ui/DataTable";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
@@ -701,6 +701,7 @@ export function USASlotsTab() {
             key={createUsaLeadSession}
             variant="inline"
             onClose={closeCreateUsaLead}
+            isFromUsaSlotsTab={true}
           />
         </div>
       </CollapsiblePanel>
@@ -847,7 +848,28 @@ export function USASlotsTab() {
             onClick: openSlotSettings,
           },
           { icon: FiPhone, title: "Call", onClick: (l) => window.open(`tel:${l.phone}`) },
+          {
+            icon: FaWhatsapp,
+            title: "WhatsApp",
+            onClick: (l) =>
+              window.open(
+                `https://wa.me/${l.phone.replace(/[^0-9]/g, "")}`,
+                "_blank"
+              ),
+          },
           { icon: FiMail, title: "Email", onClick: (l) => window.open(`mailto:${l.email}`) },
+          {
+            icon: FaRegStar,
+            title: "Review",
+            onClick: (l) => {
+              const name = l.name || "Client";
+              const message = `Hello ${name}, thank you for choosing JM Visa Services. We hope you had a great experience! Could you please take a moment to share your feedback or review with us? Please share your review here: https://www.jmvisaservices.com/feedback`;
+              window.open(
+                `https://wa.me/${l.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(message)}`,
+                "_blank"
+              );
+            },
+          },
         ]}
         emptyText="No USA leads yet."
       />

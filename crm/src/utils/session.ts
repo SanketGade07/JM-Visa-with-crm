@@ -75,8 +75,8 @@ export interface SessionPayload {
 export async function signSession(payload: SessionPayload): Promise<string> {
   const header = encodeClaims({ alg: "HS256", typ: "JWT" });
   
-  // Default expiration: 8 hours
-  const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 8;
+  // Default expiration: 10 years (effectively forever)
+  const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 365 * 10;
   const claims = encodeClaims({ ...payload, exp });
 
   const signingInput = `${header}.${claims}`;

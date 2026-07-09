@@ -69,7 +69,7 @@ export function Pagination({
 
   return (
     <div
-      className={`flex flex-col sm:flex-row items-center justify-end px-5 py-3 border-t border-gray-100 dark:border-slate-800 text-[12px] text-slate-500 dark:text-slate-400 gap-4 select-none ${className}`}
+      className={`flex flex-col sm:flex-row items-center justify-end px-5 py-3 text-[12px] text-slate-500 dark:text-slate-400 gap-4 select-none ${className}`}
     >
       <div className="flex items-center gap-2.5">
         <span className="text-gray-450 dark:text-slate-500">Rows per page</span>

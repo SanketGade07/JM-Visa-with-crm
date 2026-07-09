@@ -31,9 +31,14 @@ export function CreateLeadFormProvider({ children }: { children: React.ReactNode
 
   useEffect(() => {
     if (createUsaLeadSession !== prevSessionsRef.current.createUsaLeadSession) {
-      formRef.current.reset({ immigrationCountry: "USA" });
+      formRef.current.reset({
+        immigrationCountry: "USA",
+        isFromUsaSlotsTab: true,
+        leadType: "visa",
+        visaSubtype: "USA Visa",
+      });
     } else if (createLeadSession !== prevSessionsRef.current.createLeadSession) {
-      formRef.current.reset();
+      formRef.current.reset({ isFromUsaSlotsTab: false });
     }
     prevSessionsRef.current = { createLeadSession, createUsaLeadSession };
   }, [createLeadSession, createUsaLeadSession]);

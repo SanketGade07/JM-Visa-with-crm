@@ -117,7 +117,7 @@ function getColumnEdgePadding(
   return "px-3";
 }
 
-const COMM_ACTION_TITLES = new Set(["call", "phone", "whatsapp", "message", "email"]);
+const COMM_ACTION_TITLES = new Set(["call", "phone", "whatsapp", "message", "email", "review", "feedback"]);
 
 function resolveActionIcon<T>(action: RowAction<T>): IconType {
   const key = action.title.toLowerCase();
@@ -132,6 +132,9 @@ function getActionIconClasses(title: string): string {
   }
   if (key === "whatsapp" || key === "message") {
     return "text-emerald-500 hover:text-emerald-400";
+  }
+  if (key === "review" || key === "feedback") {
+    return "text-amber-500 hover:text-amber-400";
   }
   if (key === "delete" || key === "remove") {
     return "text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300";
@@ -216,7 +219,7 @@ export default function DataTable<T>({
   selectedRowId,
   emptyText = "No records found.",
   showToolbar = true,
-  showCheckbox = true,
+  showCheckbox = false,
   showIndex = true,
   filters,
   search,
@@ -284,7 +287,7 @@ export default function DataTable<T>({
       {/* ── Toolbar: filters (left) + circular buttons (right) ────────── */}
       {showToolbar && (
         <>
-          <div className="flex items-end justify-between gap-3 px-5 py-3 overflow-visible">
+          <div className="flex items-end justify-between gap-3 pl-0 pr-5 py-3 overflow-visible">
             <div className="flex items-end flex-1 min-w-0 overflow-visible">{filters}</div>
             <div className="data-table-toolbar__actions shrink-0">
               {rightSlot}
@@ -352,7 +355,7 @@ export default function DataTable<T>({
                 </th>
               )}
               {showIndex && (
-                <th className="w-8 px-1 py-5 text-[13px] font-semibold tracking-normal text-slate-500 dark:text-slate-400">#</th>
+                <th className={`${showCheckbox ? "w-8 px-1" : "w-14 pl-5 pr-1"} py-5 text-[13px] font-semibold tracking-normal text-slate-500 dark:text-slate-400`}>#</th>
               )}
               {columns.map((col, i) => {
                 const searchKey = col.searchKey;
@@ -446,7 +449,7 @@ export default function DataTable<T>({
                     </td>
                   )}
                   {showIndex && (
-                    <td className="px-1 py-2.5 text-[12px] text-gray-400 dark:text-slate-500 font-medium tabular-nums">
+                    <td className={`${showCheckbox ? "px-1" : "pl-5 pr-1"} py-2.5 text-[12px] text-gray-400 dark:text-slate-500 font-medium tabular-nums`}>
                       {absoluteIndex + 1}
                     </td>
                   )}

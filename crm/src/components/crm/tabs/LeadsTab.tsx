@@ -13,7 +13,7 @@ import {
   FaInfoCircle, FaFileDownload, FaFileUpload, FaPaperPlane,
   FaSun, FaMoon, FaEllipsisV, FaChevronLeft, FaChevronRight,
   FaMinus, FaExpand, FaEye, FaPhone, FaCommentDots, FaCog, FaEnvelope,
-  FaWhatsapp, FaExternalLinkAlt, FaSignOutAlt, FaKey, FaClipboard, FaEdit, FaSave,
+  FaWhatsapp, FaRegStar, FaExternalLinkAlt, FaSignOutAlt, FaKey, FaClipboard, FaEdit, FaSave,
   FaCar, FaUtensils, FaCity
 } from "react-icons/fa";
 import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiCheckCircle, FiEye, FiSettings, FiGlobe, FiMenu, FiUser, FiLock, FiSmartphone } from "react-icons/fi";
@@ -382,10 +382,11 @@ export function LeadsTab() {
                 <div className="xl:col-span-4 flex flex-col h-full min-w-0">
                   <DataTable
                     borderless={true}
-                    className="h-full flex flex-col"
+                    className="flex flex-col"
                     pagination={true}
                     defaultPageSize={10}
                     showToolbar={false}
+                    showCheckbox={false /* hide ticking boxs */}
                     rows={tableRows}
                     columnSearch={columnSearch}
                     getRowId={(l) => l.id}
@@ -511,12 +512,13 @@ export function LeadsTab() {
                         header: "Credentials",
                         render: (lead) => {
                           const hasStandard = lead.visaCredentials?.username || lead.visaCredentials?.password;
-                          const hasSlots = lead.country === "USA" && (
+                          /* For now: hide USA credentials and slot tracking ticking boxes as requested */
+                          const hasSlots = false && lead.country === "USA" && (
                             lead.usaSlots?.slotPortalUsername ||
                             lead.usaSlots?.slotPortalPassword ||
                             lead.usaSlots?.trackingMobile
                           );
-                          const hasSecurity = lead.country === "USA" && (
+                          const hasSecurity = false && lead.country === "USA" && (
                             lead.usaSlots?.securityCar ||
                             lead.usaSlots?.securityFood ||
                             lead.usaSlots?.securityCity
@@ -723,6 +725,18 @@ export function LeadsTab() {
                         icon: FiMail,
                         title: "Email",
                         onClick: (l) => window.open(`mailto:${l.email}`),
+                      },
+                      {
+                        icon: FaRegStar,
+                        title: "Review",
+                        onClick: (l) => {
+                          const name = l.name || "Client";
+                          const message = `Hello ${name}, thank you for choosing JM Visa Services. We hope you had a great experience! Could you please take a moment to share your feedback or review with us? Please share your review here: https://www.jmvisaservices.com/feedback`;
+                          window.open(
+                            `https://wa.me/${l.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(message)}`,
+                            "_blank"
+                          );
+                        },
                       },
                     ]}
                     emptyText="No leads match your filters."

@@ -186,7 +186,7 @@ export function DashboardTab() {
               {/* MIDDLE ROW (Leads by Country + Calendar Widget) */}
               <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${getAnimClass("delay-200")}`}>
                 {/* ── Leads by Country Card ── */}
-                <div className={`lg:col-span-2 rounded-xl flex flex-col shadow-sm border overflow-hidden ${
+                <div className={`lg:col-span-2 rounded-xl flex flex-col shadow-sm border ${
                   theme === "light" 
                     ? "bg-white border-[#E5E7EB]" 
                     : "bg-slate-900/60 backdrop-blur-md border-slate-800/80"
@@ -357,21 +357,27 @@ export function DashboardTab() {
                                 />
                               )}
 
-                              {/* Tooltip */}
-                              {isHovered && (
-                                <div 
-                                  className="absolute pointer-events-none left-1/2 -translate-x-1/2"
-                                  style={{ 
-                                    bottom: `calc(${heightPct}% + 14px)`,
-                                    zIndex: 50
-                                  }}
-                                >
+                               {/* Tooltip */}
+                               {isHovered && (
+                                 <div 
+                                   className="absolute pointer-events-none"
+                                   style={{ 
+                                     bottom: `calc(${heightPct}% + 14px)`,
+                                     zIndex: 50,
+                                     ...(idx <= 1
+                                       ? { left: "0px", transform: "none" }
+                                       : idx >= countryBarChartData.length - 2
+                                         ? { right: "0px", transform: "none" }
+                                         : { left: "50%", transform: "translateX(-50%)" }
+                                     )
+                                   }}
+                                 >
                                   <div 
                                     className="revenue-tooltip-card flex flex-col items-start border shadow-lg"
                                     style={{
                                       borderRadius: "16px",
-                                      padding: "10px 16px",
-                                      minWidth: "140px",
+                                      padding: "12px 16px",
+                                      minWidth: "170px",
                                       boxShadow: "0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)"
                                     }}
                                   >
@@ -397,6 +403,27 @@ export function DashboardTab() {
                                         </span>
                                       )}
                                     </div>
+                                    
+                                    {item.country !== "-" && (
+                                      <>
+                                        <div className="w-full my-2 border-t border-slate-200 dark:border-slate-800/80" />
+                                        
+                                        <div className="flex flex-col space-y-1 w-full text-[11.5px]">
+                                          <div className="flex justify-between items-center w-full gap-4">
+                                            <span className="text-slate-500 dark:text-slate-450 font-medium">Received:</span>
+                                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                              ₹{(item.received || 0).toLocaleString("en-IN")}
+                                            </span>
+                                          </div>
+                                          <div className="flex justify-between items-center w-full gap-4">
+                                            <span className="text-slate-500 dark:text-slate-450 font-medium">Pending:</span>
+                                            <span className="text-rose-600 dark:text-rose-450 font-bold">
+                                              ₹{(item.pending || 0).toLocaleString("en-IN")}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                               )}

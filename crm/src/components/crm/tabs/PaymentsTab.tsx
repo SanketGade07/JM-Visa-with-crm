@@ -488,6 +488,7 @@ export function PaymentsTab() {
         {paymentsView === "ledger" ? (
           <DataTable
             borderless={true}
+            className="payments-ledger-table overflow-visible"
             pagination={true}
             defaultPageSize={10}
             rows={ledgerTableRows}
@@ -538,6 +539,7 @@ export function PaymentsTab() {
         ) : (
           <DataTable
             borderless={true}
+            className="payments-desk-table overflow-visible"
             pagination={true}
             defaultPageSize={10}
             showToolbar={false}

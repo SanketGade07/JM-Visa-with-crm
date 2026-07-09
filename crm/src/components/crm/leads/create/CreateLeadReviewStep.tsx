@@ -42,7 +42,7 @@ type CreateLeadReviewStepProps = {
 };
 
 export function CreateLeadReviewStep({ state, onEditStep }: CreateLeadReviewStepProps) {
-  const isUsa = isUsaCountry(state.immigrationCountry);
+  const isUsa = isUsaCountry(state.immigrationCountry) && (state.isFromUsaSlotsTab || state.isEdit);
 
   const serviceLabel =
     state.leadType === "study_abroad"

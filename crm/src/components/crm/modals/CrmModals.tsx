@@ -918,6 +918,7 @@ export function CrmModals() {
                 </div>
               </div>
 
+              {/* Action Permissions — commented out for now
               <div className="space-y-2 text-left">
                 <label className="text-slate-400 font-bold block border-b border-slate-900 pb-1.5">
                   Action Permissions
@@ -940,6 +941,7 @@ export function CrmModals() {
                   ))}
                 </div>
               </div>
+              */}
 
               <button 
                 type="submit"

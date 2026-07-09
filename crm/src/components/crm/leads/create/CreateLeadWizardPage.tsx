@@ -71,12 +71,14 @@ type CreateLeadWizardPageProps = {
   variant?: "page" | "inline";
   onClose?: () => void;
   editLeadId?: string | null;
+  isFromUsaSlotsTab?: boolean;
 };
 
 export function CreateLeadWizardPage({
   variant = "page",
   onClose,
   editLeadId,
+  isFromUsaSlotsTab = false,
 }: CreateLeadWizardPageProps = {}) {
   const { leads } = useCrmLayoutContext();
   const lead = editLeadId ? leads.find((l) => l.id === editLeadId) ?? null : null;
@@ -88,6 +90,7 @@ export function CreateLeadWizardPage({
         onClose={onClose}
         editLeadId={editLeadId}
         lead={lead}
+        isFromUsaSlotsTab={isFromUsaSlotsTab}
       />
     );
   }
@@ -96,6 +99,7 @@ export function CreateLeadWizardPage({
     <CreateLeadWizardInner
       variant={variant}
       onClose={onClose}
+      isFromUsaSlotsTab={isFromUsaSlotsTab}
     />
   );
 }
@@ -105,6 +109,7 @@ function CreateLeadWizardWrapper({
   onClose,
   editLeadId,
   lead,
+  isFromUsaSlotsTab = false,
 }: CreateLeadWizardPageProps & { lead: any }) {
   const form = useCreateLeadForm(lead);
   return (
@@ -113,6 +118,7 @@ function CreateLeadWizardWrapper({
         variant={variant}
         onClose={onClose}
         editLeadId={editLeadId}
+        isFromUsaSlotsTab={isFromUsaSlotsTab}
       />
     </CreateLeadFormContext.Provider>
   );
@@ -122,6 +128,7 @@ function CreateLeadWizardInner({
   variant = "page",
   onClose,
   editLeadId,
+  isFromUsaSlotsTab = false,
 }: CreateLeadWizardPageProps = {}) {
   const router = useRouter();
   const isInline = variant === "inline";
@@ -144,6 +151,9 @@ function CreateLeadWizardInner({
     completedSteps,
     activeStepIds,
   } = useCreateLeadFormContext();
+
+  const isEdit = !!editLeadId;
+  const showUsaFields = isUsaCountry(state.immigrationCountry) && (isFromUsaSlotsTab || isEdit);
   const caseOfficerOptions = useCounselorSelectOptions(state.caseOfficer);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -500,7 +510,7 @@ function CreateLeadWizardInner({
                 />
               </FormSection>
             </FormSectionGrid>
-            {state.immigrationCountry !== "USA" ? (
+            {!showUsaFields ? (
               <>
                 <FormSectionGrid>
                   <CountrySelector
@@ -656,7 +666,7 @@ function CreateLeadWizardInner({
             )}
 
 
-            {isUsaCountry(state.immigrationCountry) && (
+            {showUsaFields && (
               <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
                 <div className="space-y-3">
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -1070,7 +1080,7 @@ function CreateLeadWizardInner({
                 </FormSection>
               </FormSectionGrid>
             </div>
-            {isUsaCountry(state.immigrationCountry) && (
+            {showUsaFields && (
               <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Slot Portal
@@ -1399,13 +1409,15 @@ function CreateLeadWizardInner({
               <FaTimes className="text-xs" />
             </button>
           </div>
-          <WizardProgress
-            currentStep={currentStep}
-            onStepClick={handleProgressStepClick}
-            allowFullNavigation
-            completedSteps={completedSteps}
-            activeStepIds={activeStepIds}
-          />
+          {activeStepIds.length > 1 && (
+            <WizardProgress
+              currentStep={currentStep}
+              onStepClick={handleProgressStepClick}
+              allowFullNavigation
+              completedSteps={completedSteps}
+              activeStepIds={activeStepIds}
+            />
+          )}
         </div>
 
         <div className={`px-5 md:px-6 ${isLastStep ? "py-3 text-sm" : "py-4 text-xs"}`}>
@@ -1417,16 +1429,26 @@ function CreateLeadWizardInner({
             isInline ? "relative" : "sticky bottom-0"
           } z-20 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 px-5 md:px-6 py-3 bg-white/95 dark:bg-[#0a0a1a]/95 backdrop-blur-sm`}
         >
-          <button
-            type="button"
-            onClick={handleBack}
-            className="py-2.5 px-4 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
-          >
-            {currentStep === 1 && !state.leadType && !returnToReview ? "Cancel" : "Back"}
-          </button>
+          {activeStepIds.length === 1 ? (
+            <button
+              type="button"
+              onClick={goToLeads}
+              className="py-2.5 px-4 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+            >
+              Cancel
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleBack}
+              className="py-2.5 px-4 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+            >
+              {currentStep === 1 && !state.leadType && !returnToReview ? "Cancel" : "Back"}
+            </button>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            {currentStep > 1 && (
+            {currentStep > 1 && activeStepIds.length > 1 && (
               <button
                 type="button"
                 onClick={goToLeads}

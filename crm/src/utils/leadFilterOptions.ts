@@ -23,6 +23,7 @@ export function getVisaServiceSelectOptions(
     { value: "Student Visa", label: "Student Visa" },
     { value: "Study Abroad", label: "Study Abroad" },
     { value: "Tourist Visa", label: "Tourist Visa" },
+    { value: "USA Visa", label: "USA Visa" },
     { value: "Work Visa", label: "Work Visa" },
     { value: "Other", label: "Other" },
   ];

@@ -35,6 +35,8 @@ export type CreateLeadFormState = {
   annualIncome: string;
   referredBy: string;
   notes: string;
+  isFromUsaSlotsTab?: boolean;
+  isEdit?: boolean;
 };
 
 export const CREATE_LEAD_INITIAL_STATE: CreateLeadFormState = {
@@ -69,4 +71,6 @@ export const CREATE_LEAD_INITIAL_STATE: CreateLeadFormState = {
   annualIncome: "",
   referredBy: "",
   notes: "",
+  isFromUsaSlotsTab: false,
+  isEdit: false,
 };

@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCrm, VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Lead, Meeting } from "@/context/CrmContext";
 import { ROLE_TABS, userHasPermission } from "@/utils/crmConstants";
 import { LEAD_STATUS_ORDER, getStatusLabel } from "@/utils/leadStatusConfig";
-import { getDepositPickerLeads, getEligibleDepositLeads } from "@/utils/leadPaymentUtils";
+import { getDepositPickerLeads, getEligibleDepositLeads, getLeadPaymentSummary } from "@/utils/leadPaymentUtils";
 import { getAssignableCounselorNames, UNASSIGNED_COUNSELOR } from "@/utils/counselorOptions";
 import { isLeadAssignedToCounselor } from "@/utils/leadHelpers";
 // @ts-ignore
@@ -983,23 +983,36 @@ export function useCrmLayoutState() {
   }, [leads, dateRangeStart, dateRangeEnd]);
 
   const countryBarChartData = useMemo(() => {
-    const counts: Record<string, number> = {};
+    const counts: Record<string, { count: number; received: number; pending: number }> = {};
     filteredLeads.forEach((lead) => {
       const country = lead.country || "Unknown";
-      counts[country] = (counts[country] || 0) + 1;
+      if (!counts[country]) {
+        counts[country] = { count: 0, received: 0, pending: 0 };
+      }
+      const summary = getLeadPaymentSummary(lead);
+      counts[country].count += 1;
+      counts[country].received += summary.received;
+      counts[country].pending += summary.pending;
     });
 
     const sorted = Object.entries(counts)
-      .map(([country, count]) => ({ country, count }))
+      .map(([country, stats]) => ({
+        country,
+        count: stats.count,
+        received: stats.received,
+        pending: stats.pending,
+      }))
       .sort((a, b) => b.count - a.count);
 
     const top11 = sorted.slice(0, 11);
     const othersList = sorted.slice(11);
     const othersCount = othersList.reduce((sum, item) => sum + item.count, 0);
+    const othersReceived = othersList.reduce((sum, item) => sum + item.received, 0);
+    const othersPending = othersList.reduce((sum, item) => sum + item.pending, 0);
 
     const result = [...top11];
     while (result.length < 11) {
-      result.push({ country: "-", count: 0 });
+      result.push({ country: "-", count: 0, received: 0, pending: 0 });
     }
 
     if (countrySortOrder === "asc") {
@@ -1008,7 +1021,12 @@ export function useCrmLayoutState() {
       result.sort((a, b) => b.count - a.count);
     }
 
-    result.push({ country: "Others", count: othersCount });
+    result.push({
+      country: "Others",
+      count: othersCount,
+      received: othersReceived,
+      pending: othersPending,
+    });
     return result;
   }, [filteredLeads, countrySortOrder]);
 
