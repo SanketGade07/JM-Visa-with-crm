@@ -13,7 +13,7 @@ export function useSubmissionTabs() {
   );
 
   const readyCount = useMemo(
-    () => counselorScopedLeads.filter((l) => !l.isDeleted && l.status === "IN_PROGRESS").length,
+    () => counselorScopedLeads.filter((l) => !l.isDeleted && l.status === "APPLICATION_PROCESSED").length,
     [counselorScopedLeads]
   );
 

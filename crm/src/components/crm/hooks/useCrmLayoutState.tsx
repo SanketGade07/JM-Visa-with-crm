@@ -1173,7 +1173,7 @@ export function useCrmLayoutState() {
     return (["USA", "UK", "Canada", "Europe"] as const).map((c) => {
       const cLeads = leads.filter(l => l.country === c);
       const approved = cLeads.filter(l => l.status === "VISA_APPROVED").length;
-      const pending = cLeads.filter(l => l.status === "IN_PROGRESS" || l.status === "VISA_SUBMISSION").length;
+      const pending = cLeads.filter(l => l.status === "IN_PROGRESS" || l.status === "APPLICATION_PROCESSED" || l.status === "VISA_SUBMISSION").length;
       const newLeads = cLeads.filter(l => l.status === "NEW_LEAD").length;
       
       const total = Math.max(1, approved + pending + newLeads);
