@@ -492,8 +492,9 @@ export function useCrmLayoutState() {
   );
 
   const wrappedAddLead = useCallback(
-    (newLeadData: Parameters<typeof addLead>[0]): string => {
-      const newId = addLead(newLeadData);
+    async (newLeadData: Parameters<typeof addLead>[0]): Promise<string | null> => {
+      const newId = await addLead(newLeadData);
+      if (!newId) return null;
       const counselor = newLeadData.counselor?.trim();
       if (counselor) {
         pushAssignmentNotificationForCounselor(

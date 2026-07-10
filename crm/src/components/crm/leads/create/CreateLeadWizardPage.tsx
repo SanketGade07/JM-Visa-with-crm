@@ -319,11 +319,15 @@ function CreateLeadWizardInner({
           showToast("Failed to update lead", "error");
         }
       } else {
-        const newId = addLead(payload);
-        showToast("Lead created successfully!");
-        openLeadDetail(newId, "details", { created: true });
-        if (isInline) {
-          onClose?.();
+        const newId = await addLead(payload);
+        if (newId) {
+          showToast("Lead created successfully!");
+          openLeadDetail(newId, "details", { created: true });
+          if (isInline) {
+            onClose?.();
+          }
+        } else {
+          showToast("Failed to create lead. Please try again.", "error");
         }
       }
     } finally {

@@ -183,7 +183,7 @@ interface CrmContextType {
   addUser: (user: Omit<CrmUser, "id" | "createdAt"> & { id?: string; password?: string; createdAt?: string }) => Promise<{ ok: boolean; error?: string }>;
   deleteUser: (userId: string) => Promise<{ ok: boolean; error?: string }>;
   resetUserPassword: (userId: string, nextPassword?: string) => Promise<{ ok: boolean; error?: string; password?: string; user?: CrmUser }>;
-  addLead: (lead: Omit<Lead, "id" | "dateCreated" | "lastUpdated" | "isDeleted">) => string;
+  addLead: (lead: Omit<Lead, "id" | "dateCreated" | "lastUpdated" | "isDeleted">) => Promise<string | null>;
   updateLeadStatus: (leadId: string, status: VisaStatus) => void;
   updateEmploymentCategory: (leadId: string, category: EmploymentCategory) => void;
   toggleChecklistItem: (leadId: string, item: string) => void;
@@ -512,7 +512,9 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // ── Lead operations ─────────────────────────────────────────────────────────
 
-  const addLead = (newLeadData: Omit<Lead, "id" | "dateCreated" | "lastUpdated" | "isDeleted">): string => {
+  const addLead = async (
+    newLeadData: Omit<Lead, "id" | "dateCreated" | "lastUpdated" | "isDeleted">
+  ): Promise<string | null> => {
     const today = new Date().toISOString().split("T")[0];
     const now = new Date().toISOString();
     const category = newLeadData.employmentCategory ?? DEFAULT_EMPLOYMENT_CATEGORY;
@@ -527,7 +529,8 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...(isCounselorAssigned(newLeadData.counselor) ? { assignedAt: now } : {}),
       isDeleted: false,
     };
-    void syncLeads([...leads, newLead]);
+    const success = await syncLeads([...leads, newLead]);
+    if (!success) return null;
     logActivity({
       leadId: newLead.id,
       type: "lead_created",
