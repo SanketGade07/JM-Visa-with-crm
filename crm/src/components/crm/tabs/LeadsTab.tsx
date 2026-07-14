@@ -731,7 +731,7 @@ export function LeadsTab() {
                         title: "Review",
                         onClick: (l) => {
                           const name = l.name || "Client";
-                          const message = `Hello ${name}, thank you for choosing JM Visa Services. We hope you had a great experience! Could you please take a moment to share your feedback or review with us? Please share your review here: https://www.jmvisaservices.com/feedback`;
+                          const message = `Hello ${name}, thank you for choosing JM Visa Services. We hope you had a great experience!`;
                           window.open(
                             `https://wa.me/${l.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(message)}`,
                             "_blank"

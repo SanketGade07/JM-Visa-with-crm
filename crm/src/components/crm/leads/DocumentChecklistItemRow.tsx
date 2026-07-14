@@ -55,6 +55,7 @@ export function DocumentChecklistItemRow({
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [email, setEmail] = useState(lead.email ?? "");
   const [isSending, setIsSending] = useState(false);
+  const [fallbackModalData, setFallbackModalData] = useState<{ email: string; errorMsg: string } | null>(null);
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
   const isEmailInvalid = email.trim() !== "" && !emailRegex.test(email.trim());
@@ -262,11 +263,14 @@ export function DocumentChecklistItemRow({
                   );
                   window.open(`mailto:${email.trim()}?subject=${subject}&body=${body}`, "_blank");
 
-                  showToast(`Terms and conditions fallback email drafted to ${email.trim()}!`, "success");
                   if (!value) {
                     toggleChecklistItem(lead.id, itemKey);
                   }
                   setIsSendModalOpen(false);
+                  setFallbackModalData({
+                    email: email.trim(),
+                    errorMsg: err.message || "Mail server credentials are not configured.",
+                  });
                 } finally {
                   setIsSending(false);
                 }
@@ -305,6 +309,50 @@ export function DocumentChecklistItemRow({
                 {isSending ? "Sending..." : "Send Email"}
               </button>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {fallbackModalData && createPortal(
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setFallbackModalData(null)}
+        >
+          <div
+            className="w-full max-w-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center text-amber-500 text-xl">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                Direct Email Failed
+              </h3>
+            </div>
+
+            <div className="space-y-2 text-xs text-gray-600 dark:text-[#A0A6B0] leading-relaxed">
+              <p>
+                The server could not send the email automatically to <strong className="text-gray-900 dark:text-white">{fallbackModalData.email}</strong>.
+              </p>
+              <div className="bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-rose-450 p-2.5 rounded-lg text-[11px] font-mono break-all text-left">
+                Error: {fallbackModalData.errorMsg}
+              </div>
+              <p>
+                We have automatically generated a draft in your local mail client. Please check your email app and click **Send** manually.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setFallbackModalData(null)}
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-semibold text-xs rounded-xl shadow transition-all active:scale-95 cursor-pointer border-0"
+            >
+              Okay, got it
+            </button>
           </div>
         </div>,
         document.body

@@ -80,7 +80,14 @@ export function DriveTab() {
   const [isRenaming, setIsRenaming] = useState(false);
 
   const [deleteConfirm, setDeleteConfirm] = useState<DriveItem | null>(null);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (!deleteConfirm) {
+      setDeleteConfirmationText("");
+    }
+  }, [deleteConfirm]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -505,6 +512,10 @@ export function DriveTab() {
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
+    if (deleteConfirm.isFolder && deleteConfirmationText.trim().toLowerCase() !== "delete") {
+      showToast("Please type 'delete' to confirm", "error");
+      return;
+    }
     setIsDeleting(true);
     try {
       const res = await fetch(
@@ -948,7 +959,7 @@ export function DriveTab() {
       <DriveModal
         open={!!deleteConfirm}
         isMounted={isMounted}
-        title="Delete item?"
+        title={deleteConfirm?.isFolder ? "Delete folder?" : "Delete file?"}
         onClose={() => setDeleteConfirm(null)}
         footer={
           <>
@@ -962,8 +973,12 @@ export function DriveTab() {
             <button
               type="button"
               onClick={() => void handleDelete()}
-              disabled={isDeleting}
-              className="py-2 px-3.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-semibold text-[11px] transition-all flex items-center gap-2"
+              disabled={
+                isDeleting ||
+                (deleteConfirm?.isFolder === true &&
+                  deleteConfirmationText.trim().toLowerCase() !== "delete")
+              }
+              className="py-2 px-3.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-semibold text-[11px] transition-all flex items-center gap-2 cursor-pointer"
             >
               {isDeleting && <FaSpinner className="animate-spin" />}
               Delete
@@ -971,12 +986,30 @@ export function DriveTab() {
           </>
         }
       >
-        <p className="text-xs text-gray-600 dark:text-[#A0A6B0]">
-          <span className="text-[#1F2937] dark:text-[#EDEDED] font-medium">
-            {deleteConfirm?.name}
-          </span>{" "}
-          will be moved to Google Drive trash.
-        </p>
+        <div className="space-y-4">
+          <p className="text-xs text-gray-600 dark:text-[#A0A6B0] leading-relaxed">
+            Are you sure you want to delete{" "}
+            <span className="text-[#1F2937] dark:text-[#EDEDED] font-bold">
+              &ldquo;{deleteConfirm?.name}&rdquo;
+            </span>
+            ? This will move it to the Google Drive trash.
+          </p>
+          {deleteConfirm?.isFolder && (
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block">
+                Type <span className="font-mono bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-450 px-1 py-0.5 rounded">delete</span> to confirm
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmationText}
+                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                placeholder='Type "delete"'
+                className={`w-full text-xs font-semibold py-2.5 px-3 rounded-xl focus:outline-none ${DRIVE_INPUT}`}
+                autoComplete="off"
+              />
+            </div>
+          )}
+        </div>
       </DriveModal>
     </div>
   );
