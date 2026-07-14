@@ -2364,49 +2364,24 @@ html.dark table.w-full.border-collapse td:first-child {
   border-left: 1px solid #1e293b !important;
 }
 
-/* ==========================================================================
-   PAYMENTS TAB SPECIFIC TABLE STYLE (BOXED WITH ROUNDED CORNERS & RIGHT VERTICAL LINE)
-   ========================================================================== */
-.payments-ledger-table .crm-x-scroll,
-.payments-desk-table .crm-x-scroll {
-  border: 1px solid #e5e7eb !important;
-  border-radius: 12px !important;
-  background-color: #ffffff !important;
-  overflow: hidden !important;
+/* Force links and text inside my chat bubbles to be white */
+.discussion-message-content--me,
+.discussion-message-content--me div,
+.discussion-message-content--me span,
+.discussion-message-content--me p,
+article.self-end,
+article.self-end * {
+  color: #ffffff !important;
 }
 
-html.dark .payments-ledger-table .crm-x-scroll,
-html.dark .payments-desk-table .crm-x-scroll {
-  border: 1px solid #1e293b !important;
-  background-color: rgb(15, 23, 42) !important;
+.discussion-message-content--me a,
+article.self-end a {
+  color: #ffffff !important;
+  text-decoration: underline !important;
+  text-underline-offset: 2px !important;
 }
 
-/* For these tables only, remove the first-child left border and last-child right border
-   because the card container's border already serves as the outer boundary.
-   The container's right border acts as the right end vertical line. */
-.payments-ledger-table table.w-full.border-collapse th:first-child,
-.payments-ledger-table table.w-full.border-collapse td:first-child,
-.payments-desk-table table.w-full.border-collapse th:first-child,
-.payments-desk-table table.w-full.border-collapse td:first-child {
-  border-left: none !important;
-}
-
-.payments-ledger-table table.w-full.border-collapse th:last-child,
-.payments-ledger-table table.w-full.border-collapse td:last-child,
-.payments-desk-table table.w-full.border-collapse th:last-child,
-.payments-desk-table table.w-full.border-collapse td:last-child {
-  border-right: none !important;
-}
-
-.payments-ledger-table table.w-full.border-collapse tbody tr:last-child td,
-.payments-desk-table table.w-full.border-collapse tbody tr:last-child td {
-  border-bottom: none !important;
-}
-
-.payments-ledger-table table.w-full.border-collapse,
-.payments-desk-table table.w-full.border-collapse {
-  border-top: none !important;
-  border-bottom: none !important;
-  border-left: none !important;
-  border-right: none !important;
+.discussion-message-content--me a:hover,
+article.self-end a:hover {
+  color: #f1f5f9 !important;
 }

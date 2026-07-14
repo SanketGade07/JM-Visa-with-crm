@@ -4,9 +4,10 @@ import { isDiscussionHtml, sanitizeDiscussionHtml } from "@/utils/discussionMess
 type FormattedDiscussionContentProps = {
   content: string;
   className?: string;
+  isMe?: boolean;
 };
 
-function parseInlineMarkdown(text: string, keyPrefix = "md"): React.ReactNode[] {
+function parseInlineMarkdown(text: string, isMe = false, keyPrefix = "md"): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
   let index = 0;
   let key = 0;
@@ -16,15 +17,22 @@ function parseInlineMarkdown(text: string, keyPrefix = "md"): React.ReactNode[] 
 
     const linkMatch = rest.match(/^\[([^\]]+)\]\(([^)]+)\)/);
     if (linkMatch) {
+      const label = linkMatch[1];
+      const url = linkMatch[2];
       nodes.push(
         <a
           key={`${keyPrefix}-${key++}`}
-          href={linkMatch[2]}
+          href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-violet-600 dark:text-violet-400 underline underline-offset-2 hover:text-violet-700 dark:hover:text-violet-300"
+          className={
+            isMe
+              ? "text-violet-200 underline hover:text-violet-100 transition-colors"
+              : "text-violet-600 dark:text-violet-400 underline underline-offset-2 hover:text-violet-700 dark:hover:text-violet-300"
+          }
+          style={isMe ? { color: "#e9d5ff", textDecoration: "underline" } : undefined}
         >
-          {linkMatch[1]}
+          {label}
         </a>
       );
       index += linkMatch[0].length;
@@ -35,7 +43,7 @@ function parseInlineMarkdown(text: string, keyPrefix = "md"): React.ReactNode[] 
     if (boldMatch) {
       nodes.push(
         <strong key={`${keyPrefix}-${key++}`}>
-          {parseInlineMarkdown(boldMatch[1], `${keyPrefix}-b${key}`)}
+          {parseInlineMarkdown(boldMatch[1], isMe, `${keyPrefix}-b${key}`)}
         </strong>
       );
       index += boldMatch[0].length;
@@ -46,7 +54,7 @@ function parseInlineMarkdown(text: string, keyPrefix = "md"): React.ReactNode[] 
     if (underlineMatch) {
       nodes.push(
         <u key={`${keyPrefix}-${key++}`}>
-          {parseInlineMarkdown(underlineMatch[1], `${keyPrefix}-u${key}`)}
+          {parseInlineMarkdown(underlineMatch[1], isMe, `${keyPrefix}-u${key}`)}
         </u>
       );
       index += underlineMatch[0].length;
@@ -57,7 +65,7 @@ function parseInlineMarkdown(text: string, keyPrefix = "md"): React.ReactNode[] 
     if (italicMatch) {
       nodes.push(
         <em key={`${keyPrefix}-${key++}`}>
-          {parseInlineMarkdown(italicMatch[1], `${keyPrefix}-i${key}`)}
+          {parseInlineMarkdown(italicMatch[1], isMe, `${keyPrefix}-i${key}`)}
         </em>
       );
       index += italicMatch[0].length;
@@ -73,11 +81,15 @@ function parseInlineMarkdown(text: string, keyPrefix = "md"): React.ReactNode[] 
   return nodes.length > 0 ? nodes : [text];
 }
 
-function renderMarkdownContent(content: string, className: string) {
+function renderMarkdownContent(content: string, className: string, isMe = false, forceWhiteRef?: any) {
   const lines = content.split("\n");
 
   return (
-    <div className={className}>
+    <div
+      ref={forceWhiteRef}
+      className={`discussion-message-content ${className} ${isMe ? "discussion-message-content--me" : ""}`}
+      style={isMe ? { color: "#ffffff" } : undefined}
+    >
       {lines.map((line, lineIndex) => {
         const isListItem = line.startsWith("- ");
         const lineContent = isListItem ? line.slice(2) : line;
@@ -92,13 +104,19 @@ function renderMarkdownContent(content: string, className: string) {
                   ? "mt-1"
                   : undefined
             }
+            style={isMe ? { color: "#ffffff" } : undefined}
           >
             {isListItem ? (
               <span aria-hidden="true" className="shrink-0 text-gray-500 dark:text-slate-400">
                 •
               </span>
             ) : null}
-            <span className="min-w-0 break-words">{parseInlineMarkdown(lineContent)}</span>
+            <span
+              className="min-w-0 break-words"
+              style={isMe ? { color: "#ffffff" } : undefined}
+            >
+              {parseInlineMarkdown(lineContent, isMe)}
+            </span>
           </p>
         );
       })}
@@ -109,16 +127,73 @@ function renderMarkdownContent(content: string, className: string) {
 export function FormattedDiscussionContent({
   content,
   className = "",
+  isMe = false,
 }: FormattedDiscussionContentProps) {
-  if (isDiscussionHtml(content)) {
-    const safeHtml = sanitizeDiscussionHtml(content);
-    return (
-      <div
-        className={`discussion-message-content ${className}`}
-        dangerouslySetInnerHTML={{ __html: safeHtml }}
-      />
-    );
+  const normalizedContent = (content || "").replace(/&nbsp;/g, " ");
+  const [isMounted, setIsMounted] = React.useState(false);
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const forceWhiteRef = React.useCallback(
+    (el: HTMLDivElement | null) => {
+      if (!el || !isMe) return;
+      el.style.setProperty("color", "#ffffff", "important");
+      const children = el.querySelectorAll("*");
+      children.forEach((child) => {
+        if (child instanceof HTMLElement) {
+          if (child.tagName === "A") {
+            child.style.setProperty("color", "#e9d5ff", "important");
+            child.style.setProperty("text-decoration", "underline", "important");
+          } else {
+            child.style.setProperty("color", "#ffffff", "important");
+          }
+        }
+      });
+    },
+    [isMe, content]
+  );
+
+  if (isDiscussionHtml(normalizedContent)) {
+    const safeHtml = sanitizeDiscussionHtml(normalizedContent);
+
+    if (!isMounted) {
+      return (
+        <div
+          className={`discussion-message-content ${className} ${isMe ? "discussion-message-content--me" : ""}`}
+          style={isMe ? { color: "#ffffff" } : undefined}
+          dangerouslySetInnerHTML={{ __html: safeHtml }}
+        />
+      );
+    }
+
+    // Client-side DOM parsing to detect links and apply styles
+    const doc = new DOMParser().parseFromString(`<div>${safeHtml}</div>`, "text/html");
+    const container = doc.body.firstElementChild;
+
+    if (container) {
+      if (isMe) {
+        // Force ALL child elements inside my messages to have white text color
+        const allElements = Array.from(container.querySelectorAll("*"));
+        for (const el of allElements) {
+          if (el.tagName === "A") {
+            el.className = "text-violet-200 underline hover:text-violet-100 transition-colors";
+            el.setAttribute("style", "color: #e9d5ff !important; text-decoration: underline !important;");
+          } else {
+            el.setAttribute("style", "color: #ffffff !important;");
+          }
+        }
+      }
+      return (
+        <div
+          ref={forceWhiteRef}
+          className={`discussion-message-content ${className} ${isMe ? "discussion-message-content--me" : ""}`}
+          style={isMe ? { color: "#ffffff" } : undefined}
+          dangerouslySetInnerHTML={{ __html: container.innerHTML }}
+        />
+      );
+    }
   }
 
-  return renderMarkdownContent(content, className);
+  return renderMarkdownContent(normalizedContent, className, isMe, forceWhiteRef);
 }

@@ -20,6 +20,7 @@ export type DiscussionMessageComposerHandle = {
   getContent: () => string;
   clear: () => void;
   isEmpty: () => boolean;
+  insertFileLink: (name: string, url: string) => void;
 };
 
 type DiscussionMessageComposerProps = {
@@ -35,6 +36,16 @@ const TOOLBAR_ITEMS = [
   { Icon: FiList, label: "Bullet list", action: "list" as const },
   { Icon: FiLink, label: "Link", action: "link" as const },
 ] as const;
+
+function getGoogleDriveFileId(url: string): string | null {
+  const fileDMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileDMatch) return fileDMatch[1];
+  
+  const idParamMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (idParamMatch) return idParamMatch[1];
+  
+  return null;
+}
 
 export const DiscussionMessageComposer = forwardRef<
   DiscussionMessageComposerHandle,
@@ -78,6 +89,16 @@ export const DiscussionMessageComposer = forwardRef<
       setActiveFormats(new Set());
     },
     isEmpty: () => isDiscussionEditorEmpty(editorRef.current),
+    insertFileLink: (name: string, url: string) => {
+      if (editorRef.current) {
+        const linkHtml = `<a href="${url}" target="_blank" rel="noopener noreferrer">${name}</a>`;
+        const prefix = editorRef.current.innerHTML.trim() === "" || editorRef.current.innerHTML.trim() === "<br>" ? "" : "<br>";
+        editorRef.current.innerHTML = editorRef.current.innerHTML.trim() === "<br>" 
+          ? `Attached file: ${linkHtml}&nbsp;` 
+          : `${editorRef.current.innerHTML}${prefix}Attached file: ${linkHtml}&nbsp;`;
+        syncEmpty();
+      }
+    },
   }));
 
   useEffect(() => {
@@ -145,9 +166,13 @@ export const DiscussionMessageComposer = forwardRef<
         onKeyUp={syncActiveFormats}
         onMouseUp={syncActiveFormats}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault();
-            onSend?.();
+          if (e.key === "Enter") {
+            if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
+              e.preventDefault();
+              if (!isEmpty) {
+                onSend?.();
+              }
+            }
           }
         }}
         className={`discussion-rich-editor discussion-message-input crm-slim-scrollbar w-full min-h-[5.5rem] max-h-40 overflow-y-auto rounded-xl border border-gray-200/80 dark:border-slate-700/60 bg-white/90 dark:bg-[#0f172a]/40 text-[13px] leading-relaxed p-3 focus:outline-none placeholder-gray-400 dark:placeholder-slate-500 text-gray-700 dark:text-slate-200 ${

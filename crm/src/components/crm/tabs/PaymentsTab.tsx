@@ -503,11 +503,11 @@ export function PaymentsTab() {
   ];
 
   return (
-    <div className="-m-4 md:-m-8 p-4 md:p-6 bg-gray-50 dark:bg-transparent min-h-[calc(100vh-4rem)] space-y-5">
+    <div className="-m-4 md:-m-8 pt-0 pl-0 pr-0 pb-4 md:pt-0 md:pl-0 md:pr-0 md:pb-6 bg-gray-50 dark:bg-transparent min-h-[calc(100vh-4rem)] space-y-5">
       <div className="min-w-0 space-y-6">
 
         {/* ── Summary cards row ────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-4 md:px-8 pt-4 md:pt-6">
           {summaryCards.map((card) => (
             <div
               key={card.label}

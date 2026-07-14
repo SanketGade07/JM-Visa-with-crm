@@ -14,6 +14,7 @@ import {
   FiUser,
   FiCalendar,
   FiDollarSign,
+  FiX,
 } from "react-icons/fi";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import {
@@ -47,9 +48,7 @@ function isSystemAuditNote(content: string): boolean {
 }
 
 function isDiscussionActivity(activity: Activity): boolean {
-  if (activity.type === "discussion") return true;
-  if (activity.type === "note" && !isSystemAuditNote(activity.content)) return true;
-  return false;
+  return activity.type === "discussion";
 }
 
 const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
@@ -131,7 +130,7 @@ function DiscussionDivider() {
         <div className="w-full border-t border-gray-200 dark:border-slate-700/80" />
       </div>
       <div className="relative flex justify-center">
-        <span className="inline-flex items-center rounded-full border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+        <span className="inline-flex items-center rounded-full border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-[#070712] px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">
           Discussion Started
         </span>
       </div>
@@ -140,6 +139,13 @@ function DiscussionDivider() {
 }
 
 function MessageBubble({ activity }: { activity: Activity }) {
+  const { currentUser } = useCrmLayoutContext();
+  
+  const isMe =
+    activity.createdBy === currentUser?.name ||
+    (activity.createdBy === "ADMIN" && currentUser?.role === "ADMIN") ||
+    (activity.createdBy === "STAFF" && currentUser?.role === "STAFF");
+
   const typeLabel =
     activity.type === "call"
       ? "Call"
@@ -148,26 +154,41 @@ function MessageBubble({ activity }: { activity: Activity }) {
         : null;
 
   return (
-    <article className="rounded-lg bg-gray-100/70 dark:bg-slate-800/25 px-4 py-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-1.5">
-        <span className="text-xs font-bold text-gray-800 dark:text-slate-100">
-          {activity.createdBy || "Team member"}
+    <article
+      className={`rounded-2xl px-4 py-2.5 max-w-[85%] sm:max-w-[75%] shadow-sm flex flex-col ${
+        isMe
+          ? "self-end bg-gradient-to-br from-violet-600 to-indigo-600 text-white rounded-tr-none"
+          : "self-start bg-slate-100/70 dark:bg-slate-800/25 border border-slate-200/60 dark:border-slate-800/40 text-gray-800 dark:text-slate-100 rounded-tl-none"
+      }`}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-0.5 mb-1.5 w-full">
+        <span
+          className={`text-[10px] font-bold ${
+            isMe ? "text-violet-100" : "text-violet-600 dark:text-violet-400"
+          }`}
+        >
+          {isMe ? "You" : activity.createdBy || "Team member"}
         </span>
         <time
-          className="text-[10px] font-semibold text-gray-400 dark:text-slate-500 tabular-nums"
+          className={`text-[9px] font-semibold tabular-nums ${
+            isMe ? "text-violet-200/75" : "text-gray-400 dark:text-slate-500"
+          }`}
           dateTime={activity.createdAt}
         >
           {formatMessageTimestamp(activity.createdAt)}
         </time>
       </div>
       {typeLabel ? (
-        <span className="inline-flex items-center rounded-md border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300 mb-1.5">
+        <span className="inline-flex items-center rounded-md border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300 mb-1.5 self-start">
           {typeLabel}
         </span>
       ) : null}
       <FormattedDiscussionContent
         content={activity.content}
-        className="text-[13px] leading-relaxed text-gray-700 dark:text-slate-200"
+        isMe={isMe}
+        className={`text-[13px] leading-relaxed w-full ${
+          isMe ? "text-white" : "text-gray-700 dark:text-slate-200"
+        }`}
       />
     </article>
   );
@@ -191,6 +212,12 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
   const [messageEmpty, setMessageEmpty] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [isAttaching, setIsAttaching] = useState(false);
+  const [attachmentPreview, setAttachmentPreview] = useState<{
+    file: File;
+    previewUrl: string;
+    isImage: boolean;
+  } | null>(null);
+  const [attachmentCaption, setAttachmentCaption] = useState("");
   const composerRef = useRef<DiscussionMessageComposerHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -266,10 +293,25 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
     return data.driveFolderId;
   };
 
-  const handleAttachFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAttachFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file || isAttaching) return;
+    if (!file) return;
+
+    const isImage = /\.(png|jpe?g|gif|webp)$/i.test(file.name);
+    const previewUrl = URL.createObjectURL(file);
+
+    setAttachmentPreview({
+      file,
+      previewUrl,
+      isImage,
+    });
+    setAttachmentCaption("");
+  };
+
+  const handleSendAttachment = async () => {
+    if (!attachmentPreview || isAttaching) return;
+    const { file, previewUrl } = attachmentPreview;
 
     setIsAttaching(true);
     try {
@@ -295,13 +337,18 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
         data.file.webViewLink ??
         `https://drive.google.com/file/d/${data.file.id}/view`;
 
-      await postLeadDiscussionMessage(
-        lead.id,
-        `Attached file: [${file.name}](${fileLink})`
-      );
-      showToast("File added to client Drive and discussion", "success");
+      // Compose the message content
+      const captionPrefix = attachmentCaption.trim() ? `${attachmentCaption.trim()}<br><br>` : "";
+      const messageContent = `${captionPrefix}Attached file: <a href="${fileLink}" target="_blank" rel="noopener noreferrer">${file.name}</a>`;
+
+      await postLeadDiscussionMessage(lead.id, messageContent);
+      showToast("File posted in discussion", "success");
+
+      // Cleanup
+      URL.revokeObjectURL(previewUrl);
+      setAttachmentPreview(null);
     } catch {
-      showToast("Failed to attach file", "error");
+      showToast("Failed to send attachment", "error");
     } finally {
       setIsAttaching(false);
     }
@@ -378,7 +425,7 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
 
             <DiscussionDivider />
 
-            <div className="space-y-3 pb-2">
+            <div className="flex flex-col gap-3.5 pb-2">
               {discussionMessages.length === 0 ? (
                 <p className="text-center text-xs text-gray-400 dark:text-slate-500 py-8">
                   No messages yet
@@ -441,6 +488,93 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
           className="min-w-0 w-full"
         />
       </div>
+
+      {attachmentPreview && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 backdrop-blur-[2px] p-4 transition-all">
+          <div className="w-full max-w-md bg-white dark:bg-[#0c0d21] border border-slate-200/80 dark:border-slate-800/80 rounded-[32px] overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.12)] flex flex-col h-[500px] animate-in fade-in zoom-in-95 duration-250 backdrop-blur-md">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 dark:border-slate-900 bg-slate-50/50 dark:bg-[#090a18]/50">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate max-w-[80%]">
+                {attachmentPreview.file.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  URL.revokeObjectURL(attachmentPreview.previewUrl);
+                  setAttachmentPreview(null);
+                }}
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors p-1"
+              >
+                <FiX className="text-base" />
+              </button>
+            </div>
+
+            {/* Preview Body */}
+            <div className="flex-1 min-h-0 bg-white dark:bg-[#070712] flex items-center justify-center p-6 relative">
+              {attachmentPreview.isImage ? (
+                <div className="w-full h-full flex items-center justify-center p-2 rounded-2xl bg-slate-50/50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-900">
+                  <img
+                    src={attachmentPreview.previewUrl}
+                    alt="Preview"
+                    className="max-w-full max-h-full object-contain rounded-xl select-none"
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-8 rounded-2xl bg-slate-50/50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-900">
+                  <div className="w-20 h-20 rounded-3xl bg-violet-50 dark:bg-violet-950/30 flex items-center justify-center text-violet-600 dark:text-violet-400 shadow-sm border border-violet-100/50 dark:border-violet-900/30">
+                    <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 text-center truncate max-w-[240px]" title={attachmentPreview.file.name}>
+                    {attachmentPreview.file.name}
+                  </span>
+                  <span className="text-[10px] bg-violet-50 dark:bg-violet-900/40 px-3 py-1.5 rounded-full border border-violet-100/50 dark:border-violet-900/20 text-violet-600 dark:text-violet-400 font-semibold shadow-sm">
+                    {(attachmentPreview.file.size / 1024).toFixed(1)} kB
+                  </span>
+                </div>
+              )}
+
+              {/* Uploading indicator overlay */}
+              {isAttaching && (
+                <div className="absolute inset-0 bg-white/90 dark:bg-[#070712]/90 flex flex-col items-center justify-center gap-3">
+                  <div className="w-8 h-8 rounded-full border-2 border-t-violet-600 border-slate-200 dark:border-slate-800 animate-spin" />
+                  <span className="text-xs text-slate-700 dark:text-slate-300 font-semibold">Uploading to Drive…</span>
+                </div>
+              )}
+            </div>
+
+            {/* Footer with Caption Input & Send */}
+            <div className="p-4 bg-slate-50/50 dark:bg-[#0c0d21]/50 border-t border-slate-100 dark:border-slate-900 flex items-center gap-3.5">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={attachmentCaption}
+                  onChange={(e) => setAttachmentCaption(e.target.value)}
+                  placeholder="Type a message (caption)..."
+                  className="w-full bg-white dark:bg-[#070712] border border-slate-200 dark:border-slate-800/80 text-slate-850 dark:text-slate-100 placeholder-slate-450 dark:placeholder-slate-500 text-sm py-3.5 px-5 rounded-[20px] focus:outline-none focus:border-violet-500/80 transition-colors shadow-sm focus:shadow-none"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !isAttaching) {
+                      e.preventDefault();
+                      void handleSendAttachment();
+                    }
+                  }}
+                  autoFocus
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleSendAttachment()}
+                disabled={isAttaching}
+                className="w-12 h-12 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 flex items-center justify-center text-white shadow-[0_4px_14px_rgba(124,58,237,0.3)] active:scale-95 disabled:opacity-40 disabled:scale-100 transition-all cursor-pointer shrink-0"
+                title="Send attachment"
+              >
+                <FiSend className="text-base translate-x-[1px] -translate-y-[0.5px]" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
