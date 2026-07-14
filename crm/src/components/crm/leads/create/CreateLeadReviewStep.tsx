@@ -90,18 +90,12 @@ export function CreateLeadReviewStep({ state, onEditStep }: CreateLeadReviewStep
           <SummaryRow label="Phone" value={summaryText(state.phone)} />
         </SummaryCard> */}
 
-        {(state.leadType === "visa" ||
-          state.passportNumber.trim() ||
-          state.passportIssueDate.trim() ||
-          state.passportExpiryDate.trim() ||
-          state.passportPlaceOfIssue.trim()) && (
           <SummaryCard title="Passport Details" step={3} onEdit={onEditStep}>
             <SummaryRow label="Passport number" value={summaryText(state.passportNumber)} />
             <SummaryRow label="Passport issue date" value={summaryText(state.passportIssueDate)} />
             <SummaryRow label="Passport expiry date" value={summaryText(state.passportExpiryDate)} />
             <SummaryRow label="Place of issue" value={summaryText(state.passportPlaceOfIssue)} />
           </SummaryCard>
-        )}
 
         <SummaryCard title="Application Credentials" step={4} onEdit={onEditStep}>
           <SummaryRow

@@ -129,10 +129,7 @@ const STEP_FIELD_ORDER: Record<WizardStepId, (keyof CreateLeadFormState)[]> = {
 };
 
 export function getActiveStepIds(leadType: CreateLeadType): WizardStepId[] {
-  if (leadType === "visa") {
-    return [1, 2, 3, 4, 5, 6];
-  }
-  return [1, 2, 4, 5, 6];
+  return [1, 2, 3, 4, 5, 6];
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -206,21 +203,19 @@ export function getStepFieldErrors(
       break;
     }
     case 3: {
-      if (state.leadType === "visa") {
-        if (!state.passportNumber.trim()) {
-          errors.passportNumber = "Passport number is required.";
-        }
-        const issueParts = state.passportIssueDate.split("-");
-        if (issueParts.length < 3 || issueParts.some((p) => !p.trim())) {
-          errors.passportIssueDate = "Passport issue date is required.";
-        }
-        const expiryParts = state.passportExpiryDate.split("-");
-        if (expiryParts.length < 3 || expiryParts.some((p) => !p.trim())) {
-          errors.passportExpiryDate = "Passport expiry date is required.";
-        }
-        if (!state.passportPlaceOfIssue.trim()) {
-          errors.passportPlaceOfIssue = "Passport place of issue is required.";
-        }
+      if (!state.passportNumber.trim()) {
+        errors.passportNumber = "Passport number is required.";
+      }
+      const issueParts = state.passportIssueDate.split("-");
+      if (issueParts.length < 3 || issueParts.some((p) => !p.trim())) {
+        errors.passportIssueDate = "Passport issue date is required.";
+      }
+      const expiryParts = state.passportExpiryDate.split("-");
+      if (expiryParts.length < 3 || expiryParts.some((p) => !p.trim())) {
+        errors.passportExpiryDate = "Passport expiry date is required.";
+      }
+      if (!state.passportPlaceOfIssue.trim()) {
+        errors.passportPlaceOfIssue = "Passport place of issue is required.";
       }
       break;
     }
@@ -377,10 +372,7 @@ export function useCreateLeadForm(lead?: Lead | null) {
       return [2] as WizardStepId[];
     }
     if (lead) {
-      if (state.leadType === "visa") {
-        return [3, 4, 5, 6] as WizardStepId[];
-      }
-      return [4, 5, 6] as WizardStepId[];
+      return [3, 4, 5, 6] as WizardStepId[];
     }
     return [1, 2] as WizardStepId[];
   }, [lead, state.leadType, state.isFromUsaSlotsTab]);
@@ -388,9 +380,9 @@ export function useCreateLeadForm(lead?: Lead | null) {
   const [currentStep, setCurrentStep] = useState<WizardStepId>(() => {
     if (lead) {
       const initialState = getInitialStateFromLead(lead);
-      const localActive = initialState.leadType === "visa" ? ([3, 4, 5, 6] as WizardStepId[]) : ([4, 5, 6] as WizardStepId[]);
+      const localActive = [3, 4, 5, 6] as WizardStepId[];
       const firstInvalid = findFirstInvalidStep(initialState, localActive, leads, leadId);
-      return firstInvalid ?? (initialState.leadType === "visa" ? 3 : 4);
+      return firstInvalid ?? 3;
     }
     const initialState = getInitialStateFromLead(lead);
     if (initialState.isFromUsaSlotsTab) {
@@ -402,7 +394,7 @@ export function useCreateLeadForm(lead?: Lead | null) {
   const [completedSteps, setCompletedSteps] = useState<Set<WizardStepId>>(() => {
     if (lead) {
       const valid = new Set<WizardStepId>();
-      const localActive = lead.visaType === "Study Abroad" ? ([4, 5, 6] as WizardStepId[]) : lead.visaType === "Passport" ? ([4, 5, 6] as WizardStepId[]) : ([3, 4, 5, 6] as WizardStepId[]);
+      const localActive = [3, 4, 5, 6] as WizardStepId[];
       const initialState = getInitialStateFromLead(lead);
       for (const stepId of localActive) {
         if (isStepValid(stepId, initialState, leads, leadId)) {
@@ -420,7 +412,7 @@ export function useCreateLeadForm(lead?: Lead | null) {
     setState(initialState);
     if (lead) {
       const valid = new Set<WizardStepId>();
-      const localActive = initialState.leadType === "visa" ? ([3, 4, 5, 6] as WizardStepId[]) : ([4, 5, 6] as WizardStepId[]);
+      const localActive = [3, 4, 5, 6] as WizardStepId[];
       for (const stepId of localActive) {
         if (isStepValid(stepId, initialState, leads, leadId)) {
           valid.add(stepId);
@@ -428,7 +420,7 @@ export function useCreateLeadForm(lead?: Lead | null) {
       }
       setCompletedSteps(valid);
       const firstInvalid = findFirstInvalidStep(initialState, localActive, leads, leadId);
-      setCurrentStep(firstInvalid ?? (initialState.leadType === "visa" ? 3 : 4));
+      setCurrentStep(firstInvalid ?? 3);
     } else {
       setCompletedSteps(new Set());
       setCurrentStep(1);
