@@ -186,8 +186,8 @@ export function CrmHeader() {
       setStartDate(dateStr);
       setEndDate("");
     } else if (dateStr < startDate) {
+      setEndDate(startDate);
       setStartDate(dateStr);
-      setEndDate("");
     } else {
       setEndDate(dateStr);
     }
@@ -664,11 +664,54 @@ export function CrmHeader() {
                     >
                       <FiChevronLeft className="text-[12px]" />
                     </button>
-                    <span className={`text-[12px] font-semibold tracking-wide ${
-                      theme === "light" ? "text-gray-800" : "text-slate-200"
-                    }`}>
-                      {MONTH_NAMES[calMonth]} {calYear}
-                    </span>
+                    <div className="flex items-center gap-1 select-none">
+                      {/* Month Select Wrapper */}
+                      <div className="relative flex items-center">
+                        <select
+                          value={calMonth}
+                          onChange={(e) => setCalMonth(parseInt(e.target.value))}
+                          className={`appearance-none bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-[12px] font-bold pl-1.5 pr-5 py-0.5 rounded-md focus:outline-none cursor-pointer border-0 text-center transition-all ${
+                            theme === "light" ? "text-gray-800" : "text-slate-200"
+                          }`}
+                        >
+                          {MONTH_NAMES.map((name, i) => (
+                            <option key={name} value={i} className={theme === "light" ? "bg-white text-gray-800" : "bg-slate-900 text-slate-250"}>
+                              {name}
+                            </option>
+                          ))}
+                        </select>
+                        <div className={`absolute right-1 pointer-events-none ${theme === "light" ? "text-gray-400" : "text-slate-500"}`}>
+                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Year Select Wrapper */}
+                      <div className="relative flex items-center">
+                        <select
+                          value={calYear}
+                          onChange={(e) => setCalYear(parseInt(e.target.value))}
+                          className={`appearance-none bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-[12px] font-bold pl-1.5 pr-5 py-0.5 rounded-md focus:outline-none cursor-pointer border-0 text-center transition-all ${
+                            theme === "light" ? "text-gray-800" : "text-slate-200"
+                          }`}
+                        >
+                          {Array.from({ length: 11 }, (_, i) => {
+                            const year = new Date().getFullYear() - 5 + i;
+                            return (
+                              <option key={year} value={year} className={theme === "light" ? "bg-white text-gray-800" : "bg-slate-900 text-slate-250"}>
+                                {year}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <div className={`absolute right-1 pointer-events-none ${theme === "light" ? "text-gray-400" : "text-slate-500"}`}>
+                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
                     <button
                       type="button"
                       onClick={handleNextMonth}

@@ -535,11 +535,54 @@ export function DashboardTab() {
                       >
                         <FaChevronLeft className="text-[11px]" />
                       </button>
-                      <span className={`text-[14px] font-semibold tracking-wide ${
-                        theme === "light" ? "text-gray-800" : "text-slate-200"
-                      }`}>
-                        {monthNames[calMonth]} {calYear}
-                      </span>
+                      <div className="flex items-center gap-2 select-none">
+                        {/* Month Select Wrapper */}
+                        <div className="relative flex items-center">
+                          <select
+                            value={calMonth}
+                            onChange={(e) => setCalMonth(parseInt(e.target.value))}
+                            className={`appearance-none bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-[13px] font-bold pl-2 pr-6 py-1 rounded-lg focus:outline-none cursor-pointer border-0 text-center transition-all ${
+                              theme === "light" ? "text-gray-800" : "text-slate-200"
+                            }`}
+                          >
+                            {monthNames.map((name, i) => (
+                              <option key={name} value={i} className={theme === "light" ? "bg-white text-gray-800" : "bg-slate-900 text-slate-250"}>
+                                {name}
+                              </option>
+                            ))}
+                          </select>
+                          <div className={`absolute right-1.5 pointer-events-none ${theme === "light" ? "text-gray-400" : "text-slate-500"}`}>
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+
+                        {/* Year Select Wrapper */}
+                        <div className="relative flex items-center">
+                          <select
+                            value={calYear}
+                            onChange={(e) => setCalYear(parseInt(e.target.value))}
+                            className={`appearance-none bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-[13px] font-bold pl-2 pr-6 py-1 rounded-lg focus:outline-none cursor-pointer border-0 text-center transition-all ${
+                              theme === "light" ? "text-gray-800" : "text-slate-200"
+                            }`}
+                          >
+                            {Array.from({ length: 11 }, (_, i) => {
+                              const year = new Date().getFullYear() - 5 + i;
+                              return (
+                                <option key={year} value={year} className={theme === "light" ? "bg-white text-gray-800" : "bg-slate-900 text-slate-250"}>
+                                  {year}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          <div className={`absolute right-1.5 pointer-events-none ${theme === "light" ? "text-gray-400" : "text-slate-500"}`}>
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
                       <button 
                         type="button"
                         onClick={() => {

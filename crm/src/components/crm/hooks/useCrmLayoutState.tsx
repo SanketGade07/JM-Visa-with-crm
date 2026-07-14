@@ -1100,8 +1100,8 @@ export function useCrmLayoutState() {
       setDateRangeEnd(null);
     } else {
       if (dateStr < dateRangeStart) {
+        setDateRangeEnd(dateRangeStart);
         setDateRangeStart(dateStr);
-        setDateRangeEnd(null);
       } else {
         setDateRangeEnd(dateStr);
       }
