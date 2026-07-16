@@ -15,8 +15,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Visa & Immigration CRM",
+  title: "JM Visa Services CRM",
   description: "Next-gen Dashboard for Visa & Immigration Business Workflow Tracking",
+  icons: {
+    icon: "/logo.webp",
+  },
 };
 
 export default function RootLayout({
@@ -30,6 +33,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        <link rel="icon" href="/logo.webp" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

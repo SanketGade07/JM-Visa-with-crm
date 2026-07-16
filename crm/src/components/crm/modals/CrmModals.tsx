@@ -862,9 +862,9 @@ export function CrmModals() {
                   <label className="text-slate-400 font-bold block">Password</label>
                   <input
                     required
-                    type="password"
+                    type="text"
                     name="password"
-                    placeholder="••••••••"
+                    placeholder="Enter password"
                     className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 text-slate-200"
                   />
                 </div>
