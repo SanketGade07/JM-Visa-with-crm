@@ -213,6 +213,12 @@ export function useCrmLayoutState() {
   const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
   const [isMobileSlotSettingsOpen, setIsMobileSlotSettingsOpen] = useState(false);
   const [isMobileChecklistOpen, setIsMobileChecklistOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("crm_sidebar_collapsed") === "true";
+    }
+    return false;
+  });
 
   // Theme State
   const [theme, setTheme] = useState<"dark" | "light">(() => {
@@ -1445,6 +1451,7 @@ export function useCrmLayoutState() {
     registerUsaSlotsExport, exportUsaSlotsCsv,
     registerDroppedLeadsExport, exportDroppedLeadsCsv,
     registerPaymentsExport, exportPaymentsCsv,
+    isSidebarCollapsed, setIsSidebarCollapsed,
   };
 }
 
