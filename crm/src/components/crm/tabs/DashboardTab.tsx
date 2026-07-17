@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import { VisaStatus, StaffRole, CountryType, LeadSource, DocumentChecklist, CrmUser, Meeting } from "@/context/CrmContext";
 import { ROLE_TABS, AVAILABLE_TABS } from "@/utils/crmConstants";
 import { docProgress, timeAgo, getStatusColor } from "@/utils/leadHelpers";
-import { AustraliaFlag, MalaysiaFlag, IndonesiaFlag, SingaporeFlag } from "@/components/CountryFlags";
+import { getCountryFlag } from "@/components/CountryFlags";
+import { mapCountryToWorldName } from "@/components/crm/hooks/useCrmLayoutState";
 import {
   FaUserFriends, FaUserCheck, FaPlaneDeparture, FaGlobe, FaCheckSquare, FaCalendarAlt, FaHistory,
   FaFileInvoiceDollar, FaChartBar, FaUserLock, FaPlus,
@@ -64,6 +65,17 @@ export function DashboardTab() {
     handlePeriodChange, handleCalendarDateClick, getDaysInMonth, monthNames,
     leadsMgmtData, topCountryStats, pipelineStats, cardMap, modalMap,
   } = useCrmLayoutContext();
+
+  const { hoveredCountryPct, hoveredCountryCount } = useMemo(() => {
+    if (!hoveredCountry) return { hoveredCountryPct: "0%", hoveredCountryCount: "0" };
+    const normHovered = mapCountryToWorldName(hoveredCountry);
+    const stat = topCountryStats.find(s => mapCountryToWorldName(s.country) === normHovered);
+    if (!stat) return { hoveredCountryPct: "0%", hoveredCountryCount: "0" };
+    return {
+      hoveredCountryPct: `${Math.round(stat.pct)}%`,
+      hoveredCountryCount: stat.count.toLocaleString()
+    };
+  }, [hoveredCountry, topCountryStats]);
 
   return (
     <>
@@ -909,16 +921,11 @@ export function DashboardTab() {
 
                         {/* Country Ranking */}
                         <div className="space-y-2.5">
-                          {[
-                            { rank: 1, country: "Australia", value: "48%", flag: <AustraliaFlag /> },
-                            { rank: 2, country: "Malaysia", value: "33%", flag: <MalaysiaFlag /> },
-                            { rank: 3, country: "Indonesia", value: "25%", flag: <IndonesiaFlag /> },
-                            { rank: 4, country: "Singapore", value: "17%", flag: <SingaporeFlag /> }
-                          ].map((c) => {
+                          {topCountryStats.slice(0, 4).map((c, idx) => {
                             const isHovered = hoveredCountry === c.country;
                             return (
                               <div 
-                                key={c.rank} 
+                                key={c.country} 
                                 className={`flex items-center justify-between py-1 px-1.5 rounded-lg transition-colors cursor-pointer ${
                                   isHovered 
                                     ? theme === "light" ? "bg-gray-50" : "bg-slate-800/40"
@@ -942,9 +949,9 @@ export function DashboardTab() {
                                   <span className={`text-[12px] font-bold ${
                                     theme === "light" ? "text-gray-400" : "text-slate-500"
                                   }`}>
-                                    {c.rank}
+                                    {idx + 1}
                                   </span>
-                                  {c.flag}
+                                  {getCountryFlag(c.country)}
                                   <span className={`text-[13px] font-medium ${
                                     theme === "light" ? "text-gray-750" : "text-slate-350"
                                   }`}>
@@ -954,11 +961,16 @@ export function DashboardTab() {
                                 <span className={`text-[13px] font-semibold ${
                                   theme === "light" ? "text-gray-900" : "text-white"
                                 }`}>
-                                  {c.value}
+                                  {Math.round(c.pct)}%
                                 </span>
                               </div>
                             );
                           })}
+                          {topCountryStats.length === 0 && (
+                            <div className="text-[12px] text-slate-500 text-center py-4">
+                              No active country files found
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -1210,13 +1222,13 @@ export function DashboardTab() {
                   <div className="flex justify-between gap-3 py-0.5">
                     <span className="opacity-70">Traffic Share:</span>
                     <span className="font-semibold">
-                      {hoveredCountry === "Australia" ? "48%" : hoveredCountry === "Malaysia" ? "33%" : hoveredCountry === "Indonesia" ? "25%" : hoveredCountry === "Singapore" ? "17%" : "0%"}
+                      {hoveredCountryPct}
                     </span>
                   </div>
                   <div className="flex justify-between gap-3 py-0.5">
-                    <span className="opacity-70">Active Users:</span>
+                    <span className="opacity-70">Active Leads:</span>
                     <span className="font-semibold">
-                      {hoveredCountry === "Australia" ? "12,345" : hoveredCountry === "Malaysia" ? "8,421" : hoveredCountry === "Indonesia" ? "6,192" : hoveredCountry === "Singapore" ? "4,057" : "0"}
+                      {hoveredCountryCount}
                     </span>
                   </div>
                 </div>,

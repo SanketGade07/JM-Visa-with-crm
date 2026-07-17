@@ -10,6 +10,7 @@ import {
   FiFileText,
   FiGlobe,
   FiGrid,
+  FiSearch,
   FiMenu,
   FiRefreshCw,
   FiSend,
@@ -58,6 +59,26 @@ function formatAssignedAt(iso: string) {
   } catch {
     return "";
   }
+}
+
+function getInitials(name: string) {
+  if (!name || name === "Unassigned") return "";
+  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function getAvatarBg(name: string) {
+  const colors = [
+    "bg-blue-500",
+    "bg-emerald-500",
+    "bg-violet-500",
+    "bg-amber-500",
+    "bg-rose-500",
+    "bg-indigo-500",
+    "bg-cyan-500",
+  ];
+  let sum = 0;
+  for (let i = 0; i < name.length; i++) sum += name.charCodeAt(i);
+  return colors[sum % colors.length];
 }
 
 function isDateRangeActive(startDate: string, endDate: string): boolean {
@@ -1087,23 +1108,23 @@ export function CrmHeader() {
           <div
             className={`w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[85vh] transition-all transform scale-100 ${
               theme === "light"
-                ? "bg-white border-slate-200 text-slate-800"
-                : "bg-[#0c0d21] border-slate-800 text-slate-100"
+                ? "bg-white border-slate-200 text-slate-800 shadow-xl"
+                : "bg-[#0b0c20] border-slate-800/85 text-slate-100 shadow-2xl"
             }`}
           >
             {/* Modal Header */}
             <div
               className={`px-6 py-4 border-b flex items-center justify-between ${
-                theme === "light" ? "border-slate-100 bg-slate-50" : "border-slate-800/80 bg-[#0e0f29]"
+                theme === "light" ? "border-slate-100 bg-slate-50/50" : "border-slate-800 bg-[#0e0f2b]/30"
               }`}
             >
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-violet-500/10 text-violet-500">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-violet-500/10 text-violet-500 dark:text-violet-400">
                   <FiFileText className="text-lg" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold">Assignment Logs</h3>
-                  <p className="text-[10px] text-slate-400 font-medium">
+                  <h3 className="text-sm font-bold tracking-tight text-slate-800 dark:text-slate-100">Assignment Logs</h3>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                     {currentUser?.role === "ADMIN"
                       ? "Complete history of lead assignments across all counselors"
                       : "History of leads assigned to you"}
@@ -1119,7 +1140,7 @@ export function CrmHeader() {
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   theme === "light"
                     ? "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-                    : "text-slate-500 hover:text-slate-300 hover:bg-slate-800"
+                    : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/60"
                 }`}
               >
                 <FiX className="text-base" />
@@ -1127,9 +1148,11 @@ export function CrmHeader() {
             </div>
 
             {/* Modal Subheader / Search */}
-            <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800/50 flex items-center gap-4">
+            <div className={`px-6 py-3.5 border-b flex items-center gap-4 ${
+              theme === "light" ? "border-slate-100" : "border-slate-800/60"
+            }`}>
               <div className="relative flex-1">
-                <FiGrid className="absolute left-3 top-2.5 text-slate-400 text-xs" />
+                <FiSearch className="absolute left-3 top-2.5 text-slate-400 dark:text-slate-500 text-xs" />
                 <input
                   type="text"
                   placeholder="Filter by Lead name or Counselor..."
@@ -1137,68 +1160,101 @@ export function CrmHeader() {
                   onChange={(e) => setLogSearch(e.target.value)}
                   className={`w-full text-xs py-2 px-3 pl-9 rounded-lg border focus:outline-none transition-all ${
                     theme === "light"
-                      ? "border-slate-200 bg-slate-50 focus:border-violet-500 text-slate-800 focus:bg-white"
-                      : "border-slate-800 bg-[#0e0f2d] focus:border-violet-500 text-slate-200 focus:bg-[#0c0d21]"
+                      ? "border-slate-200 bg-slate-50/50 focus:border-violet-500 text-slate-800 focus:bg-white focus:ring-1 focus:ring-violet-500/20"
+                      : "border-slate-800 bg-[#0e0f2d] focus:border-violet-500 text-slate-200 focus:bg-[#0c0d21] focus:ring-1 focus:ring-violet-500/20"
                   }`}
                 />
                 {logSearch && (
                   <button
                     onClick={() => setLogSearch("")}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-250 text-xs cursor-pointer"
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 text-xs cursor-pointer transition-colors"
                   >
                     <FiX />
                   </button>
                 )}
               </div>
-              <div className="text-[11px] font-bold text-slate-400 shrink-0">
+              <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold ${
+                theme === "light"
+                  ? "bg-slate-100 text-slate-500 border border-slate-200/50"
+                  : "bg-slate-800/65 text-slate-400 border border-slate-700/30"
+              }`}>
                 {filteredLogs.length} matching log{filteredLogs.length === 1 ? "" : "s"}
-              </div>
+              </span>
             </div>
 
             {/* Modal Body / Table */}
             <div className="flex-1 overflow-y-auto crm-slim-scrollbar min-h-[300px]">
               {filteredLogs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-                  <FiGrid className="text-3xl text-slate-400/50 mb-3 animate-pulse" />
-                  <p className="text-xs font-semibold text-slate-400">No logs found</p>
-                  <p className="text-[10px] text-slate-550 mt-1">
-                    Try adjusting your filter search or assign new leads
+                  <FiSearch className="text-3xl text-slate-300 dark:text-slate-700 mb-3 animate-pulse" />
+                  <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">No matching logs found</p>
+                  <p className="text-[10px] text-slate-400/80 dark:text-slate-650 mt-1">
+                    Try adjusting your search filter query
                   </p>
                 </div>
               ) : (
                 <div className="p-6">
-                  <table className="w-full text-left border-collapse">
+                  <table className="w-full text-left border-separate border-spacing-0">
                     <thead>
-                      <tr className="border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase font-bold tracking-wider text-slate-400 pb-2">
-                        <th className="pb-2 font-bold">Lead Name</th>
-                        <th className="pb-2 font-bold">Assigned Counselor</th>
-                        <th className="pb-2 font-bold text-right">Assigned Date & Time</th>
+                      <tr className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">
+                        <th className={`pb-3 px-4 font-semibold text-left border-b ${
+                          theme === "light" ? "border-slate-200" : "border-slate-800"
+                        }`}>Lead Name</th>
+                        <th className={`pb-3 px-4 font-semibold text-left border-b ${
+                          theme === "light" ? "border-slate-200" : "border-slate-800"
+                        }`}>Assigned Counselor</th>
+                        <th className={`pb-3 px-4 font-semibold text-right border-b ${
+                          theme === "light" ? "border-slate-200" : "border-slate-800"
+                        }`}>Assigned Date & Time</th>
                       </tr>
                     </thead>
-                    <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-800/40">
+                    <tbody className="text-xs">
                       {filteredLogs.map((log, idx) => (
                         <tr
                           key={idx}
-                          className={`group transition-colors ${
-                            theme === "light" ? "hover:bg-slate-50/50" : "hover:bg-slate-800/20"
+                          className={`group transition-all duration-150 ${
+                            theme === "light" ? "hover:bg-slate-50/60" : "hover:bg-slate-800/20"
                           }`}
                         >
-                          <td className="py-3 font-semibold text-violet-650 dark:text-violet-400">
+                          <td className={`py-3 px-4 text-left border-b ${
+                            theme === "light" ? "border-slate-100" : "border-slate-800/35"
+                          }`}>
                             <button
                               type="button"
                               onClick={() => {
                                 setIsLogModalOpen(false);
                                 openLeadDetail(log.leadId);
                               }}
-                              className="text-left font-bold hover:underline cursor-pointer focus:outline-none"
+                              className="text-left font-semibold text-violet-650 dark:text-violet-400 hover:text-violet-750 dark:hover:text-violet-300 hover:underline cursor-pointer focus:outline-none transition-colors"
                             >
                               {log.leadName}
                             </button>
                           </td>
-                          <td className="py-3 font-medium text-slate-600 dark:text-slate-350">
-                            {log.counselorName}
+                          <td className={`py-3 px-4 text-left border-b ${
+                            theme === "light" ? "border-slate-100" : "border-slate-800/35"
+                          }`}>
+                            {log.counselorName === "Unassigned" ? (
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                theme === "light"
+                                  ? "bg-slate-100 text-slate-500 border-slate-200/50"
+                                  : "bg-slate-800/40 text-slate-400 border-slate-700/30"
+                              }`}>
+                                Unassigned
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${getAvatarBg(log.counselorName)}`}>
+                                  {getInitials(log.counselorName)}
+                                </div>
+                                <span className="font-semibold text-slate-700 dark:text-slate-350">
+                                  {log.counselorName}
+                                </span>
+                              </div>
+                            )}
                           </td>
-                          <td className="py-3 text-right text-slate-450 dark:text-slate-500 tabular-nums">
+                          <td className={`py-3 px-4 text-right text-slate-500 dark:text-slate-450 tabular-nums border-b ${
+                            theme === "light" ? "border-slate-100" : "border-slate-800/35"
+                          }`}>
                             {formatAssignedAt(log.assignedAt)}
                           </td>
                         </tr>
@@ -1211,8 +1267,8 @@ export function CrmHeader() {
 
             {/* Modal Footer */}
             <div
-              className={`px-6 py-3 border-t flex items-center justify-between ${
-                theme === "light" ? "border-slate-100 bg-slate-50" : "border-slate-800 bg-[#0e0f29]"
+              className={`px-6 py-4 border-t flex items-center justify-between ${
+                theme === "light" ? "border-slate-100 bg-slate-50/50" : "border-slate-800 bg-[#0e0f2b]/30"
               }`}
             >
               <button
@@ -1227,10 +1283,10 @@ export function CrmHeader() {
                     }
                   );
                 }}
-                className={`text-[10px] font-bold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                className={`text-[10px] font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
                   theme === "light"
-                    ? "text-red-650 border-red-200 bg-white hover:bg-red-50"
-                    : "text-red-450 border-red-900/60 bg-red-950/20 hover:bg-red-950/40"
+                    ? "text-red-650 border-red-100 bg-red-50/30 hover:bg-red-50 hover:border-red-200"
+                    : "text-red-400 border-red-950 bg-red-950/10 hover:bg-red-950/30 hover:border-red-900/40"
                 }`}
               >
                 Clear All Logs
@@ -1241,10 +1297,10 @@ export function CrmHeader() {
                   setIsLogModalOpen(false);
                   setLogSearch("");
                 }}
-                className={`text-xs font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+                className={`text-xs font-semibold px-4 py-1.5 rounded-lg border transition-all cursor-pointer ${
                   theme === "light"
-                    ? "bg-slate-200 text-slate-850 hover:bg-slate-300"
-                    : "bg-slate-800 text-slate-200 hover:bg-slate-700"
+                    ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300"
+                    : "border-slate-850 bg-slate-850 text-slate-200 hover:bg-slate-800/80 hover:border-slate-700/80"
                 }`}
               >
                 Close

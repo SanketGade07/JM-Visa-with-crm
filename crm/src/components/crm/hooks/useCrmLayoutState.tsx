@@ -99,6 +99,171 @@ function getLeadIdFromPathname(pathname: string | null | undefined): string | nu
   return segment;
 }
 
+export const COUNTRY_COORDS: Record<string, [number, number]> = {
+  Australia: [133.77, -25.27],
+  Indonesia: [113.92, -0.78],
+  Malaysia: [101.97, 4.21],
+  Singapore: [103.82, 1.35],
+  USA: [-95.71, 37.09],
+  "United States": [-95.71, 37.09],
+  UK: [-1.17, 52.35],
+  "United Kingdom": [-1.17, 52.35],
+  Canada: [-106.34, 56.13],
+  Europe: [10.45, 51.16],
+  India: [78.96, 20.59],
+  "New Zealand": [174.88, -40.9],
+  UAE: [53.84, 23.42],
+  "United Arab Emirates": [53.84, 23.42],
+  Afghanistan: [67.70, 33.93],
+  Turkey: [35.24, 38.96],
+  "Åland Islands": [19.9, 60.11],
+  France: [2.21, 46.22],
+  Germany: [10.45, 51.16],
+  Italy: [12.56, 41.87],
+  Spain: [-3.74, 40.46],
+  Japan: [138.25, 36.20],
+  China: [104.19, 35.86],
+  Brazil: [-51.92, -14.23],
+  Russia: [105.31, 61.52],
+  "South Africa": [25.04, -29.08],
+  Finland: [25.74, 61.92],
+  Mauritius: [57.55, -20.34],
+  Panama: [-80.78, 8.53],
+};
+
+export function mapCountryToWorldName(c: string): string {
+  if (!c) return "";
+  const norm = c.trim().toLowerCase();
+  if (norm === "usa" || norm === "united states" || norm === "united states of america" || norm === "united states of america (the)") {
+    return "United States";
+  }
+  if (norm === "uk" || norm === "united kingdom" || norm === "united kingdom of great britain and northern ireland") {
+    return "United Kingdom";
+  }
+  if (norm === "uae" || norm === "united arab emirates" || norm === "united arab emirates (the)") {
+    return "United Arab Emirates";
+  }
+  if (norm === "türkiye" || norm === "turkey") {
+    return "Turkey";
+  }
+  return c.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+}
+
+export function processGeographies(geographies: any[]): any[] {
+  const result: any[] = [];
+  geographies.forEach((geo) => {
+    // Hide Antarctica ("anlantic continent")
+    if (geo.properties && (geo.properties.name === "Antarctica" || String(geo.id) === "010")) {
+      return;
+    }
+
+    if ((String(geo.id) === "250" || (geo.properties && geo.properties.name === "France")) && geo.geometry) {
+      if (geo.geometry.type === "Polygon") {
+        // Flattened Polygon format: Check if its coordinates are in the Americas
+        const coords = geo.geometry.coordinates; // Array of rings
+        const outerRing = coords[0];
+        if (outerRing && outerRing[0]) {
+          const [lon, lat] = outerRing[0];
+          if (lon < -30) {
+            // Rename to French Guiana to prevent it from highlighting as France
+            const frenchGuianaGeo = {
+              ...geo,
+              id: String(geo.id) + "-fg",
+              rrd: geo.rrd ? `${geo.rrd}-fg` : undefined,
+              properties: {
+                ...geo.properties,
+                name: "French Guiana"
+              }
+            };
+            result.push(frenchGuianaGeo);
+            return;
+          }
+        }
+      } else if (geo.geometry.type === "MultiPolygon") {
+        // MultiPolygon format: Split it
+        const coords = geo.geometry.coordinates; // Array of Polygons
+        const fgPolygons: any[] = [];
+        const mainlandPolygons: any[] = [];
+        const fgIndices: number[] = [];
+        const mainlandIndices: number[] = [];
+
+        coords.forEach((poly: any, idx: number) => {
+          // A Polygon's coordinates is an array of rings, the first ring is the exterior boundary
+          const outerRing = poly[0];
+          if (outerRing && outerRing[0]) {
+            const [lon, lat] = outerRing[0];
+            if (lon < -30) {
+              fgPolygons.push(poly);
+              fgIndices.push(idx);
+            } else {
+              mainlandPolygons.push(poly);
+              mainlandIndices.push(idx);
+            }
+          }
+        });
+
+        // Split the pre-rendered svgPath (attached by react-simple-maps useGeographies)
+        let fgPath = "";
+        let mainlandPath = "";
+        if (geo.svgPath) {
+          const subPaths = geo.svgPath.split(/(?=M)/);
+          if (subPaths.length === coords.length) {
+            fgIndices.forEach(idx => { fgPath += subPaths[idx]; });
+            mainlandIndices.forEach(idx => { mainlandPath += subPaths[idx]; });
+          } else {
+            fgPath = geo.svgPath;
+            mainlandPath = geo.svgPath;
+          }
+        }
+
+        if (fgPolygons.length > 0) {
+          // Create French Guiana geography
+          const frenchGuianaGeo = {
+            ...geo,
+            id: String(geo.id) + "-fg",
+            rrd: geo.rrd ? `${geo.rrd}-fg` : undefined,
+            properties: {
+              ...geo.properties,
+              name: "French Guiana"
+            },
+            geometry: {
+              ...geo.geometry,
+              type: fgPolygons.length === 1 ? "Polygon" : "MultiPolygon",
+              coordinates: fgPolygons.length === 1 ? fgPolygons[0] : fgPolygons
+            },
+            svgPath: fgPath
+          };
+          result.push(frenchGuianaGeo);
+        }
+
+        if (mainlandPolygons.length > 0) {
+          // Create mainland France geography
+          const mainlandFranceGeo = {
+            ...geo,
+            geometry: {
+              ...geo.geometry,
+              type: mainlandPolygons.length === 1 ? "Polygon" : "MultiPolygon",
+              coordinates: mainlandPolygons.length === 1 ? mainlandPolygons[0] : mainlandPolygons
+            },
+            svgPath: mainlandPath
+          };
+          result.push(mainlandFranceGeo);
+        }
+        return;
+      }
+    }
+    result.push(geo);
+  });
+  return result;
+}
+
+const CONST_COUNTRY_COLORS: Record<string, string> = {
+  USA: "#007BFF",
+  UK: "#00C1D4",
+  Canada: "#0ea5e9",
+  Europe: "#38bdf8",
+};
+
 export function useCrmLayoutState() {
   const {
     leads,
@@ -717,8 +882,8 @@ export function useCrmLayoutState() {
   // States for Bottom Row Dashboard Widgets
   const [hoveredRetentionMonth, setHoveredRetentionMonth] = useState<string | null>(null);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-  const [mapZoom, setMapZoom] = useState(3.5);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([130, -18]);
+  const [mapZoom, setMapZoom] = useState(1.0);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([11, 15]);
   const [cardMapZoom, setCardMapZoom] = useState(2.7);
   const [cardMapCenter, setCardMapCenter] = useState<[number, number]>([122, -18]);
   const hoveredCountryRef = useRef<string | null>(null);
@@ -796,7 +961,7 @@ export function useCrmLayoutState() {
 
   const resetMap = () => {
     setMapZoom(1);
-    setMapCenter([11, 0]);
+    setMapCenter([11, 15]);
   };
 
 
@@ -932,12 +1097,7 @@ export function useCrmLayoutState() {
   const chartMax = Math.max(1, ...monthlyChart.map((m) => Math.max(m.sub, m.app)));
 
   // Destination donut: real counts + percentages per country
-  const countryColors: Record<string, string> = {
-    USA: "#007BFF",
-    UK: "#00C1D4",
-    Canada: "#0ea5e9",
-    Europe: "#38bdf8",
-  };
+  const countryColors = CONST_COUNTRY_COLORS;
   const countryStats = (["USA", "UK", "Canada", "Europe"] as const).map((c) => {
     const count = activeLeads.filter((l) => l.country === c).length;
     return { country: c, count, color: countryColors[c] };
@@ -1134,7 +1294,7 @@ export function useCrmLayoutState() {
     "July", "August", "September", "October", "November", "December"
   ];
 
-  const leadsMgmtData = (() => {
+  const leadsMgmtData = useMemo(() => {
     if (leadsMgmtTab === "Status") {
       const statuses = LEAD_STATUS_ORDER.filter((s) => s !== "DROPPED");
       return statuses.map(status => {
@@ -1162,21 +1322,58 @@ export function useCrmLayoutState() {
         const count = leads.filter(l => l.counselor === c).length;
         const pct = leads.length > 0 ? (count / leads.length) * 100 : 20 + (c.length * 13) % 45;
         return { label: c, count, pct };
-      });
+       });
     }
-  })();
+  }, [leadsMgmtTab, leads, users]);
 
-  const topCountryStats = (() => {
-    const stats = (["USA", "UK", "Canada", "Europe"] as const).map((c) => {
-      const count = leads.filter((l) => l.country === c).length;
-      const pct = activeLeads.length > 0 ? (count / activeLeads.length) * 100 : 25 + (c.length * 12) % 35;
-      return { country: c === "Canada" ? "Canada" : c, count, pct, color: countryColors[c] || "#007BFF" };
+  const topCountryStats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    leads.forEach((l) => {
+      if (l.isDeleted || l.status === "DROPPED") return;
+      const c = l.country || "Unknown";
+      counts[c] = (counts[c] || 0) + 1;
     });
-    return stats.sort((a, b) => b.count - a.count);
-  })();
 
-  const pipelineStats = (() => {
-    return (["USA", "UK", "Canada", "Europe"] as const).map((c) => {
+    const activeTotal = Object.values(counts).reduce((acc, c) => acc + c, 0);
+
+    const getDynamicColor = (country: string) => {
+      const colors = [
+        "#007BFF", // Blue
+        "#00C1D4", // Cyan
+        "#0ea5e9", // Light blue
+        "#38bdf8", // Sky blue
+        "#2563EB", // Blue
+        "#10B981", // Emerald
+        "#F59E0B", // Amber
+        "#EF4444", // Red
+        "#8B5CF6", // Violet
+      ];
+      let hash = 0;
+      for (let i = 0; i < country.length; i++) {
+        hash = country.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const index = Math.abs(hash) % colors.length;
+      return colors[index];
+    };
+
+    const stats = Object.entries(counts).map(([country, count]) => {
+      const pct = activeTotal > 0 ? (count / activeTotal) * 100 : 0;
+      return {
+        country,
+        count,
+        pct,
+        color: countryColors[country] || getDynamicColor(country),
+      };
+    });
+
+    return stats.sort((a, b) => b.count - a.count);
+  }, [leads, countryColors]);
+
+  const pipelineStats = useMemo(() => {
+    const countries = topCountryStats.slice(0, 4).map(s => s.country);
+    const targetCountries = countries.length > 0 ? countries : ["USA", "UK", "Canada", "Europe"];
+    
+    return targetCountries.map((c) => {
       const cLeads = leads.filter(l => l.country === c);
       const approved = cLeads.filter(l => l.status === "VISA_APPROVED").length;
       const pending = cLeads.filter(l => l.status === "IN_PROGRESS" || l.status === "APPLICATION_PROCESSED" || l.status === "VISA_SUBMISSION").length;
@@ -1184,13 +1381,55 @@ export function useCrmLayoutState() {
       
       const total = Math.max(1, approved + pending + newLeads);
       return {
-        country: c === "Canada" ? "CAN" : c === "Europe" ? "EUR" : c,
-        approved: Math.round((approved / total) * 100) || 20 + (c.length * 5) % 40,
-        pending: Math.round((pending / total) * 100) || 30 + (c.length * 7) % 35,
-        newLeads: Math.round((newLeads / total) * 100) || 15 + (c.length * 3) % 25
+        country: c === "Canada" ? "CAN" : c === "Europe" ? "EUR" : c.slice(0, 3).toUpperCase(),
+        approved: Math.round((approved / total) * 100) || 20,
+        pending: Math.round((pending / total) * 100) || 30,
+        newLeads: Math.round((newLeads / total) * 100) || 15
       };
     });
-  })();
+  }, [topCountryStats, leads]);
+
+  const activeCountriesMapped = useMemo(() => {
+    const set = new Set<string>();
+    leads.forEach((l) => {
+      if (l.isDeleted || l.status === "DROPPED" || !l.country) return;
+      set.add(mapCountryToWorldName(l.country));
+    });
+    return set;
+  }, [leads]);
+
+  const dynamicMarkers = useMemo(() => {
+    return topCountryStats
+      .map((stat) => {
+        const name = stat.country;
+        const coords = COUNTRY_COORDS[name] || COUNTRY_COORDS[mapCountryToWorldName(name)];
+        if (!coords) return null;
+        return {
+          name,
+          coords: coords as [number, number],
+          rate: `${Math.round(stat.pct)}%`,
+        };
+      })
+      .filter((m): m is { name: string; coords: [number, number]; rate: string } => m !== null);
+  }, [topCountryStats]);
+
+  useEffect(() => {
+    if (topCountryStats.length > 0) {
+      const topCountry = topCountryStats[0].country;
+      const norm = mapCountryToWorldName(topCountry);
+      if (["Australia", "Indonesia", "Malaysia", "Singapore"].includes(norm)) {
+        if (cardMapZoom !== 2.7) setCardMapZoom(2.7);
+        if (cardMapCenter[0] !== 122 || cardMapCenter[1] !== -18) {
+          setCardMapCenter([122, -18]);
+        }
+      } else {
+        if (cardMapZoom !== 1.0) setCardMapZoom(1.0);
+        if (cardMapCenter[0] !== 11 || cardMapCenter[1] !== 15) {
+          setCardMapCenter([11, 15]);
+        }
+      }
+    }
+  }, [topCountryStats, cardMapZoom, cardMapCenter]);
 
   const cardMap = useMemo(() => {
     if (!isMounted) return <div className="w-full h-full bg-gray-50/50 dark:bg-slate-950/20 animate-pulse rounded-xl" />;
@@ -1199,13 +1438,13 @@ export function useCrmLayoutState() {
         projection="geoMercator"
         projectionConfig={{
           scale: 145,
-          center: [11, 0]
+          center: [11, 15]
         }}
         className="w-full h-full select-none"
       >
         <ZoomableGroup
           zoom={cardMapZoom}
-          center={cardMapZoom <= 1.05 ? [11, 0] : cardMapCenter}
+          center={cardMapZoom <= 1.05 ? [11, 15] : cardMapCenter}
           onMoveEnd={(position: any) => {
             if (cardMapZoom > 1.05) {
               setCardMapCenter(position.coordinates);
@@ -1216,9 +1455,9 @@ export function useCrmLayoutState() {
         >
           <Geographies geography="/world-110m.json">
             {({ geographies }: any) =>
-              geographies.map((geo: any) => {
+              processGeographies(geographies).map((geo: any) => {
                 const countryName = geo.properties.name;
-                const isHighlighted = ["Australia", "Indonesia", "Malaysia", "Singapore"].includes(countryName);
+                const isHighlighted = activeCountriesMapped.has(mapCountryToWorldName(countryName));
                 return (
                   <Geography
                     key={geo.rrd || geo.id || countryName}
@@ -1226,14 +1465,14 @@ export function useCrmLayoutState() {
                     fill={
                       isHighlighted
                         ? "#2563EB"
-                        : (theme === "light" ? "#F3F4F6" : "#1E293B")
+                        : (theme === "light" ? "#E2E8F0" : "#1E293B")
                     }
-                    stroke={theme === "light" ? "#D1D5DB" : "#334155"}
+                    stroke={theme === "light" ? "#94A3B8" : "#334155"}
                     strokeWidth={0.3}
                     style={{
                       default: { outline: "none", transition: "fill 150ms ease" },
                       hover: { 
-                        fill: isHighlighted ? "#1D4ED8" : (theme === "light" ? "#E5E7EB" : "#334155"),
+                        fill: isHighlighted ? "#1D4ED8" : (theme === "light" ? "#CBD5E1" : "#334155"),
                         outline: "none",
                         cursor: isHighlighted ? "pointer" : "default",
                         transition: "fill 150ms ease"
@@ -1263,7 +1502,7 @@ export function useCrmLayoutState() {
         </ZoomableGroup>
       </ComposableMap>
     );
-  }, [isMounted, theme, cardMapZoom, cardMapCenter, handleCountryMouseEnter, handleCountryMouseMove, handleCountryMouseLeave]);
+  }, [isMounted, theme, cardMapZoom, cardMapCenter, handleCountryMouseEnter, handleCountryMouseMove, handleCountryMouseLeave, activeCountriesMapped]);
 
   const modalMap = useMemo(() => {
     if (!isMounted) return <div className="w-full h-full bg-gray-50/50 dark:bg-slate-950/20 animate-pulse rounded-xl" />;
@@ -1272,13 +1511,13 @@ export function useCrmLayoutState() {
         projection="geoMercator"
         projectionConfig={{
           scale: 145,
-          center: [11, 0]
+          center: [11, 15]
         }}
         className="w-full h-full select-none"
       >
         <ZoomableGroup
           zoom={mapZoom}
-          center={mapZoom <= 1.05 ? [11, 0] : mapCenter}
+          center={mapZoom <= 1.05 ? [11, 15] : mapCenter}
           onMoveEnd={(position: any) => {
             if (mapZoom > 1.05) {
               setMapCenter(position.coordinates);
@@ -1289,9 +1528,9 @@ export function useCrmLayoutState() {
         >
           <Geographies geography="/world-110m.json">
             {({ geographies }: any) =>
-              geographies.map((geo: any) => {
+              processGeographies(geographies).map((geo: any) => {
                 const countryName = geo.properties.name;
-                const isHighlighted = ["Australia", "Indonesia", "Malaysia", "Singapore"].includes(countryName);
+                const isHighlighted = activeCountriesMapped.has(mapCountryToWorldName(countryName));
                 return (
                   <Geography
                     key={geo.rrd || geo.id || countryName}
@@ -1299,14 +1538,14 @@ export function useCrmLayoutState() {
                     fill={
                       isHighlighted
                         ? "#2563EB"
-                        : (theme === "light" ? "#F3F4F6" : "#1E293B")
+                        : (theme === "light" ? "#E2E8F0" : "#1E293B")
                     }
-                    stroke={theme === "light" ? "#D1D5DB" : "#334155"}
+                    stroke={theme === "light" ? "#94A3B8" : "#334155"}
                     strokeWidth={0.5}
                     style={{
                       default: { outline: "none", transition: "fill 150ms ease" },
                       hover: { 
-                        fill: isHighlighted ? "#1D4ED8" : (theme === "light" ? "#E5E7EB" : "#334155"),
+                        fill: isHighlighted ? "#1D4ED8" : (theme === "light" ? "#CBD5E1" : "#334155"),
                         outline: "none",
                         cursor: isHighlighted ? "pointer" : "default",
                         transition: "fill 150ms ease"
@@ -1335,13 +1574,8 @@ export function useCrmLayoutState() {
           </Geographies>
 
           {/* Markers */}
-          {[
-            { name: "Australia", coords: [133.77, -25.27], rate: "48%" },
-            { name: "Indonesia", coords: [113.92, -0.78], rate: "25%" },
-            { name: "Malaysia", coords: [101.97, 4.21], rate: "33%" },
-            { name: "Singapore", coords: [103.82, 1.35], rate: "17%" }
-          ].map((marker) => (
-            <Marker key={marker.name} coordinates={marker.coords as [number, number]}>
+          {dynamicMarkers.map((marker) => (
+            <Marker key={marker.name} coordinates={marker.coords}>
               <circle
                 r={3.5 / mapZoom}
                 fill="#EF4444"
@@ -1388,7 +1622,7 @@ export function useCrmLayoutState() {
         </ZoomableGroup>
       </ComposableMap>
     );
-  }, [isMounted, theme, mapZoom, mapCenter, handleCountryMouseEnter, handleCountryMouseMove, handleCountryMouseLeave, setMapCenter]);
+  }, [isMounted, theme, mapZoom, mapCenter, handleCountryMouseEnter, handleCountryMouseMove, handleCountryMouseLeave, setMapCenter, activeCountriesMapped, dynamicMarkers]);
 
   return {
     leads, meetings, users, currentUser, authUser, currentRole, currentTab, setCurrentTab,
