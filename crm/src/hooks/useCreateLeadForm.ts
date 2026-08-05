@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import type { WizardStepId } from "@/components/crm/leads/create/WizardProgress";
 import {
   CREATE_LEAD_INITIAL_STATE,
@@ -155,7 +155,8 @@ export function getStepFieldErrors(
   step: WizardStepId,
   state: CreateLeadFormState,
   leads?: Lead[],
-  excludeLeadId?: string
+  excludeLeadId?: string,
+  createdLeadId?: string | null
 ): Partial<Record<keyof CreateLeadFormState, string>> {
   const errors: Partial<Record<keyof CreateLeadFormState, string>> = {};
   const isEdit = !!excludeLeadId || !!state.isEdit;
@@ -178,7 +179,9 @@ export function getStepFieldErrors(
         errors.phone = "Enter a valid phone number.";
       } else if (leads) {
         const normalizedPhone = state.phone.trim();
-        const exists = leads.some((l) => l.id !== excludeLeadId && l.phone?.trim() === normalizedPhone);
+        const exists = leads.some(
+          (l) => l.id !== excludeLeadId && l.id !== createdLeadId && l.phone?.trim() === normalizedPhone
+        );
         if (exists) {
           errors.phone = "This phone number already exists.";
         }
@@ -206,14 +209,29 @@ export function getStepFieldErrors(
       if (!state.passportNumber.trim()) {
         errors.passportNumber = "Passport number is required.";
       }
+
       const issueParts = state.passportIssueDate.split("-");
-      if (issueParts.length < 3 || issueParts.some((p) => !p.trim())) {
+      const hasAnyIssue = issueParts.some((p) => p.trim());
+      const hasAllIssue = issueParts.length === 3 && issueParts.every((p) => p.trim());
+      if (!hasAnyIssue) {
         errors.passportIssueDate = "Passport issue date is required.";
+      } else if (!hasAllIssue) {
+        errors.passportIssueDate = "Passport issue date is incomplete.";
       }
+
       const expiryParts = state.passportExpiryDate.split("-");
-      if (expiryParts.length < 3 || expiryParts.some((p) => !p.trim())) {
+      const hasAnyExpiry = expiryParts.some((p) => p.trim());
+      const hasAllExpiry = expiryParts.length === 3 && expiryParts.every((p) => p.trim());
+      if (!hasAnyExpiry) {
         errors.passportExpiryDate = "Passport expiry date is required.";
+      } else if (!hasAllExpiry) {
+        errors.passportExpiryDate = "Passport expiry date is incomplete.";
+      } else if (hasAllIssue && hasAllExpiry && state.passportIssueDate && state.passportExpiryDate) {
+        if (state.passportExpiryDate <= state.passportIssueDate) {
+          errors.passportExpiryDate = "Passport expiry date must be after issue date.";
+        }
       }
+
       if (!state.passportPlaceOfIssue.trim()) {
         errors.passportPlaceOfIssue = "Passport place of issue is required.";
       }
@@ -406,8 +424,14 @@ export function useCreateLeadForm(lead?: Lead | null) {
     return new Set<WizardStepId>();
   });
   const [returnToReview, setReturnToReview] = useState(false);
+  const prevLeadIdRef = useRef<string | undefined>(leadId);
 
   useEffect(() => {
+    if (prevLeadIdRef.current === leadId && !!lead === !!state.isEdit && (!lead || state.clientName)) {
+      return;
+    }
+    prevLeadIdRef.current = leadId;
+
     const initialState = getInitialStateFromLead(lead);
     setState(initialState);
     if (lead) {
@@ -429,12 +453,13 @@ export function useCreateLeadForm(lead?: Lead | null) {
     setValidationAttempted(false);
     setSubmitFieldErrors({});
     setTouchedFields({});
-  }, [lead, leads, leadId]);
+  }, [lead, leadId, leads, state.clientName, state.isEdit]);
 
   const [touchedFields, setTouchedFields] = useState<
     Partial<Record<keyof CreateLeadFormState, boolean>>
   >({});
   const [validationAttempted, setValidationAttempted] = useState(false);
+  const [createdLeadId, setCreatedLeadId] = useState<string | null>(null);
   const [submitFieldErrors, setSubmitFieldErrors] = useState<
     Partial<Record<keyof CreateLeadFormState, string>>
   >({});
@@ -481,6 +506,7 @@ export function useCreateLeadForm(lead?: Lead | null) {
     setTouchedFields({});
     setValidationAttempted(false);
     setSubmitFieldErrors({});
+    setCreatedLeadId(null);
     setFocusFieldId(null);
   }, []);
 
@@ -499,23 +525,23 @@ export function useCreateLeadForm(lead?: Lead | null) {
       }
 
       // Check if we have an immediate phone duplicate error
-      const currentErrors = getStepFieldErrors(currentStep, state, leads, leadId);
+      const currentErrors = getStepFieldErrors(currentStep, state, leads, leadId, createdLeadId);
       if (field === "phone" && currentErrors.phone === "This phone number already exists.") {
         return currentErrors.phone;
       }
 
-      if (!touchedFields[field] && !validationAttempted) {
+      if (!validationAttempted) {
         return undefined;
       }
 
       return currentErrors[field];
     },
-    [currentStep, state, submitFieldErrors, touchedFields, validationAttempted, leads, leadId]
+    [currentStep, state, submitFieldErrors, validationAttempted, leads, leadId, createdLeadId]
   );
 
   const applyValidationFailure = useCallback(
     (step: WizardStepId) => {
-      const fieldErrors = getStepFieldErrors(step, state, leads, leadId);
+      const fieldErrors = getStepFieldErrors(step, state, leads, leadId, createdLeadId);
       setValidationAttempted(true);
       setSubmitFieldErrors(fieldErrors);
 
@@ -524,7 +550,7 @@ export function useCreateLeadForm(lead?: Lead | null) {
         setFocusFieldId(CREATE_LEAD_FIELD_IDS[firstField] ?? null);
       }
     },
-    [state, leads, leadId]
+    [state, leads, leadId, createdLeadId]
   );
 
   const clearFocusFieldId = useCallback(() => {
@@ -568,6 +594,8 @@ export function useCreateLeadForm(lead?: Lead | null) {
 
   const goToStep = useCallback((step: WizardStepId) => {
     setCurrentStep(step);
+    setValidationAttempted(false);
+    setSubmitFieldErrors({});
     if (step === 6) {
       setHasCompletedWizard(true);
       setReturnToReview(false);
@@ -664,6 +692,8 @@ export function useCreateLeadForm(lead?: Lead | null) {
     validateAllStepsForSubmit,
     focusFieldId,
     clearFocusFieldId,
+    createdLeadId,
+    setCreatedLeadId,
     getFirstInvalidStep: () => findFirstInvalidStep(state, activeSteps),
     activeStepIds: activeSteps,
   };

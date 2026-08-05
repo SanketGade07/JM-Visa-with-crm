@@ -712,13 +712,15 @@ export function useCrmLayoutState() {
       const resolvedTab = resolveLeadDetailTab(tab, lead);
       setSelectedLeadId(leadId);
       setLeadDetailTabState(resolvedTab);
-      setCurrentTab("Leads");
+      setIsCreateLeadOpen(false);
+      setIsCreateUsaLeadOpen(false);
+      setIsEditLeadOpen(false);
       const createdQuery = options?.created ? "&created=1" : "";
       router.push(
         `/leads/${encodeURIComponent(leadId)}?tab=${resolvedTab}${createdQuery}`
       );
     },
-    [leads, router, setCurrentTab, resolveLeadDetailTab]
+    [leads, router, resolveLeadDetailTab]
   );
 
   const openLeadChecklist = useCallback(
@@ -730,6 +732,7 @@ export function useCrmLayoutState() {
 
   const navigateToTab = useCallback(
     (tab: string) => {
+      setSelectedLeadId(null);
       setCurrentTab(tab);
       setIsMobileChecklistOpen(false);
       if (pathname?.startsWith("/checklist/") || pathname?.startsWith("/leads")) {
@@ -740,6 +743,7 @@ export function useCrmLayoutState() {
   );
 
   const closeLeadDetail = useCallback(() => {
+    setSelectedLeadId(null);
     setCurrentTab("Leads");
     router.push("/leads");
   }, [router, setCurrentTab]);

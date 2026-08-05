@@ -15,10 +15,10 @@ import { DriveTab } from "./tabs/DriveTab";
 import { LeadDetailPage } from "./leads/LeadDetailPage";
 
 export function CrmTabViews() {
-  const { currentTab, isLeadDetailRoute, canViewLeads, leadDetailTab, isEditLeadOpen } = useCrmLayoutContext();
+  const { currentTab, isLeadDetailRoute, canViewLeads, leadDetailTab, isEditLeadOpen, selectedLeadId } = useCrmLayoutContext();
 
-  const isLeadDetailsTab =
-    currentTab === "Leads" && isLeadDetailRoute && leadDetailTab === "details" && !isEditLeadOpen;
+  const showLeadDetail = (isLeadDetailRoute || !!selectedLeadId) && canViewLeads && !isEditLeadOpen;
+  const isLeadDetailsTab = showLeadDetail && leadDetailTab === "details";
 
   return (
     <div
@@ -30,17 +30,22 @@ export function CrmTabViews() {
           : "crm-slim-scrollbar flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 md:p-8 w-full max-w-full"
       }
     >
-      {currentTab === "Dashboard" && <DashboardTab />}
-      {currentTab === "Leads" && isLeadDetailRoute && canViewLeads && <LeadDetailPage />}
-      {currentTab === "Leads" && !isLeadDetailRoute && <LeadsTab />}
-      {currentTab === "FollowUps" && <FollowUpsTab />}
-      {currentTab === "Countries" && <CountriesTab />}
-      {currentTab === "USASlots" && <USASlotsTab />}
-      {currentTab === "Submissions" && <SubmissionsTab />}
-      {currentTab === "Payments" && <PaymentsTab />}
-      {currentTab === "DropLeads" && <DropLeadsTab />}
-      {currentTab === "Staff" && <StaffTab />}
-      {currentTab === "Drive" && <DriveTab />}
+      {showLeadDetail ? (
+        <LeadDetailPage />
+      ) : (
+        <>
+          {currentTab === "Dashboard" && <DashboardTab />}
+          {currentTab === "Leads" && <LeadsTab />}
+          {currentTab === "FollowUps" && <FollowUpsTab />}
+          {currentTab === "Countries" && <CountriesTab />}
+          {currentTab === "USASlots" && <USASlotsTab />}
+          {currentTab === "Submissions" && <SubmissionsTab />}
+          {currentTab === "Payments" && <PaymentsTab />}
+          {currentTab === "DropLeads" && <DropLeadsTab />}
+          {currentTab === "Staff" && <StaffTab />}
+          {currentTab === "Drive" && <DriveTab />}
+        </>
+      )}
     </div>
   );
 }

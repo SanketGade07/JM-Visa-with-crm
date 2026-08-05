@@ -150,6 +150,7 @@ function CreateLeadWizardInner({
     clearFocusFieldId,
     completedSteps,
     activeStepIds,
+    setCreatedLeadId,
   } = useCreateLeadFormContext();
 
   const isEdit = !!editLeadId;
@@ -178,7 +179,9 @@ function CreateLeadWizardInner({
     parsed[part] = value;
     const isoString = `${parsed.year || ""}-${parsed.month || ""}-${parsed.day || ""}`;
     updateField(field, isoString);
-    markFieldTouched(field);
+    if (parsed.year?.trim() && parsed.month?.trim() && parsed.day?.trim()) {
+      markFieldTouched(field);
+    }
   };
 
   useEffect(() => {
@@ -317,20 +320,22 @@ function CreateLeadWizardInner({
           if (onClose) onClose();
         } else {
           showToast("Failed to update lead", "error");
+          setIsSubmitting(false);
         }
       } else {
         const newId = await addLead(payload);
         if (newId) {
+          setCreatedLeadId(newId);
           showToast("Lead created successfully!");
+          onClose?.();
           openLeadDetail(newId, "details", { created: true });
-          if (isInline) {
-            onClose?.();
-          }
         } else {
           showToast("Failed to create lead. Please try again.", "error");
+          setIsSubmitting(false);
         }
       }
-    } finally {
+    } catch {
+      showToast("An unexpected error occurred", "error");
       setIsSubmitting(false);
     }
   }, [
@@ -344,6 +349,7 @@ function CreateLeadWizardInner({
     validateAllStepsForSubmit,
     editLeadId,
     updateLeadFromWizard,
+    setCreatedLeadId,
   ]);
 
   const showVisaSubtypePicker =
@@ -465,7 +471,7 @@ function CreateLeadWizardInner({
 
       case 2: {
         const clientNameError = getFieldError("clientName");
-        const phoneError = getFieldError("phone");
+        const phoneError = isSubmitting ? undefined : getFieldError("phone");
         const immigrationCountryError = getFieldError("immigrationCountry");
         const caseOfficerError = getFieldError("caseOfficer");
         const leadSourceError = getFieldError("leadSource");
@@ -1477,7 +1483,7 @@ function CreateLeadWizardInner({
               <button
                 type="button"
                 onClick={handleNext}
-                disabled={!canProceed}
+                disabled={isSubmitting}
                 className="py-2.5 px-6 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed font-bold text-white text-xs rounded-xl shadow-lg transition-all"
               >
                 {showSaveToReview ? "Save" : "Next"}

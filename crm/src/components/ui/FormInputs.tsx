@@ -599,9 +599,10 @@ export type PhoneInputProps = {
   value?: string;
   /** Called with the full E.164 string whenever the phone value changes. */
   onChange?: (value: string) => void;
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
 };
 
-export function PhoneInput({ id, name, required, placeholder, value, onChange }: PhoneInputProps) {
+export function PhoneInput({ id, name, required, placeholder, value, onChange, onBlur }: PhoneInputProps) {
   const isControlled = value !== undefined;
 
   const [uncontrolledCountry, setUncontrolledCountry] = useState<PhoneCountry>(DEFAULT_COUNTRY);
@@ -614,6 +615,7 @@ export function PhoneInput({ id, name, required, placeholder, value, onChange }:
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [prefixError, setPrefixError] = useState<string | null>(null);
+  const [isTouched, setIsTouched] = useState(false);
 
   React.useEffect(() => {
     if (!isControlled || !value?.trim()) return;
@@ -899,12 +901,16 @@ export function PhoneInput({ id, name, required, placeholder, value, onChange }:
           required={required}
           value={phoneNumber}
           onChange={handlePhoneChange}
+          onBlur={(e) => {
+            setIsTouched(true);
+            onBlur?.(e);
+          }}
           placeholder={placeholder || "9876543210"}
           className="phone-input-field"
         />
       </div>
 
-      {errorMsg && phoneNumber && (
+      {isTouched && errorMsg && phoneNumber && (
         <span className="text-[10px] text-rose-500 font-semibold mt-1 block">
           {errorMsg}
         </span>
