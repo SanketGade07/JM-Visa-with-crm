@@ -504,7 +504,7 @@ export function CrmHeader() {
 
       {currentTab === "Leads" && isLeadDetailRoute && lead && (
         <>
-          <div className="flex items-center gap-2 min-w-0 flex-1 z-10">
+          <div className="flex items-center gap-2 shrink-0 z-10">
             <button
               type="button"
               onClick={closeLeadDetail}
@@ -513,7 +513,7 @@ export function CrmHeader() {
             >
               <FaChevronLeft className="text-xs" />
             </button>
-            <div className="crm-header__tabs crm-header__tabs--lead-detail min-w-0">
+            <div className="crm-header__tabs crm-header__tabs--lead-detail min-w-0 max-w-[260px] sm:max-w-[340px] md:max-w-none overflow-x-auto crm-slim-scrollbar">
               <LeadDetailTabBar
                 activeTab={leadDetailTab}
                 onTabChange={setLeadDetailTab}
@@ -521,16 +521,16 @@ export function CrmHeader() {
               />
             </div>
           </div>
-          <div className="pointer-events-none absolute left-1/2 top-1/2 z-0 w-full max-w-[min(100%,calc(100%-9rem))] -translate-x-1/2 -translate-y-1/2 px-2 text-center hidden md:block">
-            <p className="truncate text-base font-bold leading-tight text-white">{lead.name}</p>
-            <p className="truncate text-sm leading-tight text-slate-400">
+          <div className="flex-1 min-w-0 px-2 md:px-4 text-center hidden sm:flex flex-col items-center justify-center z-10">
+            <p className="truncate w-full text-sm md:text-base font-bold leading-tight text-white">{lead.name}</p>
+            <p className="truncate w-full text-xs md:text-sm leading-tight text-slate-400">
               {lead.country} · {lead.visaType}
             </p>
           </div>
         </>
       )}
 
-      <div className="flex items-center gap-2 md:gap-3 ml-auto shrink-0 z-10">
+      <div className={`flex items-center gap-2 md:gap-3 shrink-0 z-10 ${currentTab === "Leads" && isLeadDetailRoute && lead ? "" : "ml-auto"}`}>
         {showExportButton && (
           <button
             type="button"

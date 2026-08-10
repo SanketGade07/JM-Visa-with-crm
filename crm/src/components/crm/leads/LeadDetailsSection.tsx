@@ -206,6 +206,7 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
     updateLeadNotes,
     canModifyLeads,
     patchLeadDriveFolder,
+    isEditLeadOpen,
   } = useCrmLayoutContext();
 
   const [descriptionDraft, setDescriptionDraft] = useState(lead.notes ?? "");
@@ -368,13 +369,35 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
   };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start xl:items-stretch h-full min-h-0">
-      <div className="min-w-0 flex flex-col xl:h-full xl:min-h-0 xl:overflow-hidden">
-        <section className="flex flex-col xl:flex-1 xl:min-h-0 xl:h-full xl:overflow-hidden">
+    <div
+      className={
+        isEditLeadOpen
+          ? "grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start"
+          : "grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start xl:items-stretch h-full min-h-0"
+      }
+    >
+      <div
+        className={
+          isEditLeadOpen
+            ? "min-w-0 flex flex-col"
+            : "min-w-0 flex flex-col xl:h-full xl:min-h-0 xl:overflow-hidden"
+        }
+      >
+        <section
+          className={
+            isEditLeadOpen
+              ? "flex flex-col"
+              : "flex flex-col xl:flex-1 xl:min-h-0 xl:h-full xl:overflow-hidden"
+          }
+        >
           <div
             id="lead-details-scroll"
             ref={scrollContainerRef}
-            className="crm-slim-scrollbar xl:flex-1 xl:min-h-0 xl:overflow-y-auto pr-3"
+            className={
+              isEditLeadOpen
+                ? "crm-slim-scrollbar pr-3"
+                : "crm-slim-scrollbar xl:flex-1 xl:min-h-0 xl:overflow-y-auto pr-3"
+            }
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-3">
               <DetailField icon={FiUser} label="Name" value={lead.name} />
@@ -481,7 +504,13 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
         </section>
       </div>
 
-      <div className="min-w-0 xl:min-h-0 xl:h-full xl:overflow-y-auto crm-slim-scrollbar pr-0.5 overscroll-y-contain">
+      <div
+        className={
+          isEditLeadOpen
+            ? "min-w-0 xl:sticky xl:top-4"
+            : "min-w-0 xl:min-h-0 xl:h-full xl:overflow-y-auto crm-slim-scrollbar pr-0.5 overscroll-y-contain"
+        }
+      >
         <LeadManagementCard
           lead={lead}
           highlighted={highlighted}

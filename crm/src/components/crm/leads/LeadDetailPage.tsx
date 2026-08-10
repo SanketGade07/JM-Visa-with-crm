@@ -137,10 +137,10 @@ export function LeadDetailPage() {
       <div
         role="tabpanel"
         aria-label={leadDetailTab}
-        className={leadDetailTab === "details" ? "flex-1 min-h-0 flex flex-col" : undefined}
+        className={leadDetailTab === "details" && !isEditLeadOpen ? "flex-1 min-h-0 flex flex-col" : undefined}
       >
         {leadDetailTab === "details" && isDetailsAllowed && (
-          <div className="flex-1 min-h-0 flex flex-col">
+          <div className={!isEditLeadOpen ? "flex-1 min-h-0 flex flex-col" : undefined}>
             <LeadDetailsSection lead={lead} highlighted={highlightSummary} />
           </div>
         )}
