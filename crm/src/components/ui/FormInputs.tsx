@@ -703,7 +703,6 @@ export function PhoneInput({ id, name, required, placeholder, value, onChange, o
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
     let nextCountry = selectedCountry;
-    let nextPrefixError: string | null = null;
 
     if (val.trim().startsWith('+')) {
       const cleaned = val.replace(/[^\d+]/g, '');
@@ -712,15 +711,10 @@ export function PhoneInput({ id, name, required, placeholder, value, onChange, o
       if (matched) {
         nextCountry = matched;
         val = cleaned.substring(matched.dialCode.length);
-      } else {
-        const hasPrefix = countriesList.some((c) => c.dialCode.startsWith(cleaned));
-        if (!hasPrefix && cleaned.length > 2) {
-          nextPrefixError = 'invalid';
-        }
       }
     }
 
-    setPrefixError(nextPrefixError);
+    setPrefixError(null);
     const filtered = val.replace(/[^\d\s\-\(\)]/g, '');
     applyPhoneUpdate(nextCountry, filtered);
   };

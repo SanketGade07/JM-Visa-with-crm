@@ -175,8 +175,8 @@ export function getStepFieldErrors(
       if (!state.clientName.trim()) {
         errors.clientName = "Client name is required.";
       }
-      if (!isValidE164Phone(state.phone)) {
-        errors.phone = "Enter a valid phone number.";
+      if (!state.phone.trim()) {
+        errors.phone = "Phone number is required.";
       } else if (leads) {
         const normalizedPhone = state.phone.trim();
         const exists = leads.some(
