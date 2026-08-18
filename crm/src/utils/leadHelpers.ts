@@ -4,6 +4,7 @@ import {
   getChecklistKeysForLead,
   type EmploymentCategory,
 } from "@/utils/documentChecklistConfig";
+import { parseCountries } from "@/utils/countryUtils";
 
 export function isLeadAssignedToCounselor(lead: Lead, counselorName: string): boolean {
   const assigned = lead.counselor?.trim().toLowerCase() ?? "";
@@ -46,7 +47,11 @@ export function scopeLeadsForUser(leads: Lead[], user: CrmUser | null): Lead[] {
 export function getDeskCountriesFromLeads(leads: Lead[]): string[] {
   const set = new Set<string>();
   for (const l of leads) {
-    if (l.status !== "DROPPED" && l.country?.trim()) set.add(l.country.trim());
+    if (l.status !== "DROPPED" && l.country?.trim()) {
+      for (const c of parseCountries(l.country)) {
+        set.add(c);
+      }
+    }
   }
   return [...set].sort((a, b) => a.localeCompare(b));
 }

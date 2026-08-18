@@ -91,11 +91,19 @@ export const writeLeads = async (leads: Lead[]): Promise<boolean> => {
 
 export const updateLeadCredentials = async (
   leadId: string,
-  creds: { username?: string; password?: string; portalUrl?: string } | null
+  creds: { username?: string; password?: string; portalUrl?: string } | null,
+  countryApplications?: Record<string, any>
 ): Promise<boolean> => {
   const supabase = getSupabase();
   try {
-    const payload = creds ? { visaCredentials: creds } : { visaCredentials: null };
+    const visaCredentialsPayload = creds || countryApplications
+      ? {
+          ...(creds || {}),
+          ...(countryApplications ? { countryApplications } : {}),
+        }
+      : null;
+
+    const payload = { visaCredentials: visaCredentialsPayload };
     const { error } = await supabase.from("leads").update(payload).eq("id", leadId);
     if (error) {
       console.error("Error updating lead credentials in Supabase:", error);

@@ -9,7 +9,7 @@ import { TableViewToggle } from "@/components/crm/ui/TableViewToggle";
 import { UpdatePackageModal } from "@/components/crm/modals/UpdatePackageModal";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { getDeskCountriesFromLeads, scopeLeadsForUser, sortLeadsByRecency } from "@/utils/leadHelpers";
-import { getCountryDisplayName } from "@/utils/countryUtils";
+import { getCountryDisplayName, countryMatches } from "@/utils/countryUtils";
 import { getDepositPickerLeads, getLeadPaymentSummary } from "@/utils/leadPaymentUtils";
 import { useColumnSearch } from "@/hooks/useColumnSearch";
 import { applyColumnSearch } from "@/utils/columnSearch";
@@ -119,7 +119,7 @@ export function PaymentsTab() {
   const ledgerRows = useMemo(() => {
     let active = counselorScopedLeads.filter((l) => l.status !== "DROPPED");
     if (paymentsCountryFilter !== "All") {
-      active = active.filter((l) => l.country === paymentsCountryFilter);
+      active = active.filter((l) => countryMatches(l.country, paymentsCountryFilter));
     }
     if (!dateFilterActive) return active;
     return active.filter((l) =>
@@ -176,7 +176,7 @@ export function PaymentsTab() {
     let filteredLeads = counselorScopedLeads.filter((l) => l.status !== "DROPPED");
 
     if (paymentsCountryFilter !== "All") {
-      filteredLeads = filteredLeads.filter((l) => l.country === paymentsCountryFilter);
+      filteredLeads = filteredLeads.filter((l) => countryMatches(l.country, paymentsCountryFilter));
     }
 
     if (dateFilterActive) {
@@ -216,7 +216,7 @@ export function PaymentsTab() {
     () =>
       getDeskCountriesFromLeads(counselorScopedLeads).map((country) => {
         const cLeads = counselorScopedLeads.filter(
-          (l) => l.country === country && l.status !== "DROPPED"
+          (l) => countryMatches(l.country, country) && l.status !== "DROPPED"
         );
         const relevantLeads = dateFilterActive
           ? cLeads.filter((l) =>

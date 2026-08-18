@@ -6,9 +6,10 @@ import { FormSection } from "./FormSection";
 
 type CountrySelectorProps = {
   name?: string;
-  value?: string;
+  value?: string | string[];
   onChange?: (value: string) => void;
   required?: boolean;
+  isMulti?: boolean;
   label?: string;
   inputId?: string;
   error?: string;
@@ -19,6 +20,7 @@ export function CountrySelector({
   value,
   onChange,
   required,
+  isMulti = true,
   label = "Immigration Country",
   inputId,
   error,
@@ -30,8 +32,10 @@ export function CountrySelector({
         value={value}
         onChange={onChange}
         required={required}
+        isMulti={isMulti}
         inputId={inputId}
       />
     </FormSection>
   );
 }
+

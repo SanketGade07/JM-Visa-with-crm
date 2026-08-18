@@ -18,6 +18,7 @@ import {
 import { FiPhone, FiMail, FiUsers, FiClock, FiCalendar, FiEye, FiSettings, FiGlobe, FiMenu, FiUser, FiLock } from "react-icons/fi";
 import DataTable, { exportRowsToCsv, StatusPill, getPillClasses, ProgressBar } from "@/components/ui/DataTable";
 import { SearchableCountrySelect, PhoneInput } from "@/components/ui/FormInputs";
+import { countryMatches } from "@/utils/countryUtils";
 // @ts-ignore
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
 import { getLeadAvatar, getLeadDescription, getLeadCompany } from "../helpers/leadDisplayHelpers";
@@ -68,7 +69,7 @@ export function CountriesTab() {
 
   const departmentRows = useMemo(() => {
     const list = leads.filter(
-      (l) => l.status !== "DROPPED" && (countryFilter === "All" || l.country === countryFilter)
+      (l) => l.status !== "DROPPED" && countryMatches(l.country, countryFilter)
     );
     return sortLeadsByRecency(list);
   }, [leads, countryFilter]);
@@ -104,7 +105,7 @@ export function CountriesTab() {
                       <p className="text-[10px] text-slate-400 tracking-normal block">{item.desc}</p>
                     </div>
                     <span className="text-[10px] mt-6 bg-slate-950 py-1 px-3 border border-slate-900 rounded-lg text-slate-400 font-bold block self-start">
-                      {leads.filter(l => l.country === item.key && l.status !== "DROPPED").length} Active Files
+                      {leads.filter(l => countryMatches(l.country, item.key) && l.status !== "DROPPED").length} Active Files
                     </span>
                   </button>
                 ))}
@@ -161,7 +162,7 @@ export function CountriesTab() {
                   { header: "Counselor", render: (lead) => <span className="text-gray-600 dark:text-slate-300 font-medium">{lead.counselor}</span> },
                 ]}
                 actions={(lead) => [
-                  lead.country === "USA"
+                  countryMatches(lead.country, "USA")
                     ? { icon: FiGlobe, title: "Manage slots", onClick: () => setCurrentTab("USASlots") }
                     : { icon: FiEye, title: "View file", onClick: (l) => { setCurrentTab("Leads"); setSelectedLeadId(l.id); } },
                   { icon: FiPhone, title: "Call", onClick: (l) => window.open(`tel:${l.phone}`) },

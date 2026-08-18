@@ -120,6 +120,15 @@ export interface Document {
   uploadedAt: string;
 }
 
+export interface CountryApplication {
+  visaCredentials?: {
+    username?: string;
+    password?: string;
+    portalUrl?: string;
+  };
+  usaSlots?: UsaSlotTracking;
+}
+
 export interface Lead {
   id: string;
   name: string;
@@ -142,6 +151,7 @@ export interface Lead {
     password?: string;
     portalUrl?: string;
   };
+  countryApplications?: Record<string, CountryApplication>;
   driveFolderId?: string | null;
   referredBy?: string;
   notes: string;
@@ -202,7 +212,11 @@ interface CrmContextType {
     patch: Partial<Pick<Lead, "email" | "country" | "visaType" | "passportNumber" | "passportIssueDate" | "passportExpiryDate" | "passportPlaceOfIssue" | "annualIncome" | "source" | "referredBy">>
   ) => void;
   assignCounselor: (leadId: string, counselor: string) => void;
-  setLeadCredentials: (leadId: string, creds: { username?: string; password?: string; portalUrl?: string } | null) => Promise<boolean>;
+  setLeadCredentials: (
+    leadId: string,
+    creds: { username?: string; password?: string; portalUrl?: string } | null,
+    countryApplications?: Record<string, CountryApplication>
+  ) => Promise<boolean>;
   setLeadDriveFolder: (leadId: string, driveFolderId: string | null) => Promise<boolean>;
   patchLeadDriveFolder: (leadId: string, driveFolderId: string) => void;
   refreshLeads: () => Promise<void>;
@@ -1430,13 +1444,21 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setLeadCredentials = async (
     leadId: string,
-    creds: { username?: string; password?: string; portalUrl?: string } | null
+    creds: { username?: string; password?: string; portalUrl?: string } | null,
+    countryApplications?: Record<string, CountryApplication>
   ): Promise<boolean> => {
     const today = new Date().toISOString().split("T")[0];
     const previousLeads = leads;
     const optimistic = leads.map((lead) =>
       lead.id === leadId
-        ? { ...lead, visaCredentials: creds ?? undefined, lastUpdated: today }
+        ? {
+            ...lead,
+            visaCredentials: creds ?? undefined,
+            countryApplications: countryApplications
+              ? { ...lead.countryApplications, ...countryApplications }
+              : lead.countryApplications,
+            lastUpdated: today,
+          }
         : lead
     );
     setLeads(optimistic);
@@ -1445,7 +1467,11 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const res = await fetch("/api/leads/credentials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: leadId, visaCredentials: creds }),
+        body: JSON.stringify({
+          id: leadId,
+          visaCredentials: creds,
+          countryApplications: countryApplications,
+        }),
       });
       if (!res.ok) {
         setLeads(previousLeads);

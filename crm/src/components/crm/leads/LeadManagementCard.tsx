@@ -5,7 +5,8 @@ import type { Lead } from "@/context/CrmContext";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { StatusSelectPill } from "@/components/ui/StatusSelectPill";
 import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
-import { isUsaCountry } from "@/utils/countryUtils";
+import { isUsaCountry, parseCountries, getCountryDisplayName } from "@/utils/countryUtils";
+import { getCountryFlag } from "@/components/CountryFlags";
 import { canRecordLeadDeposit, getLeadPaymentSummary } from "@/utils/leadPaymentUtils";
 import { FiUser, FiLock, FiPhone, FiHelpCircle } from "react-icons/fi";
 import { FaCar, FaUtensils, FaCity } from "react-icons/fa";
@@ -104,6 +105,19 @@ export function LeadManagementCard({
     showToast,
   } = useCrmLayoutContext();
 
+  const mgmtCountries = useMemo(() => parseCountries(lead.country), [lead.country]);
+  const [activeMgmtCountryTab, setActiveMgmtCountryTab] = useState(mgmtCountries[0] || lead.country);
+
+  React.useEffect(() => {
+    if (mgmtCountries.length > 0 && !mgmtCountries.includes(activeMgmtCountryTab)) {
+      setActiveMgmtCountryTab(mgmtCountries[0]);
+    }
+  }, [mgmtCountries, activeMgmtCountryTab]);
+
+  const activeMgmtApp = lead.countryApplications?.[activeMgmtCountryTab];
+  const mgmtUsername = activeMgmtApp?.visaCredentials?.username || (activeMgmtCountryTab === "USA" || mgmtCountries.length === 1 ? (lead.visaCredentials?.username ?? "") : "");
+  const mgmtPassword = activeMgmtApp?.visaCredentials?.password || (activeMgmtCountryTab === "USA" || mgmtCountries.length === 1 ? (lead.visaCredentials?.password ?? "") : "");
+
   const isUsa = isUsaCountry(lead.country);
   const paymentSummary = useMemo(() => getLeadPaymentSummary(lead), [lead.payments]);
   const [packageDraft, setPackageDraft] = useState("");
@@ -177,12 +191,40 @@ export function LeadManagementCard({
           <h2 className={sectionTitleCls}>
             Visa Portal
           </h2>
+          {mgmtCountries.length > 1 && (
+            <span className="text-[10px] font-semibold text-slate-400">
+              {mgmtCountries.length} Countries
+            </span>
+          )}
         </div>
+
+        {mgmtCountries.length > 1 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-3 max-w-full no-scrollbar scroll-smooth">
+            {mgmtCountries.map((c) => {
+              const isActive = c === activeMgmtCountryTab;
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setActiveMgmtCountryTab(c)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 cursor-pointer transition-all ${
+                    isActive
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  <span className="shrink-0">{getCountryFlag(c)}</span>
+                  <span className="whitespace-nowrap">{getCountryDisplayName(c)}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3">
             <CredentialField
-              value={lead.visaCredentials?.username?.trim() ?? ""}
+              value={mgmtUsername.trim()}
               icon={FiUser}
               iconColorClass="text-slate-500 dark:text-slate-400"
               tooltipText="Copy visa username"
@@ -190,7 +232,7 @@ export function LeadManagementCard({
               showToast={showToast}
             />
             <CredentialField
-              value={lead.visaCredentials?.password?.trim() ?? ""}
+              value={mgmtPassword.trim()}
               icon={FiLock}
               iconColorClass="text-slate-500 dark:text-slate-400"
               tooltipText="Copy visa password"

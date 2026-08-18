@@ -18,7 +18,18 @@ const UAE_COUNTRY_LABELS = new Set([
   "United Arab Emirates",
 ]);
 
-export function isUsaCountry(country: string): boolean {
+export function parseCountries(countryInput: string | string[] | undefined | null): string[] {
+  if (!countryInput) return [];
+  if (Array.isArray(countryInput)) {
+    return countryInput.map((c) => c.trim()).filter(Boolean);
+  }
+  return countryInput
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
+}
+
+function isSingleUsaCountry(country: string): boolean {
   const trimmed = country.trim();
   if (!trimmed) return false;
   if (USA_COUNTRY_LABELS.has(trimmed)) return true;
@@ -32,7 +43,7 @@ export function isUsaCountry(country: string): boolean {
   return false;
 }
 
-export function isUkCountry(country: string): boolean {
+function isSingleUkCountry(country: string): boolean {
   const trimmed = country.trim();
   if (!trimmed) return false;
   if (UK_COUNTRY_LABELS.has(trimmed)) return true;
@@ -43,7 +54,7 @@ export function isUkCountry(country: string): boolean {
   return false;
 }
 
-export function isUaeCountry(country: string): boolean {
+function isSingleUaeCountry(country: string): boolean {
   const trimmed = country.trim();
   if (!trimmed) return false;
   if (UAE_COUNTRY_LABELS.has(trimmed)) return true;
@@ -53,18 +64,56 @@ export function isUaeCountry(country: string): boolean {
   return false;
 }
 
-/** Maps country-list / variant labels to CRM department keys where applicable. */
-export function normalizeCrmCountry(country: string): string {
-  if (isUsaCountry(country)) return "USA";
-  if (isUkCountry(country)) return "UK";
-  if (isUaeCountry(country)) return "UAE";
-  return country.trim();
+export function isUsaCountry(country: string | string[]): boolean {
+  const list = parseCountries(country);
+  return list.some((c) => isSingleUsaCountry(c));
 }
 
-export function getCountryDisplayName(country: string): string {
-  const trimmed = country.trim();
-  if (isUsaCountry(trimmed)) return "United States of America (the)";
-  if (isUkCountry(trimmed)) return "United Kingdom";
-  if (isUaeCountry(trimmed)) return "United Arab Emirates";
-  return trimmed;
+export function isUkCountry(country: string | string[]): boolean {
+  const list = parseCountries(country);
+  return list.some((c) => isSingleUkCountry(c));
 }
+
+export function isUaeCountry(country: string | string[]): boolean {
+  const list = parseCountries(country);
+  return list.some((c) => isSingleUaeCountry(c));
+}
+
+/** Maps country-list / variant labels to CRM department keys where applicable. */
+export function normalizeCrmCountry(country: string | string[]): string {
+  const list = parseCountries(country);
+  return list
+    .map((c) => {
+      if (isSingleUsaCountry(c)) return "USA";
+      if (isSingleUkCountry(c)) return "UK";
+      if (isSingleUaeCountry(c)) return "UAE";
+      return c.trim();
+    })
+    .filter(Boolean)
+    .join(", ");
+}
+
+export function getCountryDisplayName(country: string | string[]): string {
+  const list = parseCountries(country);
+  if (list.length === 0) return "";
+  return list
+    .map((c) => {
+      if (isSingleUsaCountry(c)) return "United States of America (the)";
+      if (isSingleUkCountry(c)) return "United Kingdom";
+      if (isSingleUaeCountry(c)) return "United Arab Emirates";
+      return c.trim();
+    })
+    .filter(Boolean)
+    .join(", ");
+}
+
+export function countryMatches(leadCountry: string | string[], filterCountry: string): boolean {
+  if (!filterCountry || filterCountry === "All") return true;
+  const list = parseCountries(leadCountry);
+  const normFilter = normalizeCrmCountry(filterCountry);
+  return list.some((c) => {
+    const normC = normalizeCrmCountry(c);
+    return normC === normFilter || c.toLowerCase() === filterCountry.toLowerCase();
+  });
+}
+

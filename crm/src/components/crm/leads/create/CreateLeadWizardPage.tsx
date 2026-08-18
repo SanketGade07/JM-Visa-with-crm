@@ -28,7 +28,8 @@ import {
   WizardProgress,
   type WizardStepId,
 } from "@/components/crm/leads/create";
-import { isUsaCountry } from "@/utils/countryUtils";
+import { isUsaCountry, parseCountries, getCountryDisplayName } from "@/utils/countryUtils";
+import { getCountryFlag } from "@/components/CountryFlags";
 import { CreateLeadReviewStep } from "./CreateLeadReviewStep";
 import { useCounselorSelectOptions } from "@/hooks/useCounselorOptions";
 
@@ -138,6 +139,7 @@ function CreateLeadWizardInner({
     currentStep,
     setCurrentStep,
     updateField,
+    setActiveCountryTab,
     isStepValid,
     returnToReview,
     navigateToStep,
@@ -1036,6 +1038,12 @@ function CreateLeadWizardInner({
         const usaSecurityFoodError = getFieldError("usaSecurityFood");
         const usaSecurityCityError = getFieldError("usaSecurityCity");
 
+        const selectedCountries = parseCountries(state.immigrationCountry);
+        const activeTab = state.activeCountryTab && selectedCountries.includes(state.activeCountryTab)
+          ? state.activeCountryTab
+          : selectedCountries[0] || "";
+        const isTabUsa = isUsaCountry(activeTab);
+
         return (
           <div className="space-y-4">
             <CountrySelector
@@ -1047,9 +1055,38 @@ function CreateLeadWizardInner({
               required
               error={immigrationCountryError}
             />
+
+            {selectedCountries.length > 1 && (
+              <div className="p-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Select Country to Configure Credentials
+                </label>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {selectedCountries.map((c) => {
+                    const isActive = c === activeTab;
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setActiveCountryTab(c)}
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                          isActive
+                            ? "bg-blue-600 dark:bg-blue-600 text-white border-blue-600 shadow-sm font-bold"
+                            : "bg-slate-100 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white"
+                        }`}
+                      >
+                        {getCountryFlag(c)}
+                        <span>{getCountryDisplayName(c)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Visa Portal
+                Visa Portal {selectedCountries.length > 1 ? `(${getCountryDisplayName(activeTab)})` : ""}
               </p>
               <FormSectionGrid>
                 <FormSection
@@ -1090,7 +1127,7 @@ function CreateLeadWizardInner({
                 </FormSection>
               </FormSectionGrid>
             </div>
-            {showUsaFields && (
+            {isTabUsa && (
               <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Slot Portal

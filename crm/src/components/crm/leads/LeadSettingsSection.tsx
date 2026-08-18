@@ -12,9 +12,10 @@ import {
   getVisaServiceSelectOptions,
 } from "@/utils/leadFilterOptions";
 import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
-import { SearchableFilterSelect } from "@/components/ui/FormInputs";
+import { SearchableCountrySelect, SearchableFilterSelect } from "@/components/ui/FormInputs";
 import { CompactRadioGroup } from "@/components/crm/leads/create/CompactRadioGroup";
-import { isUsaCountry } from "@/utils/countryUtils";
+import { isUsaCountry, parseCountries, getCountryDisplayName } from "@/utils/countryUtils";
+import { getCountryFlag } from "@/components/CountryFlags";
 import { getLeadPaymentSummary } from "@/utils/leadPaymentUtils";
 import {
   FiCalendar,
@@ -152,17 +153,17 @@ function ProfileField({
   value: string;
 }) {
   return (
-    <div className="flex items-start gap-3 min-w-0">
-      <div className="w-9 h-9 rounded-xl border border-gray-200 dark:border-slate-700/80 bg-gray-50 dark:bg-slate-800/40 flex items-center justify-center shrink-0">
-        <Icon className="text-sm text-blue-600 dark:text-blue-400" />
-      </div>
-      <div className="min-w-0">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 block">
+    <div className="space-y-1.5 min-w-0">
+      <div className="flex items-center gap-2">
+        <div className="w-9 h-9 rounded-xl border border-gray-200 dark:border-slate-700/80 bg-gray-50 dark:bg-slate-800/40 flex items-center justify-center shrink-0">
+          <Icon className="text-sm text-blue-600 dark:text-blue-400" />
+        </div>
+        <span className={fieldLabelCls}>
           {label}
         </span>
-        <span className="text-[13px] font-semibold text-gray-800 dark:text-slate-100 block mt-1 truncate">
-          {value || "—"}
-        </span>
+      </div>
+      <div className="w-full bg-white dark:bg-slate-800/40 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 text-xs font-semibold h-[40px] px-3 rounded-xl shadow-xs flex items-center min-w-0">
+        <span className="truncate">{value || "—"}</span>
       </div>
     </div>
   );
@@ -222,12 +223,15 @@ const SETTINGS_PROFILE_FIELD_THEME_CSS = `
   .lead-settings-profile-fields .profile-email-input {
     background-color: var(--settings-field-bg) !important;
   }
-  .lead-settings-profile-fields .profile-select-wrapper .filter-react-select {
+  .lead-settings-profile-fields .profile-select-wrapper .filter-react-select,
+  .lead-settings-profile-fields .profile-select-wrapper .custom-react-select {
     width: 100%;
   }
-  .lead-settings-profile-fields .profile-select-wrapper .filter-select__control {
+  .lead-settings-profile-fields .profile-select-wrapper .filter-select__control,
+  .lead-settings-profile-fields .profile-select-wrapper .country-select__control {
     min-height: 40px !important;
     height: 40px !important;
+    max-height: 40px !important;
     width: 100% !important;
     min-width: 100% !important;
     background-color: var(--settings-field-bg) !important;
@@ -236,19 +240,56 @@ const SETTINGS_PROFILE_FIELD_THEME_CSS = `
     box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
     font-size: 12px !important;
     font-weight: 600 !important;
+    overflow: hidden !important;
   }
-  .lead-settings-profile-fields .profile-select-wrapper .filter-select__control--is-focused {
+  .lead-settings-profile-fields .profile-select-wrapper .filter-select__control--is-focused,
+  .lead-settings-profile-fields .profile-select-wrapper .country-select__control--is-focused {
     border-color: #3b82f6 !important;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
   }
   .lead-settings-profile-fields .profile-select-wrapper .filter-select__single-value,
-  .lead-settings-profile-fields .profile-select-wrapper .filter-select__placeholder {
+  .lead-settings-profile-fields .profile-select-wrapper .filter-select__placeholder,
+  .lead-settings-profile-fields .profile-select-wrapper .country-select__single-value,
+  .lead-settings-profile-fields .profile-select-wrapper .country-select__placeholder {
     color: var(--settings-field-text) !important;
     font-size: 12px !important;
     font-weight: 600 !important;
   }
   .lead-settings-profile-fields .profile-select-wrapper .filter-select__value-container {
     padding: 0 12px !important;
+  }
+  .lead-settings-profile-fields .profile-select-wrapper .country-select__value-container {
+    padding: 0 6px !important;
+    max-height: 38px !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    width: 100% !important;
+    overflow: hidden !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  .lead-settings-profile-fields .profile-select-wrapper .country-select__value-container::-webkit-scrollbar {
+    display: none !important;
+  }
+  .lead-settings-profile-fields .profile-select-wrapper .country-select__multi-value {
+    background-color: rgba(59, 130, 246, 0.12) !important;
+    border: 1px solid rgba(59, 130, 246, 0.25) !important;
+    border-radius: 0.375rem !important;
+    margin: 1px 2px !important;
+  }
+  html.light .lead-settings-profile-fields .profile-select-wrapper .country-select__multi-value {
+    background-color: #eff6ff !important;
+    border-color: #bfdbfe !important;
+  }
+  .lead-settings-profile-fields .profile-select-wrapper .country-select__multi-value__label {
+    color: #60a5fa !important;
+    font-size: 10.5px !important;
+    font-weight: 600 !important;
+    padding: 1px 4px !important;
+  }
+  html.light .lead-settings-profile-fields .profile-select-wrapper .country-select__multi-value__label {
+    color: #1d4ed8 !important;
   }
   .lead-settings-profile-fields .profile-counselor-select .table-pill-select button {
     background-color: var(--settings-field-bg) !important;
@@ -520,9 +561,50 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
     showToast("Deposit recorded successfully", "success");
   };
 
-  const [credUsername, setCredUsername] = useState(lead.visaCredentials?.username ?? "");
-  const [credPassword, setCredPassword] = useState(lead.visaCredentials?.password ?? "");
-  const [credPortalUrl, setCredPortalUrl] = useState(lead.visaCredentials?.portalUrl ?? "");
+  const settingsCountries = useMemo(() => parseCountries(lead.country), [lead.country]);
+  const [activeSettingsCountryTab, setActiveSettingsCountryTab] = useState<string>(
+    settingsCountries[0] || lead.country
+  );
+
+  useEffect(() => {
+    if (settingsCountries.length > 0 && !settingsCountries.includes(activeSettingsCountryTab)) {
+      setActiveSettingsCountryTab(settingsCountries[0]);
+    }
+  }, [settingsCountries, activeSettingsCountryTab]);
+
+  const [countryCredsMap, setCountryCredsMap] = useState<
+    Record<string, { username: string; password: string; portalUrl: string }>
+  >({});
+
+  useEffect(() => {
+    const initialMap: Record<string, { username: string; password: string; portalUrl: string }> = {};
+    settingsCountries.forEach((c) => {
+      const app = lead.countryApplications?.[c];
+      initialMap[c] = {
+        username: app?.visaCredentials?.username ?? (c === "USA" || settingsCountries.length === 1 ? (lead.visaCredentials?.username ?? "") : ""),
+        password: app?.visaCredentials?.password ?? (c === "USA" || settingsCountries.length === 1 ? (lead.visaCredentials?.password ?? "") : ""),
+        portalUrl: app?.visaCredentials?.portalUrl ?? (c === "USA" || settingsCountries.length === 1 ? (lead.visaCredentials?.portalUrl ?? "") : ""),
+      };
+    });
+    setCountryCredsMap(initialMap);
+  }, [lead.id, lead.countryApplications, lead.visaCredentials, settingsCountries]);
+
+  const currentSettingsCreds = countryCredsMap[activeSettingsCountryTab] || {
+    username: "",
+    password: "",
+    portalUrl: "",
+  };
+
+  const updateCurrentCredField = (field: "username" | "password" | "portalUrl", value: string) => {
+    setCountryCredsMap((prev) => ({
+      ...prev,
+      [activeSettingsCountryTab]: {
+        ...(prev[activeSettingsCountryTab] || { username: "", password: "", portalUrl: "" }),
+        [field]: value,
+      },
+    }));
+  };
+
   const [savingCreds, setSavingCreds] = useState(false);
 
   const [slotPortalUsername, setSlotPortalUsername] = useState(
@@ -536,12 +618,6 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
   const [trackingMobile, setTrackingMobile] = useState(lead.usaSlots?.trackingMobile ?? "");
   const [securityQuestions, setSecurityQuestions] = useState<Array<{ question: string; answer: string }>>([]);
   const [savingUsaTracking, setSavingUsaTracking] = useState(false);
-
-  useEffect(() => {
-    setCredUsername(lead.visaCredentials?.username ?? "");
-    setCredPassword(lead.visaCredentials?.password ?? "");
-    setCredPortalUrl(lead.visaCredentials?.portalUrl ?? "");
-  }, [lead.id, lead.visaCredentials]);
 
   useEffect(() => {
     setSlotPortalUsername(lead.usaSlots?.slotPortalUsername ?? "");
@@ -633,14 +709,41 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
 
   const handleSaveCredentials = async () => {
     setSavingCreds(true);
-    const ok = await setLeadCredentials(lead.id, {
-      username: credUsername.trim() || undefined,
-      password: credPassword.trim() || undefined,
-      portalUrl: credPortalUrl.trim() || undefined,
+    const activeData = countryCredsMap[activeSettingsCountryTab] || {
+      username: "",
+      password: "",
+      portalUrl: "",
+    };
+
+    const rootCreds = {
+      username: activeData.username.trim() || undefined,
+      password: activeData.password.trim() || undefined,
+      portalUrl: activeData.portalUrl.trim() || undefined,
+    };
+
+    const updatedApps: Record<string, any> = { ...lead.countryApplications };
+    settingsCountries.forEach((c) => {
+      const cData = countryCredsMap[c];
+      if (cData) {
+        updatedApps[c] = {
+          ...updatedApps[c],
+          visaCredentials: {
+            username: cData.username.trim() || undefined,
+            password: cData.password.trim() || undefined,
+            portalUrl: cData.portalUrl.trim() || undefined,
+          },
+        };
+      }
     });
+
+    const ok = await setLeadCredentials(lead.id, rootCreds, updatedApps);
     setSavingCreds(false);
     showToast(
-      ok ? "Portal credentials saved" : "Failed to save credentials",
+      ok
+        ? settingsCountries.length > 1
+          ? `Credentials saved for ${getCountryDisplayName(activeSettingsCountryTab)}`
+          : "Portal credentials saved"
+        : "Failed to save credentials",
       ok ? "success" : "error"
     );
   };
@@ -894,17 +997,15 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
             <div
               className={`${profileSelectWrapperCls}${!canModifyLeads ? " opacity-60 pointer-events-none" : ""}`}
             >
-              <SearchableFilterSelect
+              <SearchableCountrySelect
                 value={lead.country}
                 onChange={(country) => {
-                  if (!country || country === lead.country) return;
+                  if (country === lead.country) return;
                   updateLeadProfile(lead.id, { country });
                   showToast("Profile updated", "success");
                 }}
-                options={countryOptions}
-                placeholder="Select country…"
-                portalId={`settings-country-${lead.id}`}
-                clearValue={lead.country}
+                placeholder="Select countries…"
+                isMulti={true}
               />
             </div>
           </EditableProfileField>
@@ -1591,11 +1692,34 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <SettingsCard title="Visa Portal Credentials">
             <div className="space-y-4">
+              {settingsCountries.length > 1 && (
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-3 border-b border-slate-100 dark:border-slate-800 max-w-full no-scrollbar scroll-smooth">
+                  {settingsCountries.map((c) => {
+                    const isActive = c === activeSettingsCountryTab;
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setActiveSettingsCountryTab(c)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 cursor-pointer transition-all ${
+                          isActive
+                            ? "bg-blue-600 text-white shadow-xs"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                        }`}
+                      >
+                        <span className="shrink-0">{getCountryFlag(c)}</span>
+                        <span className="whitespace-nowrap">{getCountryDisplayName(c)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               <CopyField
                 id={`cred-username-${lead.id}`}
                 label="Username"
-                value={credUsername}
-                onChange={(e) => setCredUsername(e.target.value)}
+                value={currentSettingsCreds.username}
+                onChange={(e) => updateCurrentCredField("username", e.target.value)}
                 disabled={!canEditCredentials}
                 placeholder="e.g. V2486037"
                 onCopied={() => showToast("Copied to clipboard", "success")}
@@ -1605,8 +1729,8 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
                 id={`cred-password-${lead.id}`}
                 label="Password"
                 type="text"
-                value={credPassword}
-                onChange={(e) => setCredPassword(e.target.value)}
+                value={currentSettingsCreds.password}
+                onChange={(e) => updateCurrentCredField("password", e.target.value)}
                 disabled={!canEditCredentials}
                 placeholder="Portal password"
                 onCopied={() => showToast("Copied to clipboard", "success")}
@@ -1616,8 +1740,8 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
                 id={`cred-portal-${lead.id}`}
                 label="Portal URL"
                 type="url"
-                value={credPortalUrl}
-                onChange={(e) => setCredPortalUrl(e.target.value)}
+                value={currentSettingsCreds.portalUrl}
+                onChange={(e) => updateCurrentCredField("portalUrl", e.target.value)}
                 disabled={!canEditCredentials}
                 placeholder="https://…"
                 onCopied={() => showToast("Copied to clipboard", "success")}
@@ -1629,11 +1753,15 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
                 onClick={() => void handleSaveCredentials()}
                 className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 font-bold text-white text-xs rounded-xl cursor-pointer transition-colors"
               >
-                {savingCreds ? "Saving…" : "Save Credentials"}
+                {savingCreds
+                  ? "Saving…"
+                  : settingsCountries.length > 1
+                    ? `Save ${getCountryDisplayName(activeSettingsCountryTab)} Credentials`
+                    : "Save Credentials"}
               </button>
 
               <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-relaxed">
-                Updates the lead&apos;s visa portal login used by the USA slots workflow.
+                Updates the lead&apos;s visa portal login used by the application workflow.
               </p>
             </div>
         </SettingsCard>

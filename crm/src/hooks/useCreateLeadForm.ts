@@ -4,11 +4,13 @@ import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import type { WizardStepId } from "@/components/crm/leads/create/WizardProgress";
 import {
   CREATE_LEAD_INITIAL_STATE,
+  DEFAULT_COUNTRY_APPLICATION_STATE,
   type CreateLeadFormState,
   type CreateLeadType,
   type CreateLeadSlotStatus,
+  type CountryApplicationState,
 } from "@/types/createLeadForm";
-import { isUsaCountry } from "@/utils/countryUtils";
+import { isUsaCountry, parseCountries } from "@/utils/countryUtils";
 import { isValidE164Phone } from "@/utils/validatePhone";
 
 import { useCrm, type Lead } from "@/context/CrmContext";
@@ -42,6 +44,54 @@ function getInitialStateFromLead(lead: Lead | null | undefined): CreateLeadFormS
       ? "available" 
       : "";
 
+  const parsedCountries = parseCountries(lead.country || "");
+  const countryApplications: Record<string, CountryApplicationState> = {};
+
+  if (lead.countryApplications) {
+    Object.entries(lead.countryApplications).forEach(([cName, app]) => {
+      countryApplications[cName] = {
+        loginId: app.visaCredentials?.username || "",
+        password: app.visaCredentials?.password || "",
+        slotStatus: app.usaSlots?.slotsPaid ? "paid" : app.usaSlots?.slotsAvailable ? "available" : "",
+        slotPortalLoginId: app.usaSlots?.slotPortalUsername || "",
+        slotPortalPassword: app.usaSlots?.slotPortalPassword || "",
+        usaTrackingMobile: app.usaSlots?.trackingMobile || "",
+        usaSecurityCar: app.usaSlots?.securityCar || "",
+        usaSecurityFood: app.usaSlots?.securityFood || "",
+        usaSecurityCity: app.usaSlots?.securityCity || "",
+        securityQuestions: app.usaSlots?.securityQuestions || [
+          { question: "Car", answer: app.usaSlots?.securityCar || "" },
+          { question: "Food", answer: app.usaSlots?.securityFood || "" },
+          { question: "City", answer: app.usaSlots?.securityCity || "" }
+        ],
+      };
+    });
+  }
+
+  parsedCountries.forEach((cName) => {
+    if (!countryApplications[cName]) {
+      countryApplications[cName] = {
+        loginId: isUsaCountry(cName) || parsedCountries.length === 1 ? (lead.visaCredentials?.username || "") : "",
+        password: isUsaCountry(cName) || parsedCountries.length === 1 ? (lead.visaCredentials?.password || "") : "",
+        slotStatus,
+        slotPortalLoginId: lead.usaSlots?.slotPortalUsername || "",
+        slotPortalPassword: lead.usaSlots?.slotPortalPassword || "",
+        usaTrackingMobile: lead.usaSlots?.trackingMobile || "",
+        usaSecurityCar: lead.usaSlots?.securityCar || "",
+        usaSecurityFood: lead.usaSlots?.securityFood || "",
+        usaSecurityCity: lead.usaSlots?.securityCity || "",
+        securityQuestions: lead.usaSlots?.securityQuestions || [
+          { question: "Car", answer: lead.usaSlots?.securityCar || "" },
+          { question: "Food", answer: lead.usaSlots?.securityFood || "" },
+          { question: "City", answer: lead.usaSlots?.securityCity || "" }
+        ],
+      };
+    }
+  });
+
+  const activeCountryTab = parsedCountries[0] || "";
+  const activeApp = countryApplications[activeCountryTab] || DEFAULT_COUNTRY_APPLICATION_STATE;
+
   return {
     leadType,
     visaSubtype: lead.visaType || "",
@@ -53,20 +103,18 @@ function getInitialStateFromLead(lead: Lead | null | undefined): CreateLeadFormS
     passportExpiryDate: lead.passportExpiryDate || "",
     passportPlaceOfIssue: lead.passportPlaceOfIssue || "",
     immigrationCountry: lead.country || "",
-    loginId: lead.visaCredentials?.username || "",
-    password: lead.visaCredentials?.password || "",
-    slotPortalLoginId: lead.usaSlots?.slotPortalUsername || "",
-    slotPortalPassword: lead.usaSlots?.slotPortalPassword || "",
-    usaTrackingMobile: lead.usaSlots?.trackingMobile || "",
-    usaSecurityCar: lead.usaSlots?.securityCar || "",
-    usaSecurityFood: lead.usaSlots?.securityFood || "",
-    usaSecurityCity: lead.usaSlots?.securityCity || "",
-    securityQuestions: lead.usaSlots?.securityQuestions || [
-      { question: "Car", answer: lead.usaSlots?.securityCar || "" },
-      { question: "Food", answer: lead.usaSlots?.securityFood || "" },
-      { question: "City", answer: lead.usaSlots?.securityCity || "" }
-    ],
-    slotStatus,
+    loginId: activeApp.loginId || lead.visaCredentials?.username || "",
+    password: activeApp.password || lead.visaCredentials?.password || "",
+    slotPortalLoginId: activeApp.slotPortalLoginId,
+    slotPortalPassword: activeApp.slotPortalPassword,
+    usaTrackingMobile: activeApp.usaTrackingMobile,
+    usaSecurityCar: activeApp.usaSecurityCar,
+    usaSecurityFood: activeApp.usaSecurityFood,
+    usaSecurityCity: activeApp.usaSecurityCity,
+    securityQuestions: activeApp.securityQuestions,
+    slotStatus: activeApp.slotStatus,
+    countryApplications,
+    activeCountryTab,
     caseOfficer: lead.counselor || UNASSIGNED_COUNSELOR,
     leadSource: lead.source || "MANUAL",
     employmentCategory: lead.employmentCategory || DEFAULT_EMPLOYMENT_CATEGORY,
@@ -480,6 +528,62 @@ export function useCreateLeadForm(lead?: Lead | null) {
           }
         }
 
+        if (key === "immigrationCountry") {
+          const parsed = parseCountries(value as string);
+          const nextApps: Record<string, CountryApplicationState> = { ...prev.countryApplications };
+          parsed.forEach((c) => {
+            if (!nextApps[c]) {
+              nextApps[c] = {
+                loginId: prev.loginId || "",
+                password: prev.password || "",
+                slotStatus: prev.slotStatus || "",
+                slotPortalLoginId: prev.slotPortalLoginId || "",
+                slotPortalPassword: prev.slotPortalPassword || "",
+                usaTrackingMobile: prev.usaTrackingMobile || "",
+                usaSecurityCar: prev.usaSecurityCar || "",
+                usaSecurityFood: prev.usaSecurityFood || "",
+                usaSecurityCity: prev.usaSecurityCity || "",
+                securityQuestions: prev.securityQuestions || [
+                  { question: "Car", answer: "" },
+                  { question: "Food", answer: "" },
+                  { question: "City", answer: "" }
+                ],
+              };
+            }
+          });
+          next.countryApplications = nextApps;
+          if (!prev.activeCountryTab || !parsed.includes(prev.activeCountryTab)) {
+            next.activeCountryTab = parsed[0] || "";
+          }
+        }
+
+        const credentialKeys: (keyof CountryApplicationState)[] = [
+          "loginId",
+          "password",
+          "slotStatus",
+          "slotPortalLoginId",
+          "slotPortalPassword",
+          "usaTrackingMobile",
+          "usaSecurityCar",
+          "usaSecurityFood",
+          "usaSecurityCity",
+          "securityQuestions",
+        ];
+
+        if (credentialKeys.includes(key as any) && (prev.activeCountryTab || next.activeCountryTab)) {
+          const activeTab = prev.activeCountryTab || next.activeCountryTab || "";
+          if (activeTab) {
+            const currentApp = prev.countryApplications[activeTab] || DEFAULT_COUNTRY_APPLICATION_STATE;
+            next.countryApplications = {
+              ...(next.countryApplications || prev.countryApplications),
+              [activeTab]: {
+                ...currentApp,
+                [key]: value,
+              },
+            };
+          }
+        }
+
         return next;
       });
       setSubmitFieldErrors((prev) => {
@@ -493,6 +597,26 @@ export function useCreateLeadForm(lead?: Lead | null) {
     },
     []
   );
+
+  const setActiveCountryTab = useCallback((country: string) => {
+    setState((prev) => {
+      const app = prev.countryApplications[country] || DEFAULT_COUNTRY_APPLICATION_STATE;
+      return {
+        ...prev,
+        activeCountryTab: country,
+        loginId: app.loginId,
+        password: app.password,
+        slotStatus: app.slotStatus,
+        slotPortalLoginId: app.slotPortalLoginId,
+        slotPortalPassword: app.slotPortalPassword,
+        usaTrackingMobile: app.usaTrackingMobile,
+        usaSecurityCar: app.usaSecurityCar,
+        usaSecurityFood: app.usaSecurityFood,
+        usaSecurityCity: app.usaSecurityCity,
+        securityQuestions: app.securityQuestions,
+      };
+    });
+  }, []);
 
   const reset = useCallback((initialStateOverrides?: Partial<CreateLeadFormState>) => {
     setState({
@@ -677,6 +801,7 @@ export function useCreateLeadForm(lead?: Lead | null) {
     currentStep,
     setCurrentStep: goToStep,
     updateField,
+    setActiveCountryTab,
     reset,
     hasCompletedWizard,
     completedSteps,

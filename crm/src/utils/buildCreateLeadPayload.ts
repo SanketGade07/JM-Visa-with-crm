@@ -1,10 +1,10 @@
-import type { Lead } from "@/context/CrmContext";
+import type { Lead, CountryApplication } from "@/context/CrmContext";
 import {
   buildEmptyChecklist,
   DEFAULT_EMPLOYMENT_CATEGORY,
 } from "@/utils/documentChecklistConfig";
 import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
-import { isUsaCountry, normalizeCrmCountry } from "@/utils/countryUtils";
+import { isUsaCountry, normalizeCrmCountry, parseCountries } from "@/utils/countryUtils";
 import { isCounselorAssigned, UNASSIGNED_COUNSELOR } from "@/utils/counselorOptions";
 import type { CreateLeadFormState } from "@/types/createLeadForm";
 
@@ -17,12 +17,6 @@ export function buildCreateLeadPayload(state: CreateLeadFormState): CreateLeadPa
   const employmentCategory = state.employmentCategory || DEFAULT_EMPLOYMENT_CATEGORY;
   const country = normalizeCrmCountry(state.immigrationCountry);
   const totalPackage = parseFloat(state.packageAmount) || 0;
-  const loginId = state.loginId.trim();
-  const password = state.password.trim();
-  const hasCredentials = !!(loginId && password);
-  const slotPortalLoginId = state.slotPortalLoginId.trim();
-  const slotPortalPassword = state.slotPortalPassword.trim();
-  const hasSlotPortalCredentials = !!(slotPortalLoginId && slotPortalPassword);
 
   const payload: CreateLeadPayload = {
     name: state.clientName.trim(),
@@ -59,34 +53,72 @@ export function buildCreateLeadPayload(state: CreateLeadFormState): CreateLeadPa
         : [],
   };
 
-  if (hasCredentials) {
-    payload.visaCredentials = { username: loginId, password };
-  }
+  const parsedCountries = parseCountries(state.immigrationCountry);
+  const countryApplications: Record<string, CountryApplication> = {};
 
-  if (isUsaCountry(country)) {
-    const legacyCar = (state.securityQuestions.find(q => q.question.toLowerCase().includes("car"))?.answer || "").trim();
-    const legacyFood = (state.securityQuestions.find(q => q.question.toLowerCase().includes("food"))?.answer || "").trim();
-    const legacyCity = (state.securityQuestions.find(q => q.question.toLowerCase().includes("city"))?.answer || "").trim();
-
-    payload.usaSlots = {
-      ...DEFAULT_USA_SLOTS,
-      slotLocation: "Delhi",
-      slotsAvailable: state.slotStatus === "available",
-      slotsPaid: state.slotStatus === "paid",
-      credentialsProvided: hasCredentials,
-      ...(hasSlotPortalCredentials && {
-        slotPortalUsername: slotPortalLoginId,
-        slotPortalPassword: slotPortalPassword,
-      }),
-      trackingMobile: state.usaTrackingMobile.trim(),
-      securityCar: legacyCar || state.usaSecurityCar.trim(),
-      securityFood: legacyFood || state.usaSecurityFood.trim(),
-      securityCity: legacyCity || state.usaSecurityCity.trim(),
-      securityQuestions: state.securityQuestions.map((q) => ({
-        question: q.question.trim(),
-        answer: q.answer.trim(),
-      })),
+  parsedCountries.forEach((cName) => {
+    const appState = state.countryApplications[cName] || {
+      loginId: state.loginId,
+      password: state.password,
+      slotStatus: state.slotStatus,
+      slotPortalLoginId: state.slotPortalLoginId,
+      slotPortalPassword: state.slotPortalPassword,
+      usaTrackingMobile: state.usaTrackingMobile,
+      usaSecurityCar: state.usaSecurityCar,
+      usaSecurityFood: state.usaSecurityFood,
+      usaSecurityCity: state.usaSecurityCity,
+      securityQuestions: state.securityQuestions,
     };
+
+    const cLogin = appState.loginId.trim();
+    const cPass = appState.password.trim();
+    const cHasCreds = !!(cLogin && cPass);
+
+    const countryApp: CountryApplication = {};
+    if (cHasCreds) {
+      countryApp.visaCredentials = { username: cLogin, password: cPass };
+      if (!payload.visaCredentials) {
+        payload.visaCredentials = countryApp.visaCredentials;
+      }
+    }
+
+    if (isUsaCountry(cName)) {
+      const cSlotLogin = appState.slotPortalLoginId.trim();
+      const cSlotPass = appState.slotPortalPassword.trim();
+      const cHasSlotCreds = !!(cSlotLogin && cSlotPass);
+
+      const legacyCar = (appState.securityQuestions.find(q => q.question.toLowerCase().includes("car"))?.answer || "").trim();
+      const legacyFood = (appState.securityQuestions.find(q => q.question.toLowerCase().includes("food"))?.answer || "").trim();
+      const legacyCity = (appState.securityQuestions.find(q => q.question.toLowerCase().includes("city"))?.answer || "").trim();
+
+      countryApp.usaSlots = {
+        ...DEFAULT_USA_SLOTS,
+        slotLocation: "Delhi",
+        slotsAvailable: appState.slotStatus === "available",
+        slotsPaid: appState.slotStatus === "paid",
+        credentialsProvided: cHasCreds,
+        ...(cHasSlotCreds && {
+          slotPortalUsername: cSlotLogin,
+          slotPortalPassword: cSlotPass,
+        }),
+        trackingMobile: appState.usaTrackingMobile.trim(),
+        securityCar: legacyCar || appState.usaSecurityCar.trim(),
+        securityFood: legacyFood || appState.usaSecurityFood.trim(),
+        securityCity: legacyCity || appState.usaSecurityCity.trim(),
+        securityQuestions: appState.securityQuestions.map((q) => ({
+          question: q.question.trim(),
+          answer: q.answer.trim(),
+        })),
+      };
+
+      payload.usaSlots = countryApp.usaSlots;
+    }
+
+    countryApplications[cName] = countryApp;
+  });
+
+  if (Object.keys(countryApplications).length > 0) {
+    payload.countryApplications = countryApplications;
   }
 
   return payload;

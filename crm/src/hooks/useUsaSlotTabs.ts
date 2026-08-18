@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useCrmLayoutContext } from "@/components/crm/context/CrmLayoutContext";
 import { scopeLeadsForUser, getLeadCreatedTimestamp } from "@/utils/leadHelpers";
+import { isUsaCountry } from "@/utils/countryUtils";
 
 export function useUsaSlotTabs() {
   const { leads, currentUser, usaSlotView } = useCrmLayoutContext();
@@ -13,7 +14,7 @@ export function useUsaSlotTabs() {
   );
 
   const usaLeads = useMemo(
-    () => scopedLeads.filter((l) => l.country === "USA" && l.status !== "DROPPED"),
+    () => scopedLeads.filter((l) => isUsaCountry(l.country) && l.status !== "DROPPED"),
     [scopedLeads]
   );
 

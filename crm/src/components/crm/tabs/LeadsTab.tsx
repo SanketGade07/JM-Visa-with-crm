@@ -34,7 +34,8 @@ import {
   getVisaServiceFilterOptions,
 } from "@/utils/leadFilterOptions";
 import { getStatusPillStyle } from "@/utils/leadStatusConfig";
-import { getCountryDisplayName } from "@/utils/countryUtils";
+import { getCountryDisplayName, parseCountries, isUsaCountry } from "@/utils/countryUtils";
+import { getCountryFlag } from "@/components/CountryFlags";
 // @ts-ignore
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
 import { getLeadAvatar, getLeadDescription, getLeadCompany } from "../helpers/leadDisplayHelpers";
@@ -47,6 +48,290 @@ import {
   filterScopedLeads,
   matchesQuickTab,
 } from "@/utils/leadQuickFilters";
+
+function LeadCredentialsCell({
+  lead,
+  showToast,
+}: {
+  lead: Lead;
+  showToast: (msg: string, type?: "success" | "error") => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  const countries = parseCountries(lead.country);
+  if (countries.length === 0) {
+    return <span className="text-gray-400 dark:text-slate-500 text-[11px]">—</span>;
+  }
+
+  const countryItems = countries.map((c) => {
+    const app = lead.countryApplications?.[c];
+    const isUsa = isUsaCountry(c);
+
+    const visaUser = app?.visaCredentials?.username || (countries.length === 1 || isUsa ? lead.visaCredentials?.username : "") || "";
+    const visaPass = app?.visaCredentials?.password || (countries.length === 1 || isUsa ? lead.visaCredentials?.password : "") || "";
+
+    const slotUser = app?.usaSlots?.slotPortalUsername || (isUsa ? lead.usaSlots?.slotPortalUsername : "") || "";
+    const slotPass = app?.usaSlots?.slotPortalPassword || (isUsa ? lead.usaSlots?.slotPortalPassword : "") || "";
+    const slotMobile = app?.usaSlots?.trackingMobile || (isUsa ? lead.usaSlots?.trackingMobile : "") || "";
+
+    const hasVisaCreds = !!(visaUser || visaPass);
+    const hasSlotCreds = isUsa && !!(slotUser || slotPass || slotMobile);
+
+    return {
+      country: c,
+      isUsa,
+      visaUser,
+      visaPass,
+      slotUser,
+      slotPass,
+      slotMobile,
+      hasVisaCreds,
+      hasSlotCreds,
+      hasAny: hasVisaCreds || hasSlotCreds,
+    };
+  });
+
+  const configuredCount = countryItems.filter((item) => item.hasAny).length;
+
+  if (configuredCount === 0 && !lead.visaCredentials?.username && !lead.visaCredentials?.password) {
+    return <span className="text-gray-400 dark:text-slate-500 text-[11px]">—</span>;
+  }
+
+  if (countries.length === 1) {
+    const item = countryItems[0];
+    const userVal = item.visaUser || lead.visaCredentials?.username || "";
+    const passVal = item.visaPass || lead.visaCredentials?.password || "";
+    const sUserVal = item.isUsa ? (item.slotUser || lead.usaSlots?.slotPortalUsername || "") : "";
+    const sPassVal = item.isUsa ? (item.slotPass || lead.usaSlots?.slotPortalPassword || "") : "";
+
+    if (!userVal && !passVal && !sUserVal && !sPassVal) {
+      return <span className="text-gray-400 dark:text-slate-500 text-[11px]">—</span>;
+    }
+
+    return (
+      <div className="flex items-center gap-1.5">
+        {userVal && (
+          <button
+            type="button"
+            title="Copy visa username"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(userVal);
+              showToast("Visa username copied");
+            }}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
+          >
+            <FiUser className="text-[13.5px]" />
+          </button>
+        )}
+        {passVal && (
+          <button
+            type="button"
+            title="Copy visa password"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(passVal);
+              showToast("Visa password copied");
+            }}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
+          >
+            <FiLock className="text-[13.5px]" />
+          </button>
+        )}
+        {item.isUsa && sUserVal && (
+          <button
+            type="button"
+            title="Copy slots username"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(sUserVal);
+              showToast("Slots portal username copied");
+            }}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+          >
+            <FiUser className="text-[13.5px]" />
+          </button>
+        )}
+        {item.isUsa && sPassVal && (
+          <button
+            type="button"
+            title="Copy slots password"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(sPassVal);
+              showToast("Slots portal password copied");
+            }}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+          >
+            <FiLock className="text-[13.5px]" />
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative inline-block text-left" ref={popoverRef}>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((prev) => !prev);
+        }}
+        className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/90 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs whitespace-nowrap shrink-0 max-w-full"
+      >
+        <span className="inline-flex items-center gap-1 shrink-0 whitespace-nowrap">
+          {countries.slice(0, 2).map((c, i) => (
+            <React.Fragment key={i}>{getCountryFlag(c)}</React.Fragment>
+          ))}
+          {countries.length > 2 && (
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+              +{countries.length - 2}
+            </span>
+          )}
+        </span>
+        <span className="inline-flex items-center shrink-0 whitespace-nowrap text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-500/10 dark:bg-violet-500/20 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30 leading-none">
+          {configuredCount}/{countries.length} Set
+        </span>
+      </button>
+
+      {open && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-0 mt-1.5 w-72 max-w-[calc(100vw-2rem)] p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-50 text-xs space-y-2.5 text-slate-900 dark:text-slate-100"
+        >
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+            <span className="font-bold text-slate-900 dark:text-slate-100 text-xs">Application Credentials</span>
+            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{countries.length} Countries</span>
+          </div>
+
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+            {countryItems.map((item) => (
+              <div key={item.country} className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-slate-100 text-[11.5px]">
+                    {getCountryFlag(item.country)}
+                    <span>{getCountryDisplayName(item.country)}</span>
+                  </div>
+                  {item.hasAny ? (
+                    <span className="text-[9px] font-bold uppercase text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20">
+                      Configured
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-bold uppercase text-slate-600 dark:text-slate-400 bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                      Not Set
+                    </span>
+                  )}
+                </div>
+
+                {item.hasVisaCreds ? (
+                  <div className="space-y-1 text-[11px] text-slate-700 dark:text-slate-300 pt-1.5 border-t border-slate-200 dark:border-slate-900">
+                    <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Visa Portal</div>
+                    {item.visaUser && (
+                      <div className="flex items-center justify-between bg-white dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-800">
+                        <span className="truncate max-w-[140px] font-mono text-[10.5px] text-slate-800 dark:text-slate-200">{item.visaUser}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(item.visaUser);
+                            showToast(`${getCountryDisplayName(item.country)} visa username copied`);
+                          }}
+                          className="text-[10px] font-bold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 cursor-pointer"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    )}
+                    {item.visaPass && (
+                      <div className="flex items-center justify-between bg-white dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-800">
+                        <span className="truncate max-w-[140px] font-mono text-[10.5px] text-slate-800 dark:text-slate-200">{item.visaPass}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(item.visaPass);
+                            showToast(`${getCountryDisplayName(item.country)} visa password copied`);
+                          }}
+                          className="text-[10px] font-bold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 cursor-pointer"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 italic">No visa portal credentials saved</p>
+                )}
+
+                {item.isUsa && item.hasSlotCreds && (
+                  <div className="space-y-1 text-[11px] text-slate-700 dark:text-slate-300 pt-1.5 border-t border-slate-200 dark:border-slate-900">
+                    <div className="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400">USA Slot Portal</div>
+                    {item.slotUser && (
+                      <div className="flex items-center justify-between bg-white dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-800">
+                        <span className="truncate max-w-[140px] font-mono text-[10.5px] text-blue-700 dark:text-blue-300">{item.slotUser}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(item.slotUser);
+                            showToast("USA slot username copied");
+                          }}
+                          className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    )}
+                    {item.slotPass && (
+                      <div className="flex items-center justify-between bg-white dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-800">
+                        <span className="truncate max-w-[140px] font-mono text-[10.5px] text-blue-700 dark:text-blue-300">{item.slotPass}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(item.slotPass);
+                            showToast("USA slot password copied");
+                          }}
+                          className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    )}
+                    {item.slotMobile && (
+                      <div className="flex items-center justify-between bg-white dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-800">
+                        <span className="font-mono text-[10.5px] text-slate-800 dark:text-slate-200">{item.slotMobile}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(item.slotMobile);
+                            showToast("USA tracking mobile copied");
+                          }}
+                          className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function LeadsTab() {
   const {
@@ -510,200 +795,7 @@ export function LeadsTab() {
                       },
                       {
                         header: "Credentials",
-                        render: (lead) => {
-                          const hasStandard = lead.visaCredentials?.username || lead.visaCredentials?.password;
-                          /* For now: hide USA credentials and slot tracking ticking boxes as requested */
-                          const hasSlots = false && lead.country === "USA" && (
-                            lead.usaSlots?.slotPortalUsername ||
-                            lead.usaSlots?.slotPortalPassword ||
-                            lead.usaSlots?.trackingMobile
-                          );
-                          const hasSecurity = false && lead.country === "USA" && (
-                            lead.usaSlots?.securityCar ||
-                            lead.usaSlots?.securityFood ||
-                            lead.usaSlots?.securityCity
-                          );
-
-                          if (!hasStandard && !hasSlots && !hasSecurity) {
-                            return <span className="text-gray-400 dark:text-slate-500 text-[11px]">—</span>;
-                          }
-
-                          return (
-                            <div className="flex items-center gap-1.5">
-                              {/* Standard Visa Credentials */}
-                              {hasStandard && (
-                                <div className="flex items-center gap-0.5">
-                                  {lead.visaCredentials?.username && (
-                                    <button
-                                      type="button"
-                                      data-tooltip="Copy visa username"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        try {
-                                          navigator.clipboard.writeText(lead.visaCredentials?.username || "");
-                                          showToast("Visa username copied");
-                                        } catch {
-                                          showToast("Copied", "success");
-                                        }
-                                      }}
-                                      className="w-7 h-7 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
-                                    >
-                                      <FiUser className="text-[13.5px]" />
-                                    </button>
-                                  )}
-                                  {lead.visaCredentials?.password && (
-                                    <button
-                                      type="button"
-                                      data-tooltip="Copy visa password"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        try {
-                                          navigator.clipboard.writeText(lead.visaCredentials?.password || "");
-                                          showToast("Visa password copied");
-                                        } catch {
-                                          showToast("Copied", "success");
-                                        }
-                                      }}
-                                      className="w-7 h-7 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
-                                    >
-                                      <FiLock className="text-[13.5px]" />
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Separator if both exist */}
-                              {hasStandard && hasSlots && (
-                                <span className="h-4 w-px bg-gray-200 dark:bg-slate-800" />
-                              )}
-
-                              {/* USA Slots Portal Credentials */}
-                              {hasSlots && (
-                                <div className="flex items-center gap-0.5">
-                                  {lead.usaSlots?.slotPortalUsername && (
-                                    <button
-                                      type="button"
-                                      data-tooltip="Copy slots username"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        try {
-                                          navigator.clipboard.writeText(lead.usaSlots?.slotPortalUsername || "");
-                                          showToast("Slots portal username copied");
-                                        } catch {
-                                          showToast("Copied", "success");
-                                        }
-                                      }}
-                                      className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
-                                    >
-                                      <FiUser className="text-[13.5px]" />
-                                    </button>
-                                  )}
-                                  {lead.usaSlots?.slotPortalPassword && (
-                                    <button
-                                      type="button"
-                                      data-tooltip="Copy slots password"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        try {
-                                          navigator.clipboard.writeText(lead.usaSlots?.slotPortalPassword || "");
-                                          showToast("Slots portal password copied");
-                                        } catch {
-                                          showToast("Copied", "success");
-                                        }
-                                      }}
-                                      className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
-                                    >
-                                      <FiLock className="text-[13.5px]" />
-                                    </button>
-                                  )}
-                                  {lead.usaSlots?.trackingMobile && (
-                                    <button
-                                      type="button"
-                                      data-tooltip="Copy slots mobile number"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        try {
-                                          navigator.clipboard.writeText(lead.usaSlots?.trackingMobile || "");
-                                          showToast("Slots tracking mobile number copied");
-                                        } catch {
-                                          showToast("Copied", "success");
-                                        }
-                                      }}
-                                      className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
-                                    >
-                                      <FiSmartphone className="text-[13.5px]" />
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Separator if both exist */}
-                              {(hasStandard || hasSlots) && hasSecurity && (
-                                <span className="h-4 w-px bg-gray-200 dark:bg-slate-800" />
-                              )}
-
-                              {/* USA Security Qs */}
-                              {hasSecurity && (
-                                <div className="flex items-center gap-0.5">
-                                  {lead.usaSlots?.securityCar && (
-                                    <button
-                                      type="button"
-                                      data-tooltip="Copy Car"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        try {
-                                          navigator.clipboard.writeText(lead.usaSlots?.securityCar || "");
-                                          showToast(`Car: ${lead.usaSlots?.securityCar}`);
-                                        } catch {
-                                          showToast("Copied", "success");
-                                        }
-                                      }}
-                                      className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
-                                    >
-                                      <FaCar className="text-[12.5px]" />
-                                    </button>
-                                  )}
-                                  {lead.usaSlots?.securityFood && (
-                                    <button
-                                      type="button"
-                                      data-tooltip="Copy Food"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        try {
-                                          navigator.clipboard.writeText(lead.usaSlots?.securityFood || "");
-                                          showToast(`Food: ${lead.usaSlots?.securityFood}`);
-                                        } catch {
-                                          showToast("Copied", "success");
-                                        }
-                                      }}
-                                      className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
-                                    >
-                                      <FaUtensils className="text-[12px]" />
-                                    </button>
-                                  )}
-                                  {lead.usaSlots?.securityCity && (
-                                    <button
-                                      type="button"
-                                      data-tooltip="Copy City"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        try {
-                                          navigator.clipboard.writeText(lead.usaSlots?.securityCity || "");
-                                          showToast(`City: ${lead.usaSlots?.securityCity}`);
-                                        } catch {
-                                          showToast("Copied", "success");
-                                        }
-                                      }}
-                                      className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
-                                    >
-                                      <FaCity className="text-[12px]" />
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        },
+                        render: (lead) => <LeadCredentialsCell lead={lead} showToast={showToast} />,
                       },
                     ]}
                     actions={(lead) => [

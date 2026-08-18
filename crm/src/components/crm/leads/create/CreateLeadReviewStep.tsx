@@ -3,7 +3,8 @@
 import React from "react";
 import type { CreateLeadFormState } from "@/types/createLeadForm";
 import { EMPLOYMENT_CATEGORY_OPTIONS } from "@/utils/documentChecklistConfig";
-import { isUsaCountry } from "@/utils/countryUtils";
+import { isUsaCountry, getCountryDisplayName, parseCountries } from "@/utils/countryUtils";
+import { getCountryFlag } from "@/components/CountryFlags";
 import type { WizardStepId } from "./WizardProgress";
 import { SummaryCard } from "./SummaryCard";
 import {
@@ -100,36 +101,58 @@ export function CreateLeadReviewStep({ state, onEditStep }: CreateLeadReviewStep
         <SummaryCard title="Application Credentials" step={4} onEdit={onEditStep}>
           <SummaryRow
             label="Immigration country"
-            value={summaryText(state.immigrationCountry)}
+            value={summaryText(getCountryDisplayName(state.immigrationCountry))}
           />
-          <SummaryRow label="Visa portal login" value={summaryText(state.loginId)} />
-          <SummaryRow
-            label="Visa portal password"
-            value={summaryMaskPassword(state.password)}
-          />
-          {isUsa && (
-            <>
-              <SummaryRow
-                label="Slot portal type"
-                value={slotLabel ? summaryText(slotLabel) : summaryNotSet()}
-              />
-              <SummaryRow
-                label="Slot portal login"
-                value={summaryText(state.slotPortalLoginId)}
-              />
-              <SummaryRow
-                label="Slot portal password"
-                value={summaryMaskPassword(state.slotPortalPassword)}
-              />
-              <SummaryRow
-                label="Mobile number"
-                value={summaryText(state.usaTrackingMobile)}
-              />
-              <SummaryRow label="Car" value={summaryText(state.usaSecurityCar)} />
-              <SummaryRow label="Food" value={summaryText(state.usaSecurityFood)} />
-              <SummaryRow label="City" value={summaryText(state.usaSecurityCity)} />
-            </>
-          )}
+          {parseCountries(state.immigrationCountry).map((c) => {
+            const app = state.countryApplications?.[c] || {
+              loginId: state.loginId,
+              password: state.password,
+              slotStatus: state.slotStatus,
+              slotPortalLoginId: state.slotPortalLoginId,
+              slotPortalPassword: state.slotPortalPassword,
+              usaTrackingMobile: state.usaTrackingMobile,
+              usaSecurityCar: state.usaSecurityCar,
+              usaSecurityFood: state.usaSecurityFood,
+              usaSecurityCity: state.usaSecurityCity,
+              securityQuestions: state.securityQuestions,
+            };
+            const cIsUsa = isUsaCountry(c);
+            const cSlotLabel = app.slotStatus === "available" ? "Available" : app.slotStatus === "paid" ? "Paid" : null;
+
+            return (
+              <div key={c} className="pt-2.5 mt-2.5 border-t border-slate-200 dark:border-slate-800 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                  {getCountryFlag(c)}
+                  <span>{getCountryDisplayName(c)} Credentials</span>
+                </div>
+                <SummaryRow label="Visa portal login" value={summaryText(app.loginId)} />
+                <SummaryRow label="Visa portal password" value={summaryMaskPassword(app.password)} />
+                {cIsUsa && (
+                  <>
+                    <SummaryRow
+                      label="Slot portal type"
+                      value={cSlotLabel ? summaryText(cSlotLabel) : summaryNotSet()}
+                    />
+                    <SummaryRow
+                      label="Slot portal login"
+                      value={summaryText(app.slotPortalLoginId)}
+                    />
+                    <SummaryRow
+                      label="Slot portal password"
+                      value={summaryMaskPassword(app.slotPortalPassword)}
+                    />
+                    <SummaryRow
+                      label="Mobile number"
+                      value={summaryText(app.usaTrackingMobile)}
+                    />
+                    <SummaryRow label="Car" value={summaryText(app.usaSecurityCar)} />
+                    <SummaryRow label="Food" value={summaryText(app.usaSecurityFood)} />
+                    <SummaryRow label="City" value={summaryText(app.usaSecurityCity)} />
+                  </>
+                )}
+              </div>
+            );
+          })}
         </SummaryCard>
 
         <SummaryCard title="Case Information" step={5} onEdit={onEditStep}>

@@ -8,6 +8,7 @@ import { LEAD_STATUS_ORDER, getStatusLabel } from "@/utils/leadStatusConfig";
 import { getDepositPickerLeads, getEligibleDepositLeads, getLeadPaymentSummary } from "@/utils/leadPaymentUtils";
 import { getAssignableCounselorNames, UNASSIGNED_COUNSELOR } from "@/utils/counselorOptions";
 import { isLeadAssignedToCounselor } from "@/utils/leadHelpers";
+import { parseCountries } from "@/utils/countryUtils";
 // @ts-ignore
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
 
@@ -1334,8 +1335,14 @@ export function useCrmLayoutState() {
     const counts: Record<string, number> = {};
     leads.forEach((l) => {
       if (l.isDeleted || l.status === "DROPPED") return;
-      const c = l.country || "Unknown";
-      counts[c] = (counts[c] || 0) + 1;
+      const countryList = parseCountries(l.country);
+      if (countryList.length === 0) {
+        counts["Unknown"] = (counts["Unknown"] || 0) + 1;
+      } else {
+        countryList.forEach((c) => {
+          counts[c] = (counts[c] || 0) + 1;
+        });
+      }
     });
 
     const activeTotal = Object.values(counts).reduce((acc, c) => acc + c, 0);

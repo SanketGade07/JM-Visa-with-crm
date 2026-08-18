@@ -1,6 +1,6 @@
 import React from "react";
 import { getCode } from "country-list";
-import { isUsaCountry, isUkCountry, isUaeCountry } from "@/utils/countryUtils";
+import { isUsaCountry, isUkCountry, isUaeCountry, parseCountries } from "@/utils/countryUtils";
 
 // Sharp lightweight SVG flags for platform-agnostic color fidelity.
 // Pure presentational components — no props, no state.
@@ -261,7 +261,7 @@ function CountryFlagImage({ code, country }: { code: string; country: string }) 
   );
 }
 
-export function getCountryFlag(country: string): React.ReactElement {
+function getSingleCountryFlag(country: string): React.ReactElement {
   const Flag = COUNTRY_FLAG_MAP[country];
   if (Flag) return <Flag />;
 
@@ -293,7 +293,32 @@ export function getCountryFlag(country: string): React.ReactElement {
   const textCode = country.slice(0, 2).toUpperCase();
   return (
     <span className={`${RECT_FLAG} inline-flex items-center justify-center text-[6px] font-bold text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50`}>
-      {textCode}
+      {textCode || "--"}
     </span>
   );
+}
+
+export function getCountryFlag(country: string): React.ReactElement {
+  const countries = parseCountries(country);
+  if (countries.length === 0) {
+    return (
+      <span className={`${RECT_FLAG} inline-flex items-center justify-center text-[6px] font-bold text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50`}>
+        --
+      </span>
+    );
+  }
+
+  if (countries.length > 1) {
+    return (
+      <span className="inline-flex items-center gap-1 shrink-0 flex-wrap">
+        {countries.map((c, i) => (
+          <React.Fragment key={`${c}-${i}`}>
+            {getSingleCountryFlag(c)}
+          </React.Fragment>
+        ))}
+      </span>
+    );
+  }
+
+  return getSingleCountryFlag(countries[0]);
 }

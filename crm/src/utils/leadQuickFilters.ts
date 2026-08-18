@@ -1,5 +1,6 @@
 import { Lead, VisaStatus } from "@/context/CrmContext";
 import { getStatusLabel, type LeadStatus } from "@/utils/leadStatusConfig";
+import { countryMatches } from "@/utils/countryUtils";
 
 const ACTIVE_PIPELINE_STATUSES: LeadStatus[] = [
   "NEW_LEAD",
@@ -49,8 +50,9 @@ export function filterScopedLeads(
       if (l.status !== "VISA_APPROVED") return false;
     }
     return (
-      (countryFilter === "All" || l.country === countryFilter) &&
+      countryMatches(l.country, countryFilter) &&
       (l.name.toLowerCase().includes(searchTerm.toLowerCase()) || l.phone.includes(searchTerm))
     );
   });
 }
+

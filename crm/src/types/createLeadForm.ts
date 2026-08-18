@@ -7,6 +7,36 @@ export type CreateLeadType = "study_abroad" | "visa" | "passport" | null;
 
 export type CreateLeadSlotStatus = "available" | "paid" | "";
 
+export type CountryApplicationState = {
+  loginId: string;
+  password: string;
+  slotStatus: CreateLeadSlotStatus;
+  slotPortalLoginId: string;
+  slotPortalPassword: string;
+  usaTrackingMobile: string;
+  usaSecurityCar: string;
+  usaSecurityFood: string;
+  usaSecurityCity: string;
+  securityQuestions: Array<{ question: string; answer: string }>;
+};
+
+export const DEFAULT_COUNTRY_APPLICATION_STATE: CountryApplicationState = {
+  loginId: "",
+  password: "",
+  slotStatus: "",
+  slotPortalLoginId: "",
+  slotPortalPassword: "",
+  usaTrackingMobile: "",
+  usaSecurityCar: "",
+  usaSecurityFood: "",
+  usaSecurityCity: "",
+  securityQuestions: [
+    { question: "Car", answer: "" },
+    { question: "Food", answer: "" },
+    { question: "City", answer: "" }
+  ],
+};
+
 export type CreateLeadFormState = {
   leadType: CreateLeadType;
   visaSubtype: string;
@@ -28,6 +58,8 @@ export type CreateLeadFormState = {
   usaSecurityCity: string;
   securityQuestions: Array<{ question: string; answer: string }>;
   slotStatus: CreateLeadSlotStatus;
+  countryApplications: Record<string, CountryApplicationState>;
+  activeCountryTab?: string;
   caseOfficer: string;
   leadSource: LeadSource;
   employmentCategory: EmploymentCategory;
@@ -64,6 +96,8 @@ export const CREATE_LEAD_INITIAL_STATE: CreateLeadFormState = {
     { question: "City", answer: "" }
   ],
   slotStatus: "",
+  countryApplications: {},
+  activeCountryTab: "",
   caseOfficer: UNASSIGNED_COUNSELOR,
   leadSource: "MANUAL",
   employmentCategory: DEFAULT_EMPLOYMENT_CATEGORY,

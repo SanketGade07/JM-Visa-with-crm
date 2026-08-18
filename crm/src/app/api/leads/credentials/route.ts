@@ -4,12 +4,12 @@ import { updateLeadCredentials } from "@/utils/db";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, visaCredentials } = body;
+    const { id, visaCredentials, countryApplications } = body;
     if (!id) {
       return NextResponse.json({ error: "Missing lead id" }, { status: 400 });
     }
 
-    const ok = await updateLeadCredentials(id, visaCredentials ?? null);
+    const ok = await updateLeadCredentials(id, visaCredentials ?? null, countryApplications);
     if (!ok) return NextResponse.json({ error: "Failed to update credentials" }, { status: 500 });
 
     return NextResponse.json({ success: true });

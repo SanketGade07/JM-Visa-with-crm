@@ -5,6 +5,8 @@ import Select, {
   components,
   type ClearIndicatorProps,
   type ControlProps,
+  type OptionProps,
+  type ValueContainerProps,
   type StylesConfig,
 } from 'react-select';
 import {
@@ -41,6 +43,7 @@ function PremiumClearIndicator(props: ClearIndicatorProps<FilterOption>) {
   );
 }
 import { getNames } from 'country-list';
+import { getCountryFlag } from '@/components/CountryFlags';
 import { defaultCountries, parseCountry, FlagImage } from 'react-international-phone';
 import 'react-international-phone/style.css';
 import { validatePhone } from '@/utils/validatePhone';
@@ -381,8 +384,143 @@ export function SearchableFilterSelect({
   );
 }
 
-export function SearchableCountrySelect({ name, value, onChange, required, inputId }: { name?: string, value?: string, onChange?: (val: string) => void, required?: boolean, inputId?: string }) {
+import { FiCheck } from 'react-icons/fi';
+
+function CheckboxOption(props: OptionProps<FilterOption, any>) {
+  return (
+    <components.Option {...props}>
+      <div className="flex items-center gap-2.5 w-full select-none cursor-pointer py-0.5">
+        <div
+          className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${
+            props.isSelected
+              ? "bg-blue-600 border-blue-600 text-white shadow-xs"
+              : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800/80"
+          }`}
+        >
+          {props.isSelected && (
+            <svg
+              className="w-2.5 h-2.5 text-white"
+              viewBox="0 0 12 10"
+              fill="none"
+              stroke="white"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M1.5 5.2L4.2 8L10.5 1.5" />
+            </svg>
+          )}
+        </div>
+        <span className="shrink-0">{getCountryFlag(props.data.value)}</span>
+        <span
+          className={`text-xs truncate ${
+            props.isSelected
+              ? "font-semibold text-slate-900 dark:text-slate-100"
+              : "text-slate-700 dark:text-slate-300"
+          }`}
+        >
+          {props.label}
+        </span>
+      </div>
+    </components.Option>
+  );
+}
+
+function MultiValueSummaryValueContainer({
+  children,
+  ...props
+}: ValueContainerProps<FilterOption, any>) {
+  const selectedOptions = props.getValue();
+  const count = selectedOptions.length;
+  const isFocused = (props as any).isFocused || props.selectProps.menuIsOpen;
+
+  return (
+    <components.ValueContainer {...props}>
+      {count > 0 && !props.selectProps.inputValue && !isFocused ? (
+        <div className="flex items-center gap-1.5 min-w-0 flex-1 pointer-events-none pr-1 overflow-hidden">
+          {count === 1 && (
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 truncate min-w-0">
+              <span className="shrink-0">{getCountryFlag(selectedOptions[0].value)}</span>
+              <span className="truncate">{selectedOptions[0].label}</span>
+            </div>
+          )}
+          {count === 2 && (
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 min-w-0 shrink overflow-hidden">
+              <span className="shrink-0">{getCountryFlag(selectedOptions[0].value)}</span>
+              <span className="truncate min-w-0 shrink">{selectedOptions[0].label}</span>
+              <span className="text-slate-400 dark:text-slate-500 font-normal shrink-0">,</span>
+              <span className="shrink-0">{getCountryFlag(selectedOptions[1].value)}</span>
+              <span className="truncate min-w-0 shrink">{selectedOptions[1].label}</span>
+            </div>
+          )}
+          {count > 2 && (
+            <>
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 min-w-0 shrink overflow-hidden">
+                <span className="shrink-0">{getCountryFlag(selectedOptions[0].value)}</span>
+                <span className="truncate min-w-0 shrink">{selectedOptions[0].label}</span>
+                <span className="text-slate-400 dark:text-slate-500 font-normal shrink-0">,</span>
+                <span className="shrink-0">{getCountryFlag(selectedOptions[1].value)}</span>
+                <span className="truncate min-w-0 shrink">{selectedOptions[1].label}</span>
+              </div>
+              <span className="inline-flex items-center shrink-0 whitespace-nowrap text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 leading-none">
+                +{count - 2} more
+              </span>
+            </>
+          )}
+        </div>
+      ) : null}
+      {children}
+    </components.ValueContainer>
+  );
+}
+
+export function SearchableCountrySelect({
+  name,
+  value,
+  onChange,
+  required,
+  inputId,
+  isMulti = true,
+  placeholder = "Select Country",
+}: {
+  name?: string;
+  value?: string | string[];
+  onChange?: (val: string) => void;
+  required?: boolean;
+  inputId?: string;
+  isMulti?: boolean;
+  placeholder?: string;
+}) {
   const menuPortalTarget = getMenuPortalTarget();
+  const [searchInput, setSearchInput] = React.useState("");
+
+  const countryOrderMap = React.useMemo(() => {
+    const map = new Map<string, number>();
+    countryOptions.forEach((opt, idx) => {
+      map.set(opt.value, idx);
+      map.set(opt.label, idx);
+    });
+    return map;
+  }, []);
+
+  const formattedValue = React.useMemo(() => {
+    if (!value) return isMulti ? [] : null;
+    let arr: string[] = [];
+    if (Array.isArray(value)) {
+      arr = value.map((v) => v.trim()).filter(Boolean);
+    } else {
+      arr = value.split(",").map((v) => v.trim()).filter(Boolean);
+    }
+    if (isMulti) {
+      arr.sort((a, b) => {
+        const idxA = countryOrderMap.get(a) ?? 999;
+        const idxB = countryOrderMap.get(b) ?? 999;
+        return idxA - idxB;
+      });
+      return arr.map((val) => ({ value: val, label: val }));
+    }
+    return arr.length > 0 ? { value: arr[0], label: arr[0] } : null;
+  }, [value, isMulti, countryOrderMap]);
 
   return (
     <>
@@ -404,6 +542,10 @@ export function SearchableCountrySelect({ name, value, onChange, required, input
           --form-selected-bg: #e2e8f0;
           --form-selected-text: var(--color-violet-600, #2563eb);
         }
+        .custom-react-select {
+          width: 100% !important;
+          min-width: 100% !important;
+        }
         .custom-react-select input,
         .custom-react-select input:focus,
         .custom-react-select input:focus-visible,
@@ -422,6 +564,10 @@ export function SearchableCountrySelect({ name, value, onChange, required, input
           -webkit-appearance: none;
           appearance: none;
         }
+        .country-select__control {
+          width: 100% !important;
+          min-width: 100% !important;
+        }
         .country-select__input-container,
         .country-select__input-container:focus,
         .country-select__input-container:focus-within {
@@ -431,15 +577,17 @@ export function SearchableCountrySelect({ name, value, onChange, required, input
           box-shadow: none !important;
           outline: none !important;
           background: transparent !important;
+          flex: 0 0 auto !important;
+          width: auto !important;
+          max-width: 100% !important;
         }
-        .country-select__control--menu-is-open .country-select__single-value {
-          display: none !important;
-        }
-        .country-select__control:not(.country-select__control--menu-is-open) .country-select__input-container {
-          position: absolute !important;
-          width: 0 !important;
-          opacity: 0 !important;
-          pointer-events: none !important;
+        .country-select__value-container {
+          display: flex !important;
+          flex-wrap: nowrap !important;
+          align-items: center !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          overflow: hidden !important;
         }
         .country-select__option {
           overflow: hidden !important;
@@ -450,104 +598,152 @@ export function SearchableCountrySelect({ name, value, onChange, required, input
       `}</style>
       {menuPortalTarget && (
         <Select
-          className="custom-react-select"
+          className="custom-react-select w-full"
           classNamePrefix="country-select"
           instanceId={inputId ?? "country-select"}
           inputId={inputId}
-          components={{ MenuList: ThinScrollMenuList }}
+          inputValue={searchInput}
+          onInputChange={(val, actionMeta) => {
+            if (actionMeta.action === "input-change") {
+              setSearchInput(val);
+            } else if (
+              actionMeta.action === "menu-close" ||
+              actionMeta.action === "input-blur" ||
+              actionMeta.action === "set-value"
+            ) {
+              setSearchInput("");
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === " " || e.key === "Spacebar" || e.code === "Space" || e.keyCode === 32) {
+              e.preventDefault();
+              e.stopPropagation();
+              setSearchInput((prev) => prev + " ");
+            }
+          }}
+          components={{
+            MenuList: ThinScrollMenuList,
+            ...(isMulti
+              ? {
+                  Option: CheckboxOption,
+                  ValueContainer: MultiValueSummaryValueContainer,
+                  MultiValue: () => null,
+                }
+              : {}),
+          }}
           options={countryOptions}
+          value={formattedValue}
           name={name}
           required={required}
+          isMulti={isMulti}
+          closeMenuOnSelect={!isMulti}
+          hideSelectedOptions={false}
+          backspaceRemovesValue={false}
           menuPortalTarget={menuPortalTarget}
           menuPosition="fixed"
           menuPlacement="auto"
           menuShouldScrollIntoView={false}
           openMenuOnClick
           styles={{
-            menuPortal: base => ({ ...base, zIndex: 99999 }),
-            valueContainer: base => ({ ...base, padding: '0 8px' }),
-            input: (base, props) => ({
+            menuPortal: (base) => ({ ...base, zIndex: 99999 }),
+            valueContainer: (base) => ({
+              ...base,
+              padding: "2px 10px",
+              flexWrap: "nowrap",
+              overflow: "hidden",
+              width: "100%",
+            }),
+            input: (base) => ({
               ...base,
               margin: 0,
               padding: 0,
-              border: 'none',
-              outline: 'none',
-              boxShadow: 'none',
-              background: 'transparent',
-              color: 'var(--form-text)',
-              opacity: props.selectProps.menuIsOpen ? 1 : 0,
-              width: props.selectProps.menuIsOpen ? '100%' : 0,
-              minWidth: props.selectProps.menuIsOpen ? '2px' : 0,
-              caretColor: 'var(--form-focus)',
+              border: "none",
+              outline: "none",
+              boxShadow: "none",
+              background: "transparent",
+              color: "var(--form-text)",
+              caretColor: "var(--form-focus)",
             }),
-            placeholder: base => ({ ...base, margin: '0px', fontSize: '12px' }),
-            singleValue: (base, props) => ({
+            placeholder: (base) => ({ ...base, margin: "0px", fontSize: "12px" }),
+            singleValue: (base) => ({
               ...base,
-              display: props.selectProps.menuIsOpen ? 'none' : 'block',
-              margin: '0px',
-              color: 'var(--form-text)',
-              fontSize: '12px',
+              margin: "0px",
+              color: "var(--form-text)",
+              fontSize: "12px",
             }),
             control: (base, state) => ({
-               ...base,
-               backgroundColor: 'var(--form-bg)',
-               borderColor: state.isFocused ? 'var(--form-focus)' : 'var(--form-border)',
-               color: 'var(--form-text)',
-               borderRadius: '0.75rem',
-               minHeight: '40px',
-               height: '40px',
-               fontSize: '12px',
-               boxShadow: state.isFocused ? '0 0 0 1px var(--form-focus)' : 'none',
-               '&:hover': {
-                  borderColor: state.isFocused ? 'var(--form-focus)' : 'var(--form-border)'
-               }
-            }),
-            menu: base => ({
               ...base,
-              backgroundColor: 'var(--form-bg)',
-              border: '1px solid var(--form-border)',
-              borderRadius: '0.75rem',
-              overflow: 'hidden',
-              padding: '4px',
-              zIndex: 99999,
-              minWidth: '100%',
-              width: 'max-content',
-              maxWidth: '280px',
-              boxSizing: 'border-box',
+              backgroundColor: "var(--form-bg)",
+              borderColor: state.isFocused ? "var(--form-focus)" : "var(--form-border)",
+              color: "var(--form-text)",
+              borderRadius: "0.75rem",
+              minHeight: "40px",
+              height: "40px",
+              maxHeight: "40px",
+              width: "100%",
+              minWidth: "100%",
+              fontSize: "12px",
+              boxShadow: state.isFocused ? "0 0 0 1px var(--form-focus)" : "none",
+              "&:hover": {
+                borderColor: state.isFocused ? "var(--form-focus)" : "var(--form-border)",
+              },
             }),
-            menuList: base => ({
+            menu: (base) => ({
+              ...base,
+              backgroundColor: "var(--form-bg)",
+              border: "1px solid var(--form-border)",
+              borderRadius: "0.75rem",
+              overflow: "hidden",
+              padding: "4px",
+              zIndex: 99999,
+              minWidth: "100%",
+              width: "max-content",
+              maxWidth: "280px",
+              boxSizing: "border-box",
+            }),
+            menuList: (base) => ({
               ...base,
               maxHeight: `${COUNTRY_DROPDOWN_MAX_HEIGHT}px`,
-              overflowX: 'hidden',
-              overflowY: 'auto',
-              boxSizing: 'border-box',
+              overflowX: "hidden",
+              overflowY: "auto",
+              boxSizing: "border-box",
             }),
-            option: (base, state) => ({ 
-              ...base, 
-              backgroundColor: state.isFocused ? 'var(--form-selected-bg)' : 'var(--form-bg)', 
-              color: state.isSelected ? 'var(--form-selected-text)' : 'var(--form-text)',
-              cursor: 'pointer',
-              borderRadius: '0.5rem',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              maxWidth: '100%',
-              ':active': {
-                backgroundColor: 'var(--form-selected-bg)'
-              }
-            })
+            option: (base, state) => ({
+              ...base,
+              backgroundColor: state.isSelected
+                ? state.isFocused
+                  ? "rgba(59, 130, 246, 0.15)"
+                  : "rgba(59, 130, 246, 0.08)"
+                : state.isFocused
+                ? "var(--form-hover)"
+                : "transparent",
+              color: "var(--form-text)",
+              cursor: "pointer",
+              borderRadius: "0.5rem",
+              whiteSpace: "nowrap",
+              padding: "6px 10px",
+              ":active": {
+                backgroundColor: "rgba(59, 130, 246, 0.2)",
+              },
+            }),
           }}
           maxMenuHeight={COUNTRY_DROPDOWN_MAX_HEIGHT}
+          placeholder={placeholder}
           onChange={(val) => {
-            const option = !val || Array.isArray(val) ? null : (val as FilterOption);
-            onChange?.(option?.value ?? "");
+            if (!onChange) return;
+            if (isMulti) {
+              const opts = (val as FilterOption[]) ?? [];
+              const strVal = opts.map((o) => o.value).join(", ");
+              onChange(strVal);
+            } else {
+              const option = val as FilterOption | null;
+              onChange(option?.value ?? "");
+            }
           }}
-          value={value ? { value, label: value } : null}
-          placeholder="Select Country"
         />
       )}
     </>
-  )
+  );
 }
 
 const countriesList = defaultCountries.map((c) => {
