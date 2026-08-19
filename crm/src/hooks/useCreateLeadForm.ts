@@ -289,34 +289,6 @@ export function getStepFieldErrors(
       if (!state.immigrationCountry) {
         errors.immigrationCountry = "Select an immigration country.";
       }
-      if (!state.loginId.trim()) {
-        errors.loginId = "Visa portal login ID is required.";
-      }
-      if (!state.password.trim()) {
-        errors.password = "Visa portal password is required.";
-      }
-      if (showUsaFields) {
-        if (!state.slotStatus) {
-          errors.slotStatus = "Select a slot portal type (Available or Paid).";
-        }
-        if (!state.slotPortalLoginId.trim()) {
-          errors.slotPortalLoginId = "Slot portal login ID is required.";
-        }
-        if (!state.slotPortalPassword.trim()) {
-          errors.slotPortalPassword = "Slot portal password is required.";
-        }
-        if (!state.usaTrackingMobile.trim()) {
-          errors.usaTrackingMobile = "Mobile number is required.";
-        }
-        state.securityQuestions.forEach((q, idx) => {
-          if (!q.question.trim()) {
-            (errors as any)[`securityQuestion_${idx}_question`] = "Question is required.";
-          }
-          if (!q.answer.trim()) {
-            (errors as any)[`securityQuestion_${idx}_answer`] = "Answer is required.";
-          }
-        });
-      }
       break;
     }
     case 5: {
