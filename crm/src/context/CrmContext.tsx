@@ -16,6 +16,7 @@ import {
   UNASSIGNED_COUNSELOR,
 } from "@/utils/counselorOptions";
 import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
+import { isUsaCountry } from "@/utils/countryUtils";
 import { getStatusLabel, type LeadStatus } from "@/utils/leadStatusConfig";
 
 export type { EmploymentCategory } from "@/utils/documentChecklistConfig";
@@ -827,7 +828,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateUsaSlots = (leadId: string, slotsData: Partial<UsaSlotTracking>) => {
     const today = new Date().toISOString().split("T")[0];
     const updated = leads.map((lead) => {
-      if (lead.id !== leadId || lead.country !== "USA") return lead;
+      if (lead.id !== leadId || !isUsaCountry(lead.country)) return lead;
       return {
         ...lead,
         usaSlots: { ...DEFAULT_USA_SLOTS, ...lead.usaSlots, ...slotsData },

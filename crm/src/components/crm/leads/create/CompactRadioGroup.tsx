@@ -48,10 +48,26 @@ export function CompactRadioGroup<T extends string>({
               className="crm-radio-input"
             />
             <span
-              className={`crm-radio-dot${selected ? " crm-radio-dot--checked" : ""}`}
+              className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all shrink-0 ${
+                selected
+                  ? "bg-blue-600 border-blue-600 text-white shadow-xs"
+                  : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900"
+              }`}
               aria-hidden="true"
             >
-              {selected ? <span className="crm-radio-dot__inner" /> : null}
+              {selected && (
+                <svg
+                  className="w-2.5 h-2.5 text-white"
+                  viewBox="0 0 12 10"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M1.5 5.2L4.2 8L10.5 1.5" />
+                </svg>
+              )}
             </span>
             <span className="text-xs font-semibold leading-none">{opt.label}</span>
           </label>
