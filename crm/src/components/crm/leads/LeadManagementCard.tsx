@@ -5,7 +5,7 @@ import type { Lead } from "@/context/CrmContext";
 import { useCrmLayoutContext } from "../context/CrmLayoutContext";
 import { StatusSelectPill } from "@/components/ui/StatusSelectPill";
 import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
-import { isUsaCountry, parseCountries, getCountryDisplayName } from "@/utils/countryUtils";
+import { isCanadaCountry, isUsaCountry, parseCountries, getCountryDisplayName } from "@/utils/countryUtils";
 import { getCountryFlag } from "@/components/CountryFlags";
 import { canRecordLeadDeposit, getLeadPaymentSummary } from "@/utils/leadPaymentUtils";
 import { FiUser, FiLock, FiPhone, FiHelpCircle } from "react-icons/fi";
@@ -119,6 +119,8 @@ export function LeadManagementCard({
   const mgmtPassword = activeMgmtApp?.visaCredentials?.password || (activeMgmtCountryTab === "USA" || mgmtCountries.length === 1 ? (lead.visaCredentials?.password ?? "") : "");
 
   const isUsa = isUsaCountry(lead.country);
+  const isCanada = isCanadaCountry(activeMgmtCountryTab || lead.country);
+  const activeCanadaQuestions = activeMgmtApp?.securityQuestions || (isCanada ? lead.securityQuestions : undefined);
   const paymentSummary = useMemo(() => getLeadPaymentSummary(lead), [lead.payments]);
   const [packageDraft, setPackageDraft] = useState("");
 
@@ -241,6 +243,31 @@ export function LeadManagementCard({
             />
           </div>
         </div>
+
+        {isCanada && activeCanadaQuestions && activeCanadaQuestions.length > 0 ? (
+          <div className="border-t border-gray-200 dark:border-slate-800/80 pt-4 mt-4 space-y-4">
+            <h3 className={sectionTitleCls}>Canada Security Questions</h3>
+            <div className="space-y-2">
+              {activeCanadaQuestions.map((q, idx) => (
+                <div key={idx} className="space-y-1">
+                  {q.question?.trim() && (
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block">
+                      {q.question.trim()}
+                    </span>
+                  )}
+                  <CredentialField
+                    value={q.answer?.trim() ?? ""}
+                    icon={FiHelpCircle}
+                    iconColorClass="text-emerald-500 dark:text-emerald-400"
+                    tooltipText={`Copy ${q.question?.trim() || `Question ${idx + 1}`} security answer`}
+                    toastMessage={`${q.question?.trim() || `Question ${idx + 1}`} answer copied`}
+                    showToast={showToast}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {isUsa ? (
           <div className="border-t border-gray-200 dark:border-slate-800/80 pt-4 mt-4 space-y-4">

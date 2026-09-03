@@ -34,7 +34,7 @@ import {
   getVisaServiceFilterOptions,
 } from "@/utils/leadFilterOptions";
 import { getStatusPillStyle } from "@/utils/leadStatusConfig";
-import { getCountryDisplayName, parseCountries, isUsaCountry } from "@/utils/countryUtils";
+import { getCountryDisplayName, parseCountries, isUsaCountry, isCanadaCountry } from "@/utils/countryUtils";
 import { getCountryFlag } from "@/components/CountryFlags";
 // @ts-ignore
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from "react-simple-maps";
@@ -49,6 +49,40 @@ import {
   matchesQuickTab,
 } from "@/utils/leadQuickFilters";
 
+type CredentialsPopoverPosition = {
+  top?: number;
+  bottom?: number;
+  left: number;
+};
+
+function computeCredentialsPopoverPosition(trigger: HTMLElement): CredentialsPopoverPosition {
+  const rect = trigger.getBoundingClientRect();
+  const popoverWidth = 288;
+  const popoverHeight = 340;
+  const gap = 6;
+
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const openAbove = spaceBelow < popoverHeight && rect.top > spaceBelow;
+
+  let left = rect.right - popoverWidth;
+  if (left < 12) left = 12;
+  if (left + popoverWidth > window.innerWidth - 12) {
+    left = window.innerWidth - popoverWidth - 12;
+  }
+
+  if (openAbove) {
+    return {
+      bottom: window.innerHeight - rect.top + gap,
+      left,
+    };
+  }
+
+  return {
+    top: rect.bottom + gap,
+    left,
+  };
+}
+
 function LeadCredentialsCell({
   lead,
   showToast,
@@ -57,18 +91,54 @@ function LeadCredentialsCell({
   showToast: (msg: string, type?: "success" | "error") => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [popoverPos, setPopoverPos] = useState<CredentialsPopoverPosition>({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  const updatePopoverPosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    setPopoverPos(computeCredentialsPopoverPosition(triggerRef.current));
+  }, []);
+
+  const openPopover = () => {
+    updatePopoverPosition();
+    setOpen(true);
+  };
+
+  const closePopover = () => {
+    setOpen(false);
+  };
 
   useEffect(() => {
     if (!open) return;
+    updatePopoverPosition();
+
     const handleClickOutside = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        setOpen(false);
+      const target = e.target as Node;
+      if (triggerRef.current?.contains(target) || popoverRef.current?.contains(target)) {
+        return;
       }
+      closePopover();
     };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closePopover();
+    };
+
+    const handleReposition = () => updatePopoverPosition();
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", handleReposition);
+    window.addEventListener("scroll", handleReposition, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", handleReposition);
+      window.removeEventListener("scroll", handleReposition, true);
+    };
+  }, [open, updatePopoverPosition]);
 
   const countries = parseCountries(lead.country);
   if (countries.length === 0) {
@@ -78,6 +148,7 @@ function LeadCredentialsCell({
   const countryItems = countries.map((c) => {
     const app = lead.countryApplications?.[c];
     const isUsa = isUsaCountry(c);
+    const isCanada = isCanadaCountry(c);
 
     const visaUser = app?.visaCredentials?.username || (countries.length === 1 || isUsa ? lead.visaCredentials?.username : "") || "";
     const visaPass = app?.visaCredentials?.password || (countries.length === 1 || isUsa ? lead.visaCredentials?.password : "") || "";
@@ -86,20 +157,26 @@ function LeadCredentialsCell({
     const slotPass = app?.usaSlots?.slotPortalPassword || (isUsa ? lead.usaSlots?.slotPortalPassword : "") || "";
     const slotMobile = app?.usaSlots?.trackingMobile || (isUsa ? lead.usaSlots?.trackingMobile : "") || "";
 
+    const canadaQuestions = app?.securityQuestions || (isCanada && lead.securityQuestions ? lead.securityQuestions : undefined);
+    const hasCanadaQuestions = isCanada && !!(canadaQuestions && canadaQuestions.some((q) => q.answer?.trim()));
+
     const hasVisaCreds = !!(visaUser || visaPass);
     const hasSlotCreds = isUsa && !!(slotUser || slotPass || slotMobile);
 
     return {
       country: c,
       isUsa,
+      isCanada,
       visaUser,
       visaPass,
       slotUser,
       slotPass,
       slotMobile,
+      canadaQuestions,
       hasVisaCreds,
       hasSlotCreds,
-      hasAny: hasVisaCreds || hasSlotCreds,
+      hasCanadaQuestions,
+      hasAny: hasVisaCreds || hasSlotCreds || hasCanadaQuestions,
     };
   });
 
@@ -183,12 +260,14 @@ function LeadCredentialsCell({
   }
 
   return (
-    <div className="relative inline-block text-left" ref={popoverRef}>
+    <div className="relative inline-block text-left">
       <button
+        ref={triggerRef}
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          setOpen((prev) => !prev);
+          if (open) closePopover();
+          else openPopover();
         }}
         className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/90 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs whitespace-nowrap shrink-0 max-w-full"
       >
@@ -207,17 +286,25 @@ function LeadCredentialsCell({
         </span>
       </button>
 
-      {open && (
+      {open && typeof document !== "undefined" && createPortal(
         <div
+          ref={popoverRef}
           onClick={(e) => e.stopPropagation()}
-          className="absolute right-0 mt-1.5 w-72 max-w-[calc(100vw-2rem)] p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-50 text-xs space-y-2.5 text-slate-900 dark:text-slate-100"
+          style={{
+            position: "fixed",
+            top: popoverPos.top,
+            bottom: popoverPos.bottom,
+            left: popoverPos.left,
+            zIndex: 99999,
+          }}
+          className="w-72 max-w-[calc(100vw-2rem)] max-h-[min(420px,calc(100vh-32px))] flex flex-col p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl text-xs text-slate-900 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-100"
         >
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-2 shrink-0">
             <span className="font-bold text-slate-900 dark:text-slate-100 text-xs">Application Credentials</span>
             <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{countries.length} Countries</span>
           </div>
 
-          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+          <div className="space-y-2 overflow-y-auto pr-1 flex-1 min-h-0">
             {countryItems.map((item) => (
               <div key={item.country} className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80 space-y-2">
                 <div className="flex items-center justify-between">
@@ -274,6 +361,32 @@ function LeadCredentialsCell({
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 italic">No visa portal credentials saved</p>
                 )}
 
+                {item.isCanada && item.canadaQuestions && item.canadaQuestions.length > 0 && (
+                  <div className="space-y-1 text-[11px] text-slate-700 dark:text-slate-300 pt-1.5 border-t border-slate-200 dark:border-slate-900">
+                    <div className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400">Security Questions</div>
+                    {item.canadaQuestions.map((q, qIdx) => (
+                      <div key={qIdx} className="flex items-center justify-between bg-white dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-800">
+                        <span className="truncate max-w-[140px] text-[10.5px] text-slate-800 dark:text-slate-200">
+                          <span className="text-slate-400">{q.question?.trim() || `Q${qIdx + 1}`}: </span>
+                          <span className="font-mono font-medium">{q.answer?.trim() || "—"}</span>
+                        </span>
+                        {q.answer?.trim() && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(q.answer.trim());
+                              showToast(`${q.question?.trim() || `Question ${qIdx + 1}`} answer copied`);
+                            }}
+                            className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 cursor-pointer shrink-0 ml-1"
+                          >
+                            Copy
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {item.isUsa && item.hasSlotCreds && (
                   <div className="space-y-1 text-[11px] text-slate-700 dark:text-slate-300 pt-1.5 border-t border-slate-200 dark:border-slate-900">
                     <div className="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400">USA Slot Portal</div>
@@ -327,7 +440,8 @@ function LeadCredentialsCell({
               </div>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

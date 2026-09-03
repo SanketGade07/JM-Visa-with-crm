@@ -28,7 +28,7 @@ import {
   WizardProgress,
   type WizardStepId,
 } from "@/components/crm/leads/create";
-import { isUsaCountry, parseCountries, getCountryDisplayName } from "@/utils/countryUtils";
+import { isCanadaCountry, isUsaCountry, parseCountries, getCountryDisplayName } from "@/utils/countryUtils";
 import { getCountryFlag } from "@/components/CountryFlags";
 import { CreateLeadReviewStep } from "./CreateLeadReviewStep";
 import { useCounselorSelectOptions } from "@/hooks/useCounselorOptions";
@@ -157,6 +157,8 @@ function CreateLeadWizardInner({
 
   const isEdit = !!editLeadId;
   const showUsaFields = isUsaCountry(state.immigrationCountry) && (isFromUsaSlotsTab || isEdit);
+  const showCanadaFields = isCanadaCountry(state.immigrationCountry) && isEdit;
+  const showStep2Creds = showUsaFields || showCanadaFields;
   const caseOfficerOptions = useCounselorSelectOptions(state.caseOfficer);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -678,7 +680,7 @@ function CreateLeadWizardInner({
             )}
 
 
-            {showUsaFields && (
+            {showStep2Creds && (
               <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
                 <div className="space-y-3">
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -724,88 +726,93 @@ function CreateLeadWizardInner({
                   </FormSectionGrid>
                 </div>
 
-                <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Slot Portal
-                  </p>
-                  <FormSection label="Portal Type">
-                    <CompactRadioGroup
-                      name="slotStatus"
-                      value={state.slotStatus}
-                      options={SLOT_STATUS_OPTIONS}
-                      onChange={(value) => updateField("slotStatus", value)}
-                      firstOptionId="create-lead-slot-status-step2"
-                      error={slotStatusError}
-                    />
-                  </FormSection>
-                  <FormSectionGrid>
-                    <FormSection
-                      label="Login ID"
-                      htmlFor="create-lead-slot-login-id-step2"
-                      error={slotPortalLoginIdError}
-                    >
-                      <input
-                        id="create-lead-slot-login-id-step2"
-                        value={state.slotPortalLoginId}
-                        onChange={(e) => updateField("slotPortalLoginId", e.target.value)}
-                        onBlur={() => markFieldTouched("slotPortalLoginId")}
-                        placeholder="Slot portal username"
-                        type="text"
-                        className={`${FORM_INPUT_CLASS}${
-                          slotPortalLoginIdError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
-                        }`}
-                        autoComplete="off"
-                      />
-                    </FormSection>
-                    <FormSection
-                      label="Password"
-                      htmlFor="create-lead-slot-password-step2"
-                      error={slotPortalPasswordError}
-                    >
-                      <input
-                        id="create-lead-slot-password-step2"
-                        value={state.slotPortalPassword}
-                        onChange={(e) => updateField("slotPortalPassword", e.target.value)}
-                        onBlur={() => markFieldTouched("slotPortalPassword")}
-                        placeholder="Slot portal password"
-                        type="text"
-                        className={`${FORM_INPUT_CLASS}${
-                          slotPortalPasswordError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
-                        }`}
-                        autoComplete="new-password"
-                      />
-                    </FormSection>
-                  </FormSectionGrid>
-                </div>
+                {showUsaFields && (
+                  <>
+                    <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Slot Portal
+                      </p>
+                      <FormSection label="Portal Type">
+                        <CompactRadioGroup
+                          name="slotStatus"
+                          value={state.slotStatus}
+                          options={SLOT_STATUS_OPTIONS}
+                          onChange={(value) => updateField("slotStatus", value)}
+                          firstOptionId="create-lead-slot-status-step2"
+                          error={slotStatusError}
+                        />
+                      </FormSection>
+                      <FormSectionGrid>
+                        <FormSection
+                          label="Login ID"
+                          htmlFor="create-lead-slot-login-id-step2"
+                          error={slotPortalLoginIdError}
+                        >
+                          <input
+                            id="create-lead-slot-login-id-step2"
+                            value={state.slotPortalLoginId}
+                            onChange={(e) => updateField("slotPortalLoginId", e.target.value)}
+                            onBlur={() => markFieldTouched("slotPortalLoginId")}
+                            placeholder="Slot portal username"
+                            type="text"
+                            className={`${FORM_INPUT_CLASS}${
+                              slotPortalLoginIdError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                            }`}
+                            autoComplete="off"
+                          />
+                        </FormSection>
+                        <FormSection
+                          label="Password"
+                          htmlFor="create-lead-slot-password-step2"
+                          error={slotPortalPasswordError}
+                        >
+                          <input
+                            id="create-lead-slot-password-step2"
+                            value={state.slotPortalPassword}
+                            onChange={(e) => updateField("slotPortalPassword", e.target.value)}
+                            onBlur={() => markFieldTouched("slotPortalPassword")}
+                            placeholder="Slot portal password"
+                            type="text"
+                            className={`${FORM_INPUT_CLASS}${
+                              slotPortalPasswordError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                            }`}
+                            autoComplete="new-password"
+                          />
+                        </FormSection>
+                      </FormSectionGrid>
+                    </div>
 
-                <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    USA Slot Tracking
-                  </p>
-                  <FormSectionGrid>
-                    <FormSection
-                      label="Mobile Number"
-                      htmlFor="create-lead-usa-mobile-step2"
-                      error={usaTrackingMobileError}
-                    >
-                      <input
-                        id="create-lead-usa-mobile-step2"
-                        value={state.usaTrackingMobile}
-                        onChange={(e) => updateField("usaTrackingMobile", e.target.value)}
-                        onBlur={() => markFieldTouched("usaTrackingMobile")}
-                        placeholder="Tracking mobile number"
-                        type="text"
-                        className={`${FORM_INPUT_CLASS}${
-                          usaTrackingMobileError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
-                        }`}
-                        autoComplete="off"
-                      />
-                    </FormSection>
-                    <div />
-                  </FormSectionGrid>
+                    <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        USA Slot Tracking
+                      </p>
+                      <FormSectionGrid>
+                        <FormSection
+                          label="Mobile Number"
+                          htmlFor="create-lead-usa-mobile-step2"
+                          error={usaTrackingMobileError}
+                        >
+                          <input
+                            id="create-lead-usa-mobile-step2"
+                            value={state.usaTrackingMobile}
+                            onChange={(e) => updateField("usaTrackingMobile", e.target.value)}
+                            onBlur={() => markFieldTouched("usaTrackingMobile")}
+                            placeholder="Tracking mobile number"
+                            type="text"
+                            className={`${FORM_INPUT_CLASS}${
+                              usaTrackingMobileError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
+                            }`}
+                            autoComplete="off"
+                          />
+                        </FormSection>
+                        <div />
+                      </FormSectionGrid>
+                    </div>
+                  </>
+                )}
 
-                  <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
-                    <div className="flex items-center justify-between">
+              <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between">
                       <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         Security Questions
                       </p>
@@ -881,7 +888,6 @@ function CreateLeadWizardInner({
                     )}
                   </div>
                 </div>
-              </div>
             )}
 
             <FormSection label="Comment / Notes" htmlFor="create-lead-notes">
@@ -1043,6 +1049,8 @@ function CreateLeadWizardInner({
           ? state.activeCountryTab
           : selectedCountries[0] || "";
         const isTabUsa = isUsaCountry(activeTab);
+        const isTabCanada = isCanadaCountry(activeTab);
+        const showSecurityQuestions = isTabUsa || isTabCanada;
 
         return (
           <div className="space-y-4">
@@ -1202,84 +1210,86 @@ function CreateLeadWizardInner({
                     </FormSection>
                     <div />
                   </FormSectionGrid>
-
-                  <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        Security Questions
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleAddSecurityQuestion}
-                        className="text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-semibold flex items-center gap-1 transition-colors"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        Add Question
-                      </button>
-                    </div>
-
-                    {state.securityQuestions.length === 0 ? (
-                      <p className="text-xs text-slate-400 dark:text-slate-500 italic">
-                        No security questions added. Click "Add Question" to add one.
-                      </p>
-                    ) : (
-                      <div className="space-y-3">
-                        {state.securityQuestions.map((q, idx) => {
-                          const questionError = getFieldError(`securityQuestion_${idx}_question` as any);
-                          const answerError = getFieldError(`securityQuestion_${idx}_answer` as any);
-                          return (
-                            <div key={idx} className="flex gap-3 items-start bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg border border-slate-100 dark:border-slate-800/80">
-                              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div>
-                                  <label className="block text-[11px] font-medium text-slate-400 dark:text-slate-500 mb-1">
-                                    Question {idx + 1}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={q.question}
-                                    onChange={(e) => handleSecurityQuestionChange(idx, e.target.value)}
-                                    placeholder="e.g. Mother's maiden name"
-                                    className={`${FORM_INPUT_CLASS} text-sm`}
-                                  />
-                                  {questionError && (
-                                    <p className="text-xs text-red-500 mt-1">{questionError}</p>
-                                  )}
-                                </div>
-                                <div>
-                                  <label className="block text-[11px] font-medium text-slate-400 dark:text-slate-500 mb-1">
-                                    Answer
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={q.answer}
-                                    onChange={(e) => handleSecurityAnswerChange(idx, e.target.value)}
-                                    placeholder="Enter answer"
-                                    className={`${FORM_INPUT_CLASS} text-sm`}
-                                  />
-                                  {answerError && (
-                                    <p className="text-xs text-red-500 mt-1">{answerError}</p>
-                                  )}
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveSecurityQuestion(idx)}
-                                className="mt-6 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                                title="Remove question"
-                              >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
                 </div>
+              </div>
+            )}
+
+            {showSecurityQuestions && (
+              <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Security Questions
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleAddSecurityQuestion}
+                    className="text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-semibold flex items-center gap-1 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Question
+                  </button>
+                </div>
+
+                {state.securityQuestions.length === 0 ? (
+                  <p className="text-xs text-slate-400 dark:text-slate-500 italic">
+                    No security questions added. Click "Add Question" to add one.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {state.securityQuestions.map((q, idx) => {
+                      const questionError = getFieldError(`securityQuestion_${idx}_question` as any);
+                      const answerError = getFieldError(`securityQuestion_${idx}_answer` as any);
+                      return (
+                        <div key={idx} className="flex gap-3 items-start bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg border border-slate-100 dark:border-slate-800/80">
+                          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] font-medium text-slate-400 dark:text-slate-500 mb-1">
+                                Question {idx + 1}
+                              </label>
+                              <input
+                                type="text"
+                                value={q.question}
+                                onChange={(e) => handleSecurityQuestionChange(idx, e.target.value)}
+                                placeholder="e.g. Mother's maiden name"
+                                className={`${FORM_INPUT_CLASS} text-sm`}
+                              />
+                              {questionError && (
+                                <p className="text-xs text-red-500 mt-1">{questionError}</p>
+                              )}
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-medium text-slate-400 dark:text-slate-500 mb-1">
+                                Answer
+                              </label>
+                              <input
+                                type="text"
+                                value={q.answer}
+                                onChange={(e) => handleSecurityAnswerChange(idx, e.target.value)}
+                                placeholder="Enter answer"
+                                className={`${FORM_INPUT_CLASS} text-sm`}
+                              />
+                              {answerError && (
+                                <p className="text-xs text-red-500 mt-1">{answerError}</p>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSecurityQuestion(idx)}
+                            className="mt-6 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            title="Remove question"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>

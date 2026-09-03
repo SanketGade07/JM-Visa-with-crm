@@ -18,6 +18,12 @@ const UAE_COUNTRY_LABELS = new Set([
   "United Arab Emirates",
 ]);
 
+const CANADA_COUNTRY_LABELS = new Set([
+  "Canada",
+  "CA",
+  "CAN",
+]);
+
 export function parseCountries(countryInput: string | string[] | undefined | null): string[] {
   if (!countryInput) return [];
   if (Array.isArray(countryInput)) {
@@ -64,6 +70,16 @@ function isSingleUaeCountry(country: string): boolean {
   return false;
 }
 
+function isSingleCanadaCountry(country: string): boolean {
+  const trimmed = country.trim();
+  if (!trimmed) return false;
+  if (CANADA_COUNTRY_LABELS.has(trimmed)) return true;
+  const upper = trimmed.toUpperCase();
+  if (upper === "CANADA" || upper === "CA" || upper === "CAN") return true;
+  if (/^CANADA\b/i.test(trimmed)) return true;
+  return false;
+}
+
 export function isUsaCountry(country: string | string[]): boolean {
   const list = parseCountries(country);
   return list.some((c) => isSingleUsaCountry(c));
@@ -77,6 +93,12 @@ export function isUkCountry(country: string | string[]): boolean {
 export function isUaeCountry(country: string | string[]): boolean {
   const list = parseCountries(country);
   return list.some((c) => isSingleUaeCountry(c));
+}
+
+export function isCanadaCountry(country: string | string[] | undefined | null): boolean {
+  if (!country) return false;
+  const list = parseCountries(country);
+  return list.some((c) => isSingleCanadaCountry(c));
 }
 
 /** Maps country-list / variant labels to CRM department keys where applicable. */

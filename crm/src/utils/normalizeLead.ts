@@ -141,6 +141,11 @@ export function normalizeLead(raw: Record<string, unknown>): Lead {
       (raw.countryapplications as Lead["countryApplications"]) ??
       ((raw.visaCredentials as any)?.countryApplications) ??
       ((raw.visacredentials as any)?.countryApplications),
+    securityQuestions:
+      (raw.securityQuestions as Lead["securityQuestions"]) ??
+      (raw.securityquestions as Lead["securityQuestions"]) ??
+      ((raw.visaCredentials as any)?.securityQuestions) ??
+      ((raw.visacredentials as any)?.securityQuestions),
     driveFolderId:
       (raw.driveFolderId as Lead["driveFolderId"]) ??
       (raw.drivefolderid as Lead["driveFolderId"]),

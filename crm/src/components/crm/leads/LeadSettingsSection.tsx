@@ -14,7 +14,7 @@ import {
 import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
 import { SearchableCountrySelect, SearchableFilterSelect } from "@/components/ui/FormInputs";
 import { CompactRadioGroup } from "@/components/crm/leads/create/CompactRadioGroup";
-import { isUsaCountry, parseCountries, getCountryDisplayName } from "@/utils/countryUtils";
+import { isCanadaCountry, isUsaCountry, parseCountries, getCountryDisplayName } from "@/utils/countryUtils";
 import { getCountryFlag } from "@/components/CountryFlags";
 import { getLeadPaymentSummary } from "@/utils/leadPaymentUtils";
 import {
@@ -575,9 +575,13 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
   const [countryCredsMap, setCountryCredsMap] = useState<
     Record<string, { username: string; password: string; portalUrl: string }>
   >({});
+  const [canadaSecurityQuestionsMap, setCanadaSecurityQuestionsMap] = useState<
+    Record<string, Array<{ question: string; answer: string }>>
+  >({});
 
   useEffect(() => {
     const initialMap: Record<string, { username: string; password: string; portalUrl: string }> = {};
+    const initialQuestionsMap: Record<string, Array<{ question: string; answer: string }>> = {};
     settingsCountries.forEach((c) => {
       const app = lead.countryApplications?.[c];
       initialMap[c] = {
@@ -585,9 +589,18 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
         password: app?.visaCredentials?.password ?? (c === "USA" || settingsCountries.length === 1 ? (lead.visaCredentials?.password ?? "") : ""),
         portalUrl: app?.visaCredentials?.portalUrl ?? (c === "USA" || settingsCountries.length === 1 ? (lead.visaCredentials?.portalUrl ?? "") : ""),
       };
+      if (isCanadaCountry(c)) {
+        initialQuestionsMap[c] = app?.securityQuestions || (lead.securityQuestions && lead.securityQuestions.length > 0 ? lead.securityQuestions : [
+          { question: "", answer: "" },
+          { question: "", answer: "" },
+          { question: "", answer: "" },
+          { question: "", answer: "" },
+        ]);
+      }
     });
     setCountryCredsMap(initialMap);
-  }, [lead.id, lead.countryApplications, lead.visaCredentials, settingsCountries]);
+    setCanadaSecurityQuestionsMap(initialQuestionsMap);
+  }, [lead.id, lead.countryApplications, lead.visaCredentials, lead.securityQuestions, settingsCountries]);
 
   const currentSettingsCreds = countryCredsMap[activeSettingsCountryTab] || {
     username: "",
@@ -603,6 +616,34 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
         [field]: value,
       },
     }));
+  };
+
+  const currentCanadaQuestions = canadaSecurityQuestionsMap[activeSettingsCountryTab] || [];
+  const handleCanadaQuestionChange = (index: number, val: string) => {
+    setCanadaSecurityQuestionsMap((prev) => {
+      const list = [...(prev[activeSettingsCountryTab] || [])];
+      list[index] = { ...list[index], question: val };
+      return { ...prev, [activeSettingsCountryTab]: list };
+    });
+  };
+  const handleCanadaAnswerChange = (index: number, val: string) => {
+    setCanadaSecurityQuestionsMap((prev) => {
+      const list = [...(prev[activeSettingsCountryTab] || [])];
+      list[index] = { ...list[index], answer: val };
+      return { ...prev, [activeSettingsCountryTab]: list };
+    });
+  };
+  const handleAddCanadaQuestion = () => {
+    setCanadaSecurityQuestionsMap((prev) => {
+      const list = [...(prev[activeSettingsCountryTab] || []), { question: "", answer: "" }];
+      return { ...prev, [activeSettingsCountryTab]: list };
+    });
+  };
+  const handleRemoveCanadaQuestion = (index: number) => {
+    setCanadaSecurityQuestionsMap((prev) => {
+      const list = (prev[activeSettingsCountryTab] || []).filter((_, i) => i !== index);
+      return { ...prev, [activeSettingsCountryTab]: list };
+    });
   };
 
   const [savingCreds, setSavingCreds] = useState(false);
@@ -732,6 +773,12 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
             password: cData.password.trim() || undefined,
             portalUrl: cData.portalUrl.trim() || undefined,
           },
+          ...(isCanadaCountry(c) && canadaSecurityQuestionsMap[c] ? {
+            securityQuestions: canadaSecurityQuestionsMap[c].map(q => ({
+              question: q.question.trim(),
+              answer: q.answer.trim(),
+            })),
+          } : {}),
         };
       }
     });
@@ -1746,6 +1793,69 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
                 placeholder="https://…"
                 onCopied={() => showToast("Copied to clipboard", "success")}
               />
+
+              {isCanadaCountry(activeSettingsCountryTab) && (
+                <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Security Questions
+                    </p>
+                    <button
+                      type="button"
+                      disabled={!canEditCredentials}
+                      onClick={handleAddCanadaQuestion}
+                      className="text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-semibold flex items-center gap-1 transition-colors disabled:opacity-50"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Add Question
+                    </button>
+                  </div>
+
+                  {currentCanadaQuestions.length === 0 ? (
+                    <p className="text-xs text-slate-400 dark:text-slate-500 italic">
+                      No security questions added. Click "Add Question" to add one.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {currentCanadaQuestions.map((q, idx) => (
+                        <div key={idx} className="flex gap-2 items-center bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800/80">
+                          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              value={q.question}
+                              disabled={!canEditCredentials}
+                              onChange={(e) => handleCanadaQuestionChange(idx, e.target.value)}
+                              placeholder={`Question ${idx + 1}`}
+                              className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60"
+                            />
+                            <input
+                              type="text"
+                              value={q.answer}
+                              disabled={!canEditCredentials}
+                              onChange={(e) => handleCanadaAnswerChange(idx, e.target.value)}
+                              placeholder="Answer"
+                              className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!canEditCredentials}
+                            onClick={() => handleRemoveCanadaQuestion(idx)}
+                            className="text-slate-400 hover:text-red-500 p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+                            title="Remove question"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <button
                 type="button"

@@ -4,7 +4,7 @@ import {
   DEFAULT_EMPLOYMENT_CATEGORY,
 } from "@/utils/documentChecklistConfig";
 import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
-import { isUsaCountry, normalizeCrmCountry, parseCountries } from "@/utils/countryUtils";
+import { isCanadaCountry, isUsaCountry, normalizeCrmCountry, parseCountries } from "@/utils/countryUtils";
 import { isCounselorAssigned, UNASSIGNED_COUNSELOR } from "@/utils/counselorOptions";
 import type { CreateLeadFormState } from "@/types/createLeadForm";
 
@@ -112,6 +112,22 @@ export function buildCreateLeadPayload(state: CreateLeadFormState): CreateLeadPa
       };
 
       payload.usaSlots = countryApp.usaSlots;
+    }
+
+    if (isCanadaCountry(cName)) {
+      countryApp.securityQuestions = appState.securityQuestions.map((q) => ({
+        question: q.question.trim(),
+        answer: q.answer.trim(),
+      }));
+      if (!payload.securityQuestions) {
+        payload.securityQuestions = countryApp.securityQuestions;
+      }
+      if (countryApp.visaCredentials) {
+        (countryApp.visaCredentials as any).securityQuestions = countryApp.securityQuestions;
+      }
+      if (payload.visaCredentials && (isCanadaCountry(state.immigrationCountry) || parsedCountries.length === 1)) {
+        (payload.visaCredentials as any).securityQuestions = countryApp.securityQuestions;
+      }
     }
 
     countryApplications[cName] = countryApp;

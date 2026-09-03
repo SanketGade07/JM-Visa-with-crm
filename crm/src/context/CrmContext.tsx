@@ -128,6 +128,7 @@ export interface CountryApplication {
     portalUrl?: string;
   };
   usaSlots?: UsaSlotTracking;
+  securityQuestions?: Array<{ question: string; answer: string }>;
 }
 
 export interface Lead {
@@ -147,6 +148,7 @@ export interface Lead {
   checklist: DocumentChecklist;
   payments: PaymentDetails[];
   usaSlots?: UsaSlotTracking;
+  securityQuestions?: Array<{ question: string; answer: string }>;
   visaCredentials?: {
     username?: string;
     password?: string;

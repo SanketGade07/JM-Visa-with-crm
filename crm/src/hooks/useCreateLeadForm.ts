@@ -5,12 +5,14 @@ import type { WizardStepId } from "@/components/crm/leads/create/WizardProgress"
 import {
   CREATE_LEAD_INITIAL_STATE,
   DEFAULT_COUNTRY_APPLICATION_STATE,
+  getDefaultCountryApplicationState,
+  getDefaultSecurityQuestions,
   type CreateLeadFormState,
   type CreateLeadType,
   type CreateLeadSlotStatus,
   type CountryApplicationState,
 } from "@/types/createLeadForm";
-import { isUsaCountry, parseCountries } from "@/utils/countryUtils";
+import { isCanadaCountry, isUsaCountry, parseCountries } from "@/utils/countryUtils";
 import { isValidE164Phone } from "@/utils/validatePhone";
 
 import { useCrm, type Lead } from "@/context/CrmContext";
@@ -49,6 +51,8 @@ function getInitialStateFromLead(lead: Lead | null | undefined): CreateLeadFormS
 
   if (lead.countryApplications) {
     Object.entries(lead.countryApplications).forEach(([cName, app]) => {
+      const isCanada = isCanadaCountry(cName);
+      const isUsa = isUsaCountry(cName);
       countryApplications[cName] = {
         loginId: app.visaCredentials?.username || "",
         password: app.visaCredentials?.password || "",
@@ -59,17 +63,18 @@ function getInitialStateFromLead(lead: Lead | null | undefined): CreateLeadFormS
         usaSecurityCar: app.usaSlots?.securityCar || "",
         usaSecurityFood: app.usaSlots?.securityFood || "",
         usaSecurityCity: app.usaSlots?.securityCity || "",
-        securityQuestions: app.usaSlots?.securityQuestions || [
-          { question: "Car", answer: app.usaSlots?.securityCar || "" },
-          { question: "Food", answer: app.usaSlots?.securityFood || "" },
-          { question: "City", answer: app.usaSlots?.securityCity || "" }
-        ],
+        securityQuestions:
+          (app.securityQuestions && app.securityQuestions.length > 0 ? app.securityQuestions : undefined) ||
+          (app.usaSlots?.securityQuestions && app.usaSlots.securityQuestions.length > 0 ? app.usaSlots.securityQuestions : undefined) ||
+          getDefaultSecurityQuestions(cName),
       };
     });
   }
 
   parsedCountries.forEach((cName) => {
     if (!countryApplications[cName]) {
+      const isCanada = isCanadaCountry(cName);
+      const isUsa = isUsaCountry(cName);
       countryApplications[cName] = {
         loginId: isUsaCountry(cName) || parsedCountries.length === 1 ? (lead.visaCredentials?.username || "") : "",
         password: isUsaCountry(cName) || parsedCountries.length === 1 ? (lead.visaCredentials?.password || "") : "",
@@ -80,17 +85,16 @@ function getInitialStateFromLead(lead: Lead | null | undefined): CreateLeadFormS
         usaSecurityCar: lead.usaSlots?.securityCar || "",
         usaSecurityFood: lead.usaSlots?.securityFood || "",
         usaSecurityCity: lead.usaSlots?.securityCity || "",
-        securityQuestions: lead.usaSlots?.securityQuestions || [
-          { question: "Car", answer: lead.usaSlots?.securityCar || "" },
-          { question: "Food", answer: lead.usaSlots?.securityFood || "" },
-          { question: "City", answer: lead.usaSlots?.securityCity || "" }
-        ],
+        securityQuestions:
+          (isCanada && lead.securityQuestions && lead.securityQuestions.length > 0 ? lead.securityQuestions : undefined) ||
+          (isUsa && lead.usaSlots?.securityQuestions && lead.usaSlots.securityQuestions.length > 0 ? lead.usaSlots.securityQuestions : undefined) ||
+          getDefaultSecurityQuestions(cName),
       };
     }
   });
 
   const activeCountryTab = parsedCountries[0] || "";
-  const activeApp = countryApplications[activeCountryTab] || DEFAULT_COUNTRY_APPLICATION_STATE;
+  const activeApp = countryApplications[activeCountryTab] || getDefaultCountryApplicationState(activeCountryTab);
 
   return {
     leadType,
@@ -505,27 +509,27 @@ export function useCreateLeadForm(lead?: Lead | null) {
           const nextApps: Record<string, CountryApplicationState> = { ...prev.countryApplications };
           parsed.forEach((c) => {
             if (!nextApps[c]) {
-              nextApps[c] = {
-                loginId: prev.loginId || "",
-                password: prev.password || "",
-                slotStatus: prev.slotStatus || "",
-                slotPortalLoginId: prev.slotPortalLoginId || "",
-                slotPortalPassword: prev.slotPortalPassword || "",
-                usaTrackingMobile: prev.usaTrackingMobile || "",
-                usaSecurityCar: prev.usaSecurityCar || "",
-                usaSecurityFood: prev.usaSecurityFood || "",
-                usaSecurityCity: prev.usaSecurityCity || "",
-                securityQuestions: prev.securityQuestions || [
-                  { question: "Car", answer: "" },
-                  { question: "Food", answer: "" },
-                  { question: "City", answer: "" }
-                ],
-              };
+              nextApps[c] = getDefaultCountryApplicationState(c);
             }
           });
           next.countryApplications = nextApps;
-          if (!prev.activeCountryTab || !parsed.includes(prev.activeCountryTab)) {
-            next.activeCountryTab = parsed[0] || "";
+          const newActiveTab = (!prev.activeCountryTab || !parsed.includes(prev.activeCountryTab))
+            ? (parsed[0] || "")
+            : prev.activeCountryTab;
+          next.activeCountryTab = newActiveTab;
+
+          if (newActiveTab && nextApps[newActiveTab]) {
+            const activeApp = nextApps[newActiveTab];
+            next.loginId = activeApp.loginId;
+            next.password = activeApp.password;
+            next.slotStatus = activeApp.slotStatus;
+            next.slotPortalLoginId = activeApp.slotPortalLoginId;
+            next.slotPortalPassword = activeApp.slotPortalPassword;
+            next.usaTrackingMobile = activeApp.usaTrackingMobile;
+            next.usaSecurityCar = activeApp.usaSecurityCar;
+            next.usaSecurityFood = activeApp.usaSecurityFood;
+            next.usaSecurityCity = activeApp.usaSecurityCity;
+            next.securityQuestions = activeApp.securityQuestions;
           }
         }
 
@@ -545,7 +549,7 @@ export function useCreateLeadForm(lead?: Lead | null) {
         if (credentialKeys.includes(key as any) && (prev.activeCountryTab || next.activeCountryTab)) {
           const activeTab = prev.activeCountryTab || next.activeCountryTab || "";
           if (activeTab) {
-            const currentApp = prev.countryApplications[activeTab] || DEFAULT_COUNTRY_APPLICATION_STATE;
+            const currentApp = prev.countryApplications[activeTab] || getDefaultCountryApplicationState(activeTab);
             next.countryApplications = {
               ...(next.countryApplications || prev.countryApplications),
               [activeTab]: {
@@ -572,7 +576,20 @@ export function useCreateLeadForm(lead?: Lead | null) {
 
   const setActiveCountryTab = useCallback((country: string) => {
     setState((prev) => {
-      const app = prev.countryApplications[country] || DEFAULT_COUNTRY_APPLICATION_STATE;
+      let app = prev.countryApplications[country];
+      if (!app) {
+        app = getDefaultCountryApplicationState(country);
+      } else if (isCanadaCountry(country) && (!app.securityQuestions || app.securityQuestions.length === 0)) {
+        app = {
+          ...app,
+          securityQuestions: getDefaultSecurityQuestions(country),
+        };
+      } else if (isUsaCountry(country) && (!app.securityQuestions || app.securityQuestions.length === 0)) {
+        app = {
+          ...app,
+          securityQuestions: getDefaultSecurityQuestions(country),
+        };
+      }
       return {
         ...prev,
         activeCountryTab: country,
@@ -586,6 +603,10 @@ export function useCreateLeadForm(lead?: Lead | null) {
         usaSecurityFood: app.usaSecurityFood,
         usaSecurityCity: app.usaSecurityCity,
         securityQuestions: app.securityQuestions,
+        countryApplications: {
+          ...prev.countryApplications,
+          [country]: app,
+        },
       };
     });
   }, []);

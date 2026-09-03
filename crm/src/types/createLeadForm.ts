@@ -2,6 +2,7 @@ import type { CountryType, LeadSource } from "@/context/CrmContext";
 import type { EmploymentCategory } from "@/utils/documentChecklistConfig";
 import { DEFAULT_EMPLOYMENT_CATEGORY } from "@/utils/documentChecklistConfig";
 import { UNASSIGNED_COUNSELOR } from "@/utils/counselorOptions";
+import { isCanadaCountry, isUsaCountry } from "@/utils/countryUtils";
 
 export type CreateLeadType = "study_abroad" | "visa" | "passport" | null;
 
@@ -19,6 +20,40 @@ export type CountryApplicationState = {
   usaSecurityCity: string;
   securityQuestions: Array<{ question: string; answer: string }>;
 };
+
+export function getDefaultSecurityQuestions(country?: string): Array<{ question: string; answer: string }> {
+  if (country && isCanadaCountry(country)) {
+    return [
+      { question: "", answer: "" },
+      { question: "", answer: "" },
+      { question: "", answer: "" },
+      { question: "", answer: "" },
+    ];
+  }
+  if (country && isUsaCountry(country)) {
+    return [
+      { question: "Car", answer: "" },
+      { question: "Food", answer: "" },
+      { question: "City", answer: "" },
+    ];
+  }
+  return [];
+}
+
+export function getDefaultCountryApplicationState(country?: string): CountryApplicationState {
+  return {
+    loginId: "",
+    password: "",
+    slotStatus: "",
+    slotPortalLoginId: "",
+    slotPortalPassword: "",
+    usaTrackingMobile: "",
+    usaSecurityCar: "",
+    usaSecurityFood: "",
+    usaSecurityCity: "",
+    securityQuestions: getDefaultSecurityQuestions(country),
+  };
+}
 
 export const DEFAULT_COUNTRY_APPLICATION_STATE: CountryApplicationState = {
   loginId: "",

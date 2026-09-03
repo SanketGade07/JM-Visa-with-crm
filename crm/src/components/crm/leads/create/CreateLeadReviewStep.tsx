@@ -3,7 +3,7 @@
 import React from "react";
 import type { CreateLeadFormState } from "@/types/createLeadForm";
 import { EMPLOYMENT_CATEGORY_OPTIONS } from "@/utils/documentChecklistConfig";
-import { isUsaCountry, getCountryDisplayName, parseCountries } from "@/utils/countryUtils";
+import { isCanadaCountry, isUsaCountry, getCountryDisplayName, parseCountries } from "@/utils/countryUtils";
 import { getCountryFlag } from "@/components/CountryFlags";
 import type { WizardStepId } from "./WizardProgress";
 import { SummaryCard } from "./SummaryCard";
@@ -117,6 +117,7 @@ export function CreateLeadReviewStep({ state, onEditStep }: CreateLeadReviewStep
               securityQuestions: state.securityQuestions,
             };
             const cIsUsa = isUsaCountry(c);
+            const cIsCanada = isCanadaCountry(c);
             const cSlotLabel = app.slotStatus === "available" ? "Available" : app.slotStatus === "paid" ? "Paid" : null;
 
             return (
@@ -145,9 +146,32 @@ export function CreateLeadReviewStep({ state, onEditStep }: CreateLeadReviewStep
                       label="Mobile number"
                       value={summaryText(app.usaTrackingMobile)}
                     />
-                    <SummaryRow label="Car" value={summaryText(app.usaSecurityCar)} />
-                    <SummaryRow label="Food" value={summaryText(app.usaSecurityFood)} />
-                    <SummaryRow label="City" value={summaryText(app.usaSecurityCity)} />
+                    {app.securityQuestions && app.securityQuestions.length > 0 ? (
+                      app.securityQuestions.map((q, idx) => (
+                        <SummaryRow
+                          key={idx}
+                          label={q.question?.trim() || `Question ${idx + 1}`}
+                          value={q.answer?.trim() ? summaryText(q.answer) : summaryNotSet()}
+                        />
+                      ))
+                    ) : (
+                      <>
+                        <SummaryRow label="Car" value={summaryText(app.usaSecurityCar)} />
+                        <SummaryRow label="Food" value={summaryText(app.usaSecurityFood)} />
+                        <SummaryRow label="City" value={summaryText(app.usaSecurityCity)} />
+                      </>
+                    )}
+                  </>
+                )}
+                {cIsCanada && app.securityQuestions && app.securityQuestions.length > 0 && (
+                  <>
+                    {app.securityQuestions.map((q, idx) => (
+                      <SummaryRow
+                        key={idx}
+                        label={q.question?.trim() || `Question ${idx + 1}`}
+                        value={q.answer?.trim() ? summaryText(q.answer) : summaryNotSet()}
+                      />
+                    ))}
                   </>
                 )}
               </div>
