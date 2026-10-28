@@ -51,34 +51,44 @@ function CopyableCredentialCell({
   icon?: React.ReactNode;
   variant?: "blue" | "gray";
 }) {
+  const [copied, setCopied] = useState(false);
+
   if (!value) {
     return <span className="text-gray-400 dark:text-slate-500 text-[11px]">—</span>;
   }
 
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      navigator.clipboard.writeText(value);
+      setCopied(true);
+      showToast(`${label} copied`, "success");
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      showToast("Copied", "success");
+    }
+  };
+
   const btnClassName = variant === "blue"
-    ? "w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
-    : "w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer";
+    ? "copyable-cred-btn w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer"
+    : "copyable-cred-btn w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer";
 
   return (
-    <div className="inline-flex items-center gap-0.5 max-w-full min-w-0">
-      <span className="text-gray-600 dark:text-slate-300 font-medium text-[12px] font-mono truncate min-w-0">
+    <div className="inline-flex items-center gap-1.5 max-w-full min-w-0">
+      <span className="text-gray-700 dark:text-slate-300 font-medium text-[12px] font-mono truncate min-w-0">
         {value}
       </span>
       <button
         type="button"
-        data-tooltip={`Copy ${label}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          try {
-            navigator.clipboard.writeText(value);
-            showToast(`${label} copied`);
-          } catch {
-            showToast("Copied", "success");
-          }
-        }}
+        data-tooltip={copied ? "Copied!" : `Copy ${label}`}
+        onClick={handleCopy}
         className={btnClassName}
       >
-        {icon || <FiCopy className="text-[13px]" />}
+        {copied ? (
+          <FiCheck className="text-[12px] text-emerald-600 dark:text-emerald-400" />
+        ) : (
+          icon || <FiCopy className="text-[12px]" />
+        )}
       </button>
     </div>
   );
@@ -462,8 +472,8 @@ function UsaSlotSettingsModal({
           <div className="grid grid-cols-2 gap-3">
             <label
               className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${!lead.usaSlots?.slotsBooked
-                  ? "bg-rose-500/10 border-rose-500/30 text-rose-300 shadow-sm"
-                  : "bg-slate-950 border-slate-900 text-slate-400 hover:border-slate-800"
+                ? "bg-rose-500/10 border-rose-500/30 text-rose-300 shadow-sm"
+                : "bg-slate-950 border-slate-900 text-slate-400 hover:border-slate-800"
                 }`}
             >
               <div className="flex items-center gap-2">
@@ -485,8 +495,8 @@ function UsaSlotSettingsModal({
 
             <label
               className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${lead.usaSlots?.slotsBooked
-                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300 shadow-sm"
-                  : "bg-slate-950 border-slate-900 text-slate-400 hover:border-slate-800"
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300 shadow-sm"
+                : "bg-slate-950 border-slate-900 text-slate-400 hover:border-slate-800"
                 }`}
             >
               <div className="flex items-center gap-2">
@@ -646,7 +656,7 @@ function CopyableSecurityQuestionsCell({ lead, showToast }: { lead: Lead; showTo
         ref={buttonRef}
         type="button"
         onClick={handleToggle}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700/90 text-slate-700 dark:text-slate-300 text-[11px] font-semibold rounded-xl border border-slate-200 dark:border-slate-800 transition-all duration-200 shadow-sm cursor-pointer whitespace-nowrap"
+        className="security-answers-btn inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700/90 text-slate-700 dark:text-slate-300 text-[11px] font-semibold rounded-xl border border-slate-200 dark:border-slate-800 transition-all duration-200 shadow-sm cursor-pointer whitespace-nowrap"
       >
         <FiKey className="text-violet-500 text-[12px] shrink-0" />
         <span className="whitespace-nowrap">{count} Answer{count !== 1 ? "s" : ""}</span>
@@ -698,8 +708,8 @@ function CopyableSecurityQuestionsCell({ lead, showToast }: { lead: Lead; showTo
                         type="button"
                         onClick={() => handleCopy(q.answer, idx, q.question || "Security")}
                         className={`p-1.5 rounded-lg border transition-all duration-200 shrink-0 cursor-pointer ${isCopied
-                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
-                            : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-450 dark:bg-slate-950 dark:hover:bg-slate-800 dark:border-slate-800 dark:text-slate-400"
+                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
+                          : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-450 dark:bg-slate-950 dark:hover:bg-slate-800 dark:border-slate-800 dark:text-slate-400"
                           }`}
                         data-tooltip={`Copy ${q.question || "answer"}`}
                       >
@@ -819,11 +829,11 @@ function UsaSlotStatusDropdownCell({
         type="button"
         disabled={!canModifyLeads}
         onClick={handleToggle}
-        className={`inline-flex items-center justify-between gap-2 px-3 py-1 text-[11px] font-semibold rounded-xl border whitespace-nowrap transition-all duration-200 shadow-sm min-w-[110px] ${!canModifyLeads
-            ? "cursor-not-allowed opacity-60"
-            : "cursor-pointer hover:shadow-md"
+        className={`slot-status-pill inline-flex items-center justify-between gap-2 px-3 py-1 text-[11px] font-semibold rounded-xl border whitespace-nowrap transition-all duration-200 shadow-sm min-w-[110px] ${!canModifyLeads
+          ? "cursor-not-allowed opacity-60"
+          : "cursor-pointer hover:shadow-md"
           } ${isBooked
-            ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/25"
+            ? "bg-white hover:bg-slate-50 text-slate-850 border-slate-200/80 shadow-xs dark:bg-slate-900 dark:hover:bg-slate-850 dark:text-slate-100 dark:border-slate-700/80"
             : "bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/25"
           }`}
         aria-label={`Slot status: ${currentStatus}`}
@@ -835,12 +845,12 @@ function UsaSlotStatusDropdownCell({
             className={`w-2 h-2 rounded-full shrink-0 ${isBooked ? "bg-emerald-500 shadow-emerald-500/40 shadow-sm" : "bg-rose-500 shadow-rose-500/40 shadow-sm"
               }`}
           />
-          <span className="whitespace-nowrap font-medium text-[11px]">{currentStatus}</span>
+          <span className="whitespace-nowrap font-bold text-[11px]">{currentStatus}</span>
         </div>
         {canModifyLeads && (
           <FiChevronDown
             className={`text-[11px] shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""
-              } ${isBooked ? "text-emerald-600 dark:text-emerald-400/80" : "text-rose-600 dark:text-rose-400/80"}`}
+              } ${isBooked ? "text-slate-400 dark:text-slate-400" : "text-rose-600 dark:text-rose-400/80"}`}
           />
         )}
       </button>
@@ -872,8 +882,8 @@ function UsaSlotStatusDropdownCell({
                 aria-selected={!isBooked}
                 onClick={(e) => handleSelect("Not Booked", e)}
                 className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-colors cursor-pointer text-left ${!isBooked
-                    ? "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400"
-                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/80"
+                  ? "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400"
+                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/80"
                   }`}
               >
                 <div className="flex items-center gap-2 whitespace-nowrap">
@@ -891,8 +901,8 @@ function UsaSlotStatusDropdownCell({
                 aria-selected={isBooked}
                 onClick={(e) => handleSelect("Booked", e)}
                 className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-colors cursor-pointer text-left ${isBooked
-                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/80"
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
+                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/80"
                   }`}
               >
                 <div className="flex items-center gap-2 whitespace-nowrap">
@@ -993,6 +1003,287 @@ export function USASlotsTab() {
 
   return (
     <div className="-m-4 md:-m-8 pt-0 pl-0 pr-0 pb-4 md:pt-0 md:pl-0 md:pr-0 md:pb-6 space-y-6">
+      <style>{`
+        /* High-contrast text styles for Booked row - Light theme */
+        .booked-row,
+        .booked-row td {
+          color: #000000 !important;
+        }
+        .booked-row span,
+        .booked-row p,
+        .booked-row div {
+          color: #000000 !important;
+        }
+        .booked-row span.font-mono {
+          color: #000000 !important;
+          font-weight: 700 !important;
+          letter-spacing: 0.02em !important;
+        }
+        .booked-row td:nth-child(2) button,
+        .booked-row button.font-semibold {
+          color: #000000 !important;
+          font-weight: 800 !important;
+        }
+        .booked-row td span.text-gray-500,
+        .booked-row td span.text-gray-400 {
+          color: #1e293b !important;
+          font-weight: 600 !important;
+        }
+
+        /* Copy buttons inside credential cells - clearly visible and crisp */
+        .copyable-cred-btn {
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+          opacity: 0.85 !important;
+          transition: opacity 0.15s ease, background-color 0.15s ease, transform 0.15s ease !important;
+        }
+        .copyable-cred-btn:hover {
+          opacity: 1 !important;
+          background-color: rgba(0, 0, 0, 0.08) !important;
+          transform: scale(1.1) !important;
+        }
+
+        /* High-contrast visibility on Booked row (Light Theme) */
+        .booked-row .copyable-cred-btn {
+          color: #0f172a !important;
+          opacity: 0.9 !important;
+        }
+        .booked-row .copyable-cred-btn svg {
+          stroke: #0f172a !important;
+        }
+        .booked-row .copyable-cred-btn:hover {
+          opacity: 1 !important;
+          background-color: rgba(0, 0, 0, 0.12) !important;
+          color: #000000 !important;
+        }
+        .booked-row .copyable-cred-btn:hover svg {
+          stroke: #000000 !important;
+        }
+
+        /* Security answers pill button - elevated crisp white */
+        .booked-row .security-answers-btn {
+          background-color: #ffffff !important;
+          color: #0f172a !important;
+          border-color: rgba(0, 0, 0, 0.12) !important;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+          font-weight: 700 !important;
+        }
+        .booked-row .security-answers-btn span {
+          color: #0f172a !important;
+          font-weight: 700 !important;
+        }
+        .booked-row .security-answers-btn svg:last-child {
+          color: #64748b !important;
+        }
+
+        /* Status Booked pill - Perfectly match Security Answers button elevation and visibility */
+        .booked-row .slot-status-pill {
+          background-color: #ffffff !important;
+          color: #0f172a !important;
+          border-color: rgba(0, 0, 0, 0.12) !important;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+          font-weight: 700 !important;
+        }
+        .booked-row .slot-status-pill:hover {
+          background-color: #f8fafc !important;
+        }
+        .booked-row .slot-status-pill span {
+          color: #0f172a !important;
+          font-weight: 700 !important;
+        }
+        .booked-row .slot-status-pill span.bg-emerald-500 {
+          background-color: #10b981 !important;
+        }
+        .booked-row .slot-status-pill svg {
+          color: #64748b !important;
+        }
+
+        /* Action buttons in last column - crisp icons with semantic colors */
+        .booked-row td:last-child button {
+          transition: transform 0.15s ease, opacity 0.15s ease !important;
+        }
+        .booked-row td:last-child button:hover {
+          transform: scale(1.1) !important;
+        }
+        .booked-row td:last-child button[data-tooltip*="Slot settings"],
+        .booked-row td:last-child button[data-tooltip*="settings"] {
+          color: #334155 !important;
+        }
+        .booked-row td:last-child button[data-tooltip*="Call"],
+        .booked-row td:last-child button[data-tooltip*="phone"] {
+          color: #0284c7 !important;
+        }
+        .booked-row td:last-child button[data-tooltip*="WhatsApp"],
+        .booked-row td:last-child button[data-tooltip*="whatsapp"] {
+          color: #15803d !important;
+        }
+        .booked-row td:last-child button[data-tooltip*="Email"],
+        .booked-row td:last-child button[data-tooltip*="email"] {
+          color: #0284c7 !important;
+        }
+        .booked-row td:last-child button[data-tooltip*="Review"],
+        .booked-row td:last-child button[data-tooltip*="review"] {
+          color: #d97706 !important;
+        }
+
+        .booked-row td:last-child button[data-tooltip*="Slot settings"]:hover {
+          color: #0f172a !important;
+        }
+        .booked-row td:last-child button[data-tooltip*="Call"]:hover {
+          color: #0369a1 !important;
+        }
+        .booked-row td:last-child button[data-tooltip*="WhatsApp"]:hover {
+          color: #166534 !important;
+        }
+        .booked-row td:last-child button[data-tooltip*="Email"]:hover {
+          color: #0369a1 !important;
+        }
+        .booked-row td:last-child button[data-tooltip*="Review"]:hover {
+          color: #b45309 !important;
+        }
+
+        /* High-contrast text styles for Booked row - Dark theme (matches Light Green highlighter) */
+        html.dark .booked-row,
+        html.dark .booked-row td,
+        .dark .booked-row,
+        .dark .booked-row td {
+          color: #000000 !important;
+        }
+        html.dark .booked-row span,
+        .dark .booked-row span,
+        html.dark .booked-row p,
+        .dark .booked-row p,
+        html.dark .booked-row div,
+        .dark .booked-row div {
+          color: #000000 !important;
+        }
+        html.dark .booked-row span.font-mono,
+        .dark .booked-row span.font-mono {
+          color: #000000 !important;
+          font-weight: 700 !important;
+          letter-spacing: 0.02em !important;
+        }
+        html.dark .booked-row td:nth-child(2) button,
+        html.dark .booked-row button.font-semibold,
+        .dark .booked-row td:nth-child(2) button,
+        .dark .booked-row button.font-semibold {
+          color: #000000 !important;
+          font-weight: 800 !important;
+        }
+        html.dark .booked-row td span.text-gray-500,
+        html.dark .booked-row td span.text-slate-400,
+        .dark .booked-row td span.text-gray-500,
+        .dark .booked-row td span.text-slate-400 {
+          color: #1e293b !important;
+          font-weight: 600 !important;
+        }
+
+        /* High-contrast visibility on Booked row (Dark Theme) */
+        html.dark .booked-row .copyable-cred-btn,
+        .dark .booked-row .copyable-cred-btn {
+          color: #0f172a !important;
+          opacity: 0.9 !important;
+        }
+        html.dark .booked-row .copyable-cred-btn svg,
+        .dark .booked-row .copyable-cred-btn svg {
+          stroke: #0f172a !important;
+        }
+        html.dark .booked-row .copyable-cred-btn:hover,
+        .dark .booked-row .copyable-cred-btn:hover {
+          opacity: 1 !important;
+          background-color: rgba(0, 0, 0, 0.12) !important;
+          color: #000000 !important;
+        }
+        html.dark .booked-row .copyable-cred-btn:hover svg,
+        .dark .booked-row .copyable-cred-btn:hover svg {
+          stroke: #000000 !important;
+        }
+        html.dark .booked-row .security-answers-btn,
+        .dark .booked-row .security-answers-btn {
+          background-color: #ffffff !important;
+          color: #0f172a !important;
+          border-color: rgba(0, 0, 0, 0.12) !important;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+          font-weight: 700 !important;
+        }
+        html.dark .booked-row .security-answers-btn span,
+        .dark .booked-row .security-answers-btn span {
+          color: #0f172a !important;
+          font-weight: 700 !important;
+        }
+        html.dark .booked-row .security-answers-btn svg:last-child,
+        .dark .booked-row .security-answers-btn svg:last-child {
+          color: #64748b !important;
+        }
+        html.dark .booked-row .slot-status-pill,
+        .dark .booked-row .slot-status-pill {
+          background-color: #ffffff !important;
+          color: #0f172a !important;
+          border-color: rgba(0, 0, 0, 0.12) !important;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+          font-weight: 700 !important;
+        }
+        html.dark .booked-row .slot-status-pill:hover,
+        .dark .booked-row .slot-status-pill:hover {
+          background-color: #f8fafc !important;
+        }
+        html.dark .booked-row .slot-status-pill span,
+        .dark .booked-row .slot-status-pill span {
+          color: #0f172a !important;
+          font-weight: 700 !important;
+        }
+        html.dark .booked-row .slot-status-pill span.bg-emerald-500,
+        .dark .booked-row .slot-status-pill span.bg-emerald-500 {
+          background-color: #10b981 !important;
+        }
+        html.dark .booked-row .slot-status-pill svg,
+        .dark .booked-row .slot-status-pill svg {
+          color: #64748b !important;
+        }
+
+        html.dark .booked-row td:last-child button[data-tooltip*="Slot settings"],
+        .dark .booked-row td:last-child button[data-tooltip*="Slot settings"] {
+          color: #334155 !important;
+        }
+        html.dark .booked-row td:last-child button[data-tooltip*="Call"],
+        .dark .booked-row td:last-child button[data-tooltip*="Call"] {
+          color: #0284c7 !important;
+        }
+        html.dark .booked-row td:last-child button[data-tooltip*="WhatsApp"],
+        .dark .booked-row td:last-child button[data-tooltip*="WhatsApp"] {
+          color: #15803d !important;
+        }
+        html.dark .booked-row td:last-child button[data-tooltip*="Email"],
+        .dark .booked-row td:last-child button[data-tooltip*="Email"] {
+          color: #0284c7 !important;
+        }
+        html.dark .booked-row td:last-child button[data-tooltip*="Review"],
+        .dark .booked-row td:last-child button[data-tooltip*="Review"] {
+          color: #d97706 !important;
+        }
+
+        html.dark .booked-row td:last-child button[data-tooltip*="Slot settings"]:hover,
+        .dark .booked-row td:last-child button[data-tooltip*="Slot settings"]:hover {
+          color: #0f172a !important;
+        }
+        html.dark .booked-row td:last-child button[data-tooltip*="Call"]:hover,
+        .dark .booked-row td:last-child button[data-tooltip*="Call"]:hover {
+          color: #0369a1 !important;
+        }
+        html.dark .booked-row td:last-child button[data-tooltip*="WhatsApp"]:hover,
+        .dark .booked-row td:last-child button[data-tooltip*="WhatsApp"]:hover {
+          color: #166534 !important;
+        }
+        html.dark .booked-row td:last-child button[data-tooltip*="Email"]:hover,
+        .dark .booked-row td:last-child button[data-tooltip*="Email"]:hover {
+          color: #0369a1 !important;
+        }
+        html.dark .booked-row td:last-child button[data-tooltip*="Review"]:hover,
+        .dark .booked-row td:last-child button[data-tooltip*="Review"]:hover {
+          color: #b45309 !important;
+        }
+      `}</style>
       <CollapsiblePanel open={isCreateUsaLeadOpen && canModifyLeads}>
         <div className="mb-4">
           <CreateLeadWizardPage
@@ -1012,6 +1303,11 @@ export function USASlotsTab() {
         columnSearch={columnSearch}
         rows={tableRows}
         getRowId={(l) => l.id}
+        getRowClassName={(lead) =>
+          lead.usaSlots?.slotsBooked
+            ? "booked-row bg-[#90EE90] hover:bg-[#80e580] dark:bg-[#90EE90] dark:hover:bg-[#80e580] border-b border-[#60cf60] dark:border-[#60cf60] [&>td:first-child]:border-l-4 [&>td:first-child]:border-l-[#15803d] dark:[&>td:first-child]:border-l-[#15803d]"
+            : undefined
+        }
         columns={[
           {
             header: "Client",

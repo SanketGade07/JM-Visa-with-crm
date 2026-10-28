@@ -95,6 +95,7 @@ type DataTableProps<T> = {
   /** Label for the bulk delete button (default "Delete"). */
   bulkDeleteLabel?: string;
   borderless?: boolean;
+  getRowClassName?: (row: T, index: number) => string | undefined;
 };
 
 const alignClass = (a?: "left" | "right" | "center") =>
@@ -240,6 +241,7 @@ export default function DataTable<T>({
   onBulkDelete,
   bulkDeleteLabel = "Delete",
   borderless = false,
+  getRowClassName,
 }: DataTableProps<T>) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -426,16 +428,19 @@ export default function DataTable<T>({
               const isChecked = selectedIds.has(id);
               const rowActions = actions ? actions(row).filter((a) => !a.hidden?.(row)) : [];
               const absoluteIndex = pagination ? (activePage - 1) * effectiveSize + index : index;
+              const customRowClass = getRowClassName?.(row, absoluteIndex);
               return (
                 <tr
                   key={id}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
-                  className={`border-b border-gray-100 dark:border-slate-800/60 last:border-0 transition-colors ${
+                  className={`border-b last:border-0 transition-colors ${
                     onRowClick ? "cursor-pointer" : ""
                   } ${
                     isSelected
-                      ? "bg-blue-50/60 dark:bg-blue-500/10"
-                      : "hover:bg-gray-50/70 dark:hover:bg-slate-800/30"
+                      ? "bg-blue-50/60 dark:bg-blue-500/10 border-gray-100 dark:border-slate-800/60"
+                      : customRowClass
+                        ? customRowClass
+                        : "border-gray-100 dark:border-slate-800/60 hover:bg-gray-50/70 dark:hover:bg-slate-800/30"
                   }`}
                 >
                   {showCheckbox && (
