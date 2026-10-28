@@ -6,6 +6,7 @@ import Select, {
   type ClearIndicatorProps,
   type ControlProps,
   type OptionProps,
+  type SingleValueProps,
   type ValueContainerProps,
   type StylesConfig,
 } from 'react-select';
@@ -54,7 +55,9 @@ const countryMapping: Record<string, { value: string; label: string }> = {
   "United States of America (the)": { value: "USA", label: "United States of America (the)" },
   "United Kingdom": { value: "UK", label: "United Kingdom" },
   "United Kingdom of Great Britain and Northern Ireland": { value: "UK", label: "United Kingdom" },
+  "United Kingdom of Great Britain and Northern Ireland (the)": { value: "UK", label: "United Kingdom" },
   "United Arab Emirates": { value: "UAE", label: "United Arab Emirates" },
+  "United Arab Emirates (the)": { value: "UAE", label: "United Arab Emirates" },
 };
 
 const uniqueOptionsMap = new Map<string, string>();
@@ -66,6 +69,85 @@ getNames().forEach(name => {
 const countryOptions = Array.from(uniqueOptionsMap.entries())
   .map(([value, label]) => ({ value, label }))
   .sort((a, b) => a.label.localeCompare(b.label));
+
+export const COUNTRY_SEARCH_ALIASES: Record<string, string[]> = {
+  UK: [
+    "uk",
+    "u.k.",
+    "united kingdom",
+    "great britain",
+    "britain",
+    "england",
+    "scotland",
+    "wales",
+    "northern ireland",
+  ],
+  USA: [
+    "usa",
+    "u.s.a.",
+    "us",
+    "u.s.",
+    "united states",
+    "united states of america",
+    "america",
+  ],
+  UAE: [
+    "uae",
+    "u.a.e.",
+    "united arab emirates",
+    "emirates",
+    "dubai",
+    "abu dhabi",
+  ],
+};
+
+export function countryFilterOption(
+  candidate: { label: string; value: string; data?: any },
+  rawInput: string
+): boolean {
+  const query = (rawInput || "").trim().toLowerCase();
+  if (!query) return true;
+
+  const label = (candidate.label || "").toLowerCase();
+  const value = (candidate.value || "").toLowerCase();
+
+  if (label.includes(query) || value.includes(query)) {
+    return true;
+  }
+
+  const valKey = (candidate.value || "").toUpperCase();
+  const aliases = COUNTRY_SEARCH_ALIASES[valKey];
+  if (
+    aliases &&
+    aliases.some(
+      (a) => a.toLowerCase().includes(query) || query.includes(a.toLowerCase())
+    )
+  ) {
+    return true;
+  }
+
+  for (const [key, aliasList] of Object.entries(COUNTRY_SEARCH_ALIASES)) {
+    if (
+      aliasList.some(
+        (a) =>
+          a.toLowerCase() === label ||
+          label.includes(a.toLowerCase()) ||
+          a.toLowerCase() === value
+      )
+    ) {
+      if (
+        key.toLowerCase() === query ||
+        aliasList.some(
+          (a) => a.toLowerCase().includes(query) || query.includes(a.toLowerCase())
+        )
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
 
 export const destinationFilterOptions = [
   { value: "All", label: "All Countries" },
@@ -361,6 +443,7 @@ export function SearchableFilterSelect({
           value={selected}
           isSearchable
           isClearable={showClear}
+          filterOption={countryFilterOption}
           components={{
             ClearIndicator: PremiumClearIndicator,
             MenuList: ThinScrollMenuList,
@@ -391,11 +474,10 @@ function CheckboxOption(props: OptionProps<FilterOption, any>) {
     <components.Option {...props}>
       <div className="flex items-center gap-2.5 w-full select-none cursor-pointer py-0.5">
         <div
-          className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${
-            props.isSelected
-              ? "bg-blue-600 border-blue-600 text-white shadow-xs"
-              : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800/80"
-          }`}
+          className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${props.isSelected
+            ? "bg-blue-600 border-blue-600 text-white shadow-xs"
+            : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800/80"
+            }`}
         >
           {props.isSelected && (
             <svg
@@ -413,11 +495,10 @@ function CheckboxOption(props: OptionProps<FilterOption, any>) {
         </div>
         <span className="shrink-0">{getCountryFlag(props.data.value)}</span>
         <span
-          className={`text-xs truncate ${
-            props.isSelected
-              ? "font-semibold text-slate-900 dark:text-slate-100"
-              : "text-slate-700 dark:text-slate-300"
-          }`}
+          className={`text-xs truncate ${props.isSelected
+            ? "font-semibold text-slate-900 dark:text-slate-100"
+            : "text-slate-700 dark:text-slate-300"
+            }`}
         >
           {props.label}
         </span>
@@ -432,12 +513,11 @@ function MultiValueSummaryValueContainer({
 }: ValueContainerProps<FilterOption, any>) {
   const selectedOptions = props.getValue();
   const count = selectedOptions.length;
-  const isFocused = (props as any).isFocused || props.selectProps.menuIsOpen;
 
   return (
     <components.ValueContainer {...props}>
-      {count > 0 && !props.selectProps.inputValue && !isFocused ? (
-        <div className="flex items-center gap-1.5 min-w-0 flex-1 pointer-events-none pr-1 overflow-hidden">
+      {count > 0 && !props.selectProps.inputValue ? (
+        <div className="flex items-center gap-1.5 min-w-0 shrink pointer-events-none pr-1 overflow-hidden">
           {count === 1 && (
             <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 truncate min-w-0">
               <span className="shrink-0">{getCountryFlag(selectedOptions[0].value)}</span>
@@ -471,6 +551,35 @@ function MultiValueSummaryValueContainer({
       ) : null}
       {children}
     </components.ValueContainer>
+  );
+}
+
+function OptionWithFlag(props: OptionProps<FilterOption, any>) {
+  return (
+    <components.Option {...props}>
+      <div className="flex items-center gap-2.5 w-full select-none cursor-pointer py-0.5">
+        <span className="shrink-0">{getCountryFlag(props.data.value)}</span>
+        <span
+          className={`text-xs truncate ${props.isSelected
+            ? "font-semibold text-slate-900 dark:text-slate-100"
+            : "text-slate-700 dark:text-slate-300"
+            }`}
+        >
+          {props.label}
+        </span>
+      </div>
+    </components.Option>
+  );
+}
+
+function SingleValueWithFlag(props: SingleValueProps<FilterOption>) {
+  return (
+    <components.SingleValue {...props}>
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 truncate min-w-0">
+        <span className="shrink-0">{getCountryFlag(props.data.value)}</span>
+        <span className="truncate">{props.data.label}</span>
+      </div>
+    </components.SingleValue>
   );
 }
 
@@ -517,14 +626,53 @@ export function SearchableCountrySelect({
         const idxB = countryOrderMap.get(b) ?? 999;
         return idxA - idxB;
       });
-      return arr.map((val) => ({ value: val, label: val }));
+      return arr.map((val) => {
+        const matched = countryOptions.find(
+          (o) =>
+            o.value.toLowerCase() === val.toLowerCase() ||
+            o.label.toLowerCase() === val.toLowerCase()
+        );
+        return { value: matched?.value ?? val, label: matched?.label ?? val };
+      });
     }
-    return arr.length > 0 ? { value: arr[0], label: arr[0] } : null;
-  }, [value, isMulti, countryOrderMap]);
+    const single = arr[0];
+    if (!single) return null;
+    const matched = countryOptions.find(
+      (o) =>
+        o.value.toLowerCase() === single.toLowerCase() ||
+        o.label.toLowerCase() === single.toLowerCase()
+    );
+  return { value: matched?.value ?? single, label: matched?.label ?? single };
+}, [value, isMulti, countryOrderMap]);
 
-  return (
-    <>
-      <style>{`
+const reorderedCountryOptions = React.useMemo(() => {
+  const query = searchInput.trim().toLowerCase();
+  if (!query) return countryOptions;
+
+  const exactMatches: typeof countryOptions = [];
+  const otherMatches: typeof countryOptions = [];
+
+  countryOptions.forEach((opt) => {
+    const val = opt.value.toLowerCase();
+    const aliases = COUNTRY_SEARCH_ALIASES[opt.value.toUpperCase()] || [];
+
+    const isExact =
+      val === query ||
+      aliases.some((a) => a.toLowerCase() === query);
+
+    if (isExact) {
+      exactMatches.push(opt);
+    } else {
+      otherMatches.push(opt);
+    }
+  });
+
+  return [...exactMatches, ...otherMatches];
+}, [searchInput]);
+
+return (
+  <>
+    <style>{`
         :root {
           --form-bg: #020617;
           --form-border: #1e293b;
@@ -596,154 +744,158 @@ export function SearchableCountrySelect({
           max-width: 100% !important;
         }
       `}</style>
-      {menuPortalTarget && (
-        <Select
-          className="custom-react-select w-full"
-          classNamePrefix="country-select"
-          instanceId={inputId ?? "country-select"}
-          inputId={inputId}
-          inputValue={searchInput}
-          onInputChange={(val, actionMeta) => {
-            if (actionMeta.action === "input-change") {
-              setSearchInput(val);
-            } else if (
-              actionMeta.action === "menu-close" ||
-              actionMeta.action === "input-blur" ||
-              actionMeta.action === "set-value"
-            ) {
-              setSearchInput("");
+    {menuPortalTarget && (
+      <Select
+        className="custom-react-select w-full"
+        classNamePrefix="country-select"
+        instanceId={inputId ?? "country-select"}
+        inputId={inputId}
+        inputValue={searchInput}
+        onInputChange={(val, actionMeta) => {
+          if (actionMeta.action === "input-change") {
+            setSearchInput(val);
+          } else if (
+            actionMeta.action === "menu-close" ||
+            actionMeta.action === "input-blur" ||
+            actionMeta.action === "set-value"
+          ) {
+            setSearchInput("");
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === " " || e.key === "Spacebar" || e.code === "Space" || e.keyCode === 32) {
+            e.preventDefault();
+            e.stopPropagation();
+            setSearchInput((prev) => prev + " ");
+          }
+        }}
+        components={{
+          MenuList: ThinScrollMenuList,
+          ...(isMulti
+            ? {
+              Option: CheckboxOption,
+              ValueContainer: MultiValueSummaryValueContainer,
+              MultiValue: () => null,
             }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === " " || e.key === "Spacebar" || e.code === "Space" || e.keyCode === 32) {
-              e.preventDefault();
-              e.stopPropagation();
-              setSearchInput((prev) => prev + " ");
-            }
-          }}
-          components={{
-            MenuList: ThinScrollMenuList,
-            ...(isMulti
-              ? {
-                  Option: CheckboxOption,
-                  ValueContainer: MultiValueSummaryValueContainer,
-                  MultiValue: () => null,
-                }
-              : {}),
-          }}
-          options={countryOptions}
-          value={formattedValue}
-          name={name}
-          required={required}
-          isMulti={isMulti}
-          closeMenuOnSelect={!isMulti}
-          hideSelectedOptions={false}
-          backspaceRemovesValue={false}
-          menuPortalTarget={menuPortalTarget}
-          menuPosition="fixed"
-          menuPlacement="auto"
-          menuShouldScrollIntoView={false}
-          openMenuOnClick
-          styles={{
-            menuPortal: (base) => ({ ...base, zIndex: 99999 }),
-            valueContainer: (base) => ({
-              ...base,
-              padding: "2px 10px",
-              flexWrap: "nowrap",
-              overflow: "hidden",
-              width: "100%",
+            : {
+              Option: OptionWithFlag,
+              SingleValue: SingleValueWithFlag,
             }),
-            input: (base) => ({
-              ...base,
-              margin: 0,
-              padding: 0,
-              border: "none",
-              outline: "none",
-              boxShadow: "none",
-              background: "transparent",
-              color: "var(--form-text)",
-              caretColor: "var(--form-focus)",
-            }),
-            placeholder: (base) => ({ ...base, margin: "0px", fontSize: "12px" }),
-            singleValue: (base) => ({
-              ...base,
-              margin: "0px",
-              color: "var(--form-text)",
-              fontSize: "12px",
-            }),
-            control: (base, state) => ({
-              ...base,
-              backgroundColor: "var(--form-bg)",
+        }}
+        options={reorderedCountryOptions}
+        value={formattedValue}
+        name={name}
+        required={required}
+        isMulti={isMulti}
+        closeMenuOnSelect={!isMulti}
+        hideSelectedOptions={false}
+        backspaceRemovesValue={false}
+        filterOption={countryFilterOption}
+        menuPortalTarget={menuPortalTarget}
+        menuPosition="fixed"
+        menuPlacement="auto"
+        menuShouldScrollIntoView={false}
+        openMenuOnClick
+        styles={{
+          menuPortal: (base) => ({ ...base, zIndex: 99999 }),
+          valueContainer: (base) => ({
+            ...base,
+            padding: "2px 10px",
+            flexWrap: "nowrap",
+            overflow: "hidden",
+            width: "100%",
+          }),
+          input: (base) => ({
+            ...base,
+            margin: 0,
+            padding: 0,
+            border: "none",
+            outline: "none",
+            boxShadow: "none",
+            background: "transparent",
+            color: "var(--form-text)",
+            caretColor: "var(--form-focus)",
+          }),
+          placeholder: (base) => ({ ...base, margin: "0px", fontSize: "12px" }),
+          singleValue: (base) => ({
+            ...base,
+            margin: "0px",
+            color: "var(--form-text)",
+            fontSize: "12px",
+          }),
+          control: (base, state) => ({
+            ...base,
+            backgroundColor: "var(--form-bg)",
+            borderColor: state.isFocused ? "var(--form-focus)" : "var(--form-border)",
+            color: "var(--form-text)",
+            borderRadius: "0.75rem",
+            minHeight: "40px",
+            height: "40px",
+            maxHeight: "40px",
+            width: "100%",
+            minWidth: "100%",
+            fontSize: "12px",
+            boxShadow: state.isFocused ? "0 0 0 1px var(--form-focus)" : "none",
+            "&:hover": {
               borderColor: state.isFocused ? "var(--form-focus)" : "var(--form-border)",
-              color: "var(--form-text)",
-              borderRadius: "0.75rem",
-              minHeight: "40px",
-              height: "40px",
-              maxHeight: "40px",
-              width: "100%",
-              minWidth: "100%",
-              fontSize: "12px",
-              boxShadow: state.isFocused ? "0 0 0 1px var(--form-focus)" : "none",
-              "&:hover": {
-                borderColor: state.isFocused ? "var(--form-focus)" : "var(--form-border)",
-              },
-            }),
-            menu: (base) => ({
-              ...base,
-              backgroundColor: "var(--form-bg)",
-              border: "1px solid var(--form-border)",
-              borderRadius: "0.75rem",
-              overflow: "hidden",
-              padding: "4px",
-              zIndex: 99999,
-              minWidth: "100%",
-              width: "max-content",
-              maxWidth: "280px",
-              boxSizing: "border-box",
-            }),
-            menuList: (base) => ({
-              ...base,
-              maxHeight: `${COUNTRY_DROPDOWN_MAX_HEIGHT}px`,
-              overflowX: "hidden",
-              overflowY: "auto",
-              boxSizing: "border-box",
-            }),
-            option: (base, state) => ({
-              ...base,
-              backgroundColor: state.isSelected
-                ? state.isFocused
-                  ? "rgba(59, 130, 246, 0.15)"
-                  : "rgba(59, 130, 246, 0.08)"
-                : state.isFocused
+            },
+          }),
+          menu: (base) => ({
+            ...base,
+            backgroundColor: "var(--form-bg)",
+            border: "1px solid var(--form-border)",
+            borderRadius: "0.75rem",
+            overflow: "hidden",
+            padding: "4px",
+            zIndex: 99999,
+            minWidth: "100%",
+            width: "max-content",
+            maxWidth: "280px",
+            boxSizing: "border-box",
+          }),
+          menuList: (base) => ({
+            ...base,
+            maxHeight: `${COUNTRY_DROPDOWN_MAX_HEIGHT}px`,
+            overflowX: "hidden",
+            overflowY: "auto",
+            boxSizing: "border-box",
+          }),
+          option: (base, state) => ({
+            ...base,
+            backgroundColor: state.isSelected
+              ? state.isFocused
+                ? "rgba(59, 130, 246, 0.15)"
+                : "rgba(59, 130, 246, 0.08)"
+              : state.isFocused
                 ? "var(--form-hover)"
                 : "transparent",
-              color: "var(--form-text)",
-              cursor: "pointer",
-              borderRadius: "0.5rem",
-              whiteSpace: "nowrap",
-              padding: "6px 10px",
-              ":active": {
-                backgroundColor: "rgba(59, 130, 246, 0.2)",
-              },
-            }),
-          }}
-          maxMenuHeight={COUNTRY_DROPDOWN_MAX_HEIGHT}
-          placeholder={placeholder}
-          onChange={(val) => {
-            if (!onChange) return;
-            if (isMulti) {
-              const opts = (val as FilterOption[]) ?? [];
-              const strVal = opts.map((o) => o.value).join(", ");
-              onChange(strVal);
-            } else {
-              const option = val as FilterOption | null;
-              onChange(option?.value ?? "");
-            }
-          }}
-        />
-      )}
-    </>
-  );
+            color: "var(--form-text)",
+            cursor: "pointer",
+            borderRadius: "0.5rem",
+            whiteSpace: "nowrap",
+            padding: "6px 10px",
+            ":active": {
+              backgroundColor: "rgba(59, 130, 246, 0.2)",
+            },
+          }),
+        }}
+        maxMenuHeight={COUNTRY_DROPDOWN_MAX_HEIGHT}
+        placeholder={placeholder}
+        onChange={(val) => {
+          if (!onChange) return;
+          if (isMulti) {
+            const opts = (val as FilterOption[]) ?? [];
+            const strVal = opts.map((o) => o.value).join(", ");
+            onChange(strVal);
+          } else {
+            const option = val as FilterOption | null;
+            onChange(option?.value ?? "");
+          }
+        }}
+      />
+    )}
+  </>
+);
 }
 
 const countriesList = defaultCountries.map((c) => {
@@ -915,7 +1067,7 @@ export function PhoneInput({ id, name, required, placeholder, value, onChange, o
     applyPhoneUpdate(nextCountry, filtered);
   };
 
-  const filteredCountries = countriesList.filter(c => 
+  const filteredCountries = countriesList.filter(c =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.iso2.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.dialCode.includes(searchQuery)
