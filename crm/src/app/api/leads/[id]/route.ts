@@ -5,6 +5,8 @@ import { normalizeLeadStatus } from "@/utils/leadStatusConfig";
 import { getSupabase } from "@/utils/supabase";
 import { verifySession } from "@/utils/session";
 import { normalizeLead } from "@/utils/normalizeLead";
+import { isGoogleDriveConfigured } from "@/lib/googleDrive";
+import { provisionLeadDriveFolder } from "@/lib/provisionLeadDriveFolder";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -24,6 +26,18 @@ export async function GET(_req: NextRequest, { params }: Params) {
   }
 
   const lead = normalizeLead(dbLead);
+
+  if (!lead.driveFolderId && isGoogleDriveConfigured()) {
+    try {
+      const provisioned = await provisionLeadDriveFolder(id);
+      if (provisioned.ok) {
+        lead.driveFolderId = provisioned.driveFolderId;
+      }
+    } catch (e) {
+      console.error(`Auto-provisioning Drive folder on GET /api/leads/${id} failed:`, e);
+    }
+  }
+
   const activities = (await readActivities()).filter((a) => a.leadId === id);
   return NextResponse.json({ lead, activities });
 }

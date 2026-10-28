@@ -26,7 +26,7 @@ export type AssignmentNotification = {
   kind?: AssignmentNotificationKind;
 };
 
-export type UsaSlotView = "available" | "paid";
+export type UsaSlotView = "available" | "paid" | "booked";
 export type SubmissionView = "ready" | "dispatched" | "approved" | "rejected";
 export type PaymentsView = "ledger" | "desk-revenue";
 

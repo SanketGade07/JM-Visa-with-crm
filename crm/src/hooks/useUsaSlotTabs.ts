@@ -18,6 +18,11 @@ export function useUsaSlotTabs() {
     [scopedLeads]
   );
 
+  const bookedCount = useMemo(
+    () => usaLeads.filter((l) => l.usaSlots?.slotsBooked === true).length,
+    [usaLeads]
+  );
+
   const availableCount = useMemo(
     () => usaLeads.filter((l) => !l.usaSlots?.slotsPaid).length,
     [usaLeads]
@@ -29,10 +34,14 @@ export function useUsaSlotTabs() {
   );
 
   const filteredUsaLeads = useMemo(() => {
-    const list =
-      usaSlotView === "paid"
-        ? usaLeads.filter((l) => l.usaSlots?.slotsPaid === true)
-        : usaLeads.filter((l) => !l.usaSlots?.slotsPaid);
+    let list: typeof usaLeads;
+    if (usaSlotView === "booked") {
+      list = usaLeads.filter((l) => l.usaSlots?.slotsBooked === true);
+    } else if (usaSlotView === "paid") {
+      list = usaLeads.filter((l) => l.usaSlots?.slotsPaid === true);
+    } else {
+      list = usaLeads.filter((l) => !l.usaSlots?.slotsPaid);
+    }
     
     return [...list].sort((a, b) => getLeadCreatedTimestamp(b) - getLeadCreatedTimestamp(a));
   }, [usaLeads, usaSlotView]);
@@ -41,9 +50,10 @@ export function useUsaSlotTabs() {
     () => [
       { id: "available", label: "Available", count: availableCount },
       { id: "paid", label: "Paid", count: paidCount },
+      { id: "booked", label: "Booked", count: bookedCount },
     ],
-    [availableCount, paidCount]
+    [availableCount, paidCount, bookedCount]
   );
 
-  return { usaLeads, availableCount, paidCount, filteredUsaLeads, usaSlotTabs };
+  return { usaLeads, availableCount, paidCount, bookedCount, filteredUsaLeads, usaSlotTabs };
 }

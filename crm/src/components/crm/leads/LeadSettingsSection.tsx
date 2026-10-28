@@ -811,7 +811,24 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
     if (!lead.driveFolderId) {
       setLinkedFolderName(null);
       setFolderLinkStatus("idle");
-      return;
+
+      let cancelled = false;
+      void (async () => {
+        try {
+          const res = await fetch(`/api/leads/${lead.id}`);
+          if (cancelled || !res.ok) return;
+          const data = await res.json();
+          if (!cancelled && data?.lead?.driveFolderId) {
+            patchLeadDriveFolder(lead.id, data.lead.driveFolderId);
+          }
+        } catch {
+          // ignore
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+      };
     }
 
     let cancelled = false;
@@ -845,7 +862,7 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
     return () => {
       cancelled = true;
     };
-  }, [lead.id, lead.driveFolderId]);
+  }, [lead.id, lead.driveFolderId, patchLeadDriveFolder]);
 
   const handleValidateAndLink = async () => {
     if (!folderInput.trim()) {

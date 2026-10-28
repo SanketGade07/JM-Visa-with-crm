@@ -478,6 +478,22 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         return false;
       }
+
+      try {
+        const data = await res.json();
+        const serverDriveFolderId = data?.driveFolderId || data?.lead?.driveFolderId;
+        if (serverDriveFolderId && changed.length === 1) {
+          const targetId = changed[0].id;
+          setLeads((current) =>
+            current.map((l) =>
+              l.id === targetId ? { ...l, driveFolderId: serverDriveFolderId } : l
+            )
+          );
+        }
+      } catch {
+        // Safe fallback if response has no JSON body or already consumed
+      }
+
       return true;
     } catch (error) {
       console.error("Failed to sync leads:", error);
