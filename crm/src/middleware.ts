@@ -29,6 +29,12 @@ export async function middleware(req: NextRequest) {
   }
 
   // Role-based API guards (guide §8.9)
+  if (pathname.startsWith("/api/admin")) {
+    if (!role || role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
   if (pathname.startsWith("/api/expenses") || pathname.startsWith("/api/reports")) {
     if (role && !["ADMIN", "ACCOUNT TEAM"].includes(role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

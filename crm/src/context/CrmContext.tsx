@@ -12,7 +12,6 @@ import { normalizeAllowedTabs, normalizePermissions } from "@/utils/crmConstants
 import { generateId } from "@/utils/session";
 import {
   isCounselorAssigned,
-  reconcileOrphanCounselorAssignments,
   UNASSIGNED_COUNSELOR,
 } from "@/utils/counselorOptions";
 import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
@@ -382,44 +381,30 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 
     loadData();
+
+    // Daily CRM snapshot when an admin opens the app and the newest backup is >20h old.
+    try {
+      const savedRole = localStorage.getItem("visa_crm_role");
+      const savedUserStr = localStorage.getItem("visa_crm_user");
+      let role = savedRole;
+      if (savedUserStr) {
+        try {
+          role = JSON.parse(savedUserStr)?.role || role;
+        } catch {
+          /* ignore */
+        }
+      }
+      if (role === "ADMIN") {
+        void fetch("/api/admin/backups?ensureDaily=1", { cache: "no-store" }).catch(() => {});
+      }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
-  useEffect(() => {
-    if (users.length === 0) return;
-    // Never mass-unassign when roster looks wiped to seed-only Admin+Priya.
-    // That race was the post-deploy wipe that cleared Prachi/Siddharth leads.
-    if (
-      users.length <= 2 &&
-      users.every((u) => u.id === "user-admin" || u.id === "user-counselor")
-    ) {
-      return;
-    }
-
-    const currentLeads = leadsRef.current;
-    if (currentLeads.length === 0) return;
-
-    const orphans = reconcileOrphanCounselorAssignments(users, currentLeads);
-    if (orphans.length === 0) return;
-
-    const today = new Date().toISOString().split("T")[0];
-    const orphanIds = new Set(orphans.map((lead) => lead.id));
-    const updated = currentLeads.map((lead) => {
-      if (!orphanIds.has(lead.id)) return lead;
-      return { ...lead, counselor: UNASSIGNED_COUNSELOR, lastUpdated: today };
-    });
-
-    void syncLeads(updated);
-    for (const lead of orphans) {
-      const prevCounselor = lead.counselor;
-      void logActivity({
-        leadId: lead.id,
-        type: "note",
-        content: `Counselor changed from "${prevCounselor}" to "${UNASSIGNED_COUNSELOR}" (counselor no longer in staff)`,
-        createdBy: "SYSTEM",
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reconcile when staff directory loads or changes
-  }, [users]);
+  // Intentionally no auto-unassign when staff list loads. A transient/empty staff
+  // roster previously wiped counselor assignments for every lead. Orphans are only
+  // cleared when an admin deletes that staff member (deleteUser).
 
   // ── Persistence helpers ─────────────────────────────────────────────────────
 

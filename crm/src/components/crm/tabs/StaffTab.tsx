@@ -71,6 +71,96 @@ export function StaffTab() {
   const [showResetSuccessModal, setShowResetSuccessModal] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState("");
 
+  type BackupRow = {
+    id: number;
+    reason: string;
+    counts: Record<string, number>;
+    storagePath: string | null;
+    driveFileId: string | null;
+    createdBy: string | null;
+    createdAt: string;
+  };
+
+  const [backups, setBackups] = useState<BackupRow[]>([]);
+  const [backupsLoading, setBackupsLoading] = useState(false);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [restoreTarget, setRestoreTarget] = useState<BackupRow | null>(null);
+  const [restoreConfirmText, setRestoreConfirmText] = useState("");
+  const [restoreBusy, setRestoreBusy] = useState(false);
+
+  const loadBackups = useCallback(async () => {
+    if (currentRole !== "ADMIN") return;
+    setBackupsLoading(true);
+    try {
+      const res = await fetch("/api/admin/backups", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Failed to load backups", "error");
+        return;
+      }
+      setBackups(Array.isArray(data.snapshots) ? data.snapshots : []);
+    } catch {
+      showToast("Failed to load backups", "error");
+    } finally {
+      setBackupsLoading(false);
+    }
+  }, [currentRole, showToast]);
+
+  useEffect(() => {
+    void loadBackups();
+  }, [loadBackups]);
+
+  const handleBackupNow = useCallback(async () => {
+    setBackupBusy(true);
+    try {
+      const res = await fetch("/api/admin/backup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "manual" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Backup failed", "error");
+        return;
+      }
+      showToast(`Backup #${data.snapshot?.id} created`);
+      await loadBackups();
+    } catch {
+      showToast("Backup failed", "error");
+    } finally {
+      setBackupBusy(false);
+    }
+  }, [loadBackups, showToast]);
+
+  const handleRestore = useCallback(async () => {
+    if (!restoreTarget) return;
+    if (restoreConfirmText !== "RESTORE") {
+      showToast('Type RESTORE to confirm', "error");
+      return;
+    }
+    setRestoreBusy(true);
+    try {
+      const res = await fetch("/api/admin/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: restoreTarget.id, confirm: "RESTORE" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Restore failed", "error");
+        return;
+      }
+      showToast(`Restored from backup #${restoreTarget.id}. Reloading…`);
+      setRestoreTarget(null);
+      setRestoreConfirmText("");
+      window.setTimeout(() => window.location.reload(), 900);
+    } catch {
+      showToast("Restore failed", "error");
+    } finally {
+      setRestoreBusy(false);
+    }
+  }, [restoreConfirmText, restoreTarget, showToast]);
+
   const copyToClipboard = useCallback(async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -104,6 +194,107 @@ export function StaffTab() {
                   </button>
                 )}
               </div>
+
+              {currentRole === "ADMIN" && (
+                <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-4">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-bold text-white mb-1">CRM Backups &amp; Rollback</h3>
+                      <p className="text-xs text-slate-400">
+                        Full snapshot of leads, activities, staff, meetings, documents, expenses, and settings.
+                        Stored in the database and copied to Storage / Google Drive when available.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void loadBackups()}
+                        disabled={backupsLoading}
+                        className="px-3 py-2 text-xs font-bold rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 transition-colors disabled:opacity-50"
+                      >
+                        Refresh
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleBackupNow()}
+                        disabled={backupBusy}
+                        className="px-4 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg transition-all disabled:opacity-50"
+                      >
+                        {backupBusy ? "Backing up…" : "Backup now"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto border border-slate-800/80 rounded-xl">
+                    <table className="w-full text-left border-collapse min-w-[720px]">
+                      <thead>
+                        <tr className="border-b border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-500 bg-slate-950/40">
+                          <th className="py-3 px-4">ID</th>
+                          <th className="py-3 px-4">When</th>
+                          <th className="py-3 px-4">Reason</th>
+                          <th className="py-3 px-4">Counts</th>
+                          <th className="py-3 px-4">Copies</th>
+                          <th className="py-3 px-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/40 text-xs">
+                        {backupsLoading && backups.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-6 px-4 text-slate-500 text-center">Loading backups…</td>
+                          </tr>
+                        ) : backups.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-6 px-4 text-slate-500 text-center">
+                              No snapshots yet. Click Backup now to create the first one.
+                            </td>
+                          </tr>
+                        ) : (
+                          backups.map((snap) => (
+                            <tr key={snap.id} className="hover:bg-slate-800/10 transition-colors">
+                              <td className="py-3 px-4 font-mono text-slate-300">#{snap.id}</td>
+                              <td className="py-3 px-4 text-slate-300">
+                                {new Date(snap.createdAt).toLocaleString()}
+                                {snap.createdBy ? (
+                                  <span className="block text-[10px] text-slate-500">by {snap.createdBy}</span>
+                                ) : null}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="inline-flex rounded-full border border-slate-700 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-300">
+                                  {snap.reason}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-slate-400">
+                                {snap.counts?.leads ?? 0} leads · {snap.counts?.activities ?? 0} acts · {snap.counts?.staff_users ?? 0} staff
+                              </td>
+                              <td className="py-3 px-4 text-[10px] text-slate-500">
+                                {[
+                                  snap.storagePath ? "Storage" : null,
+                                  snap.driveFileId ? "Drive" : null,
+                                  "DB",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setRestoreTarget(snap);
+                                    setRestoreConfirmText("");
+                                  }}
+                                  className="px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-colors"
+                                >
+                                  Restore
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {/* Roster list view */}
               <div className="overflow-x-auto border border-slate-800/80 rounded-2xl bg-slate-900/60">
@@ -259,6 +450,52 @@ export function StaffTab() {
                 className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold rounded-xl transition-colors"
               >
                 Reset Password
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {restoreTarget && (
+        <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-md bg-[#0a0a1a] border border-amber-500/30 rounded-2xl p-6 shadow-2xl space-y-4">
+            <h3 className="text-sm font-bold text-white border-b border-slate-900 pb-3">
+              Restore backup #{restoreTarget.id}?
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              This replaces current leads, activities, meetings, documents, expenses, settings, and staff
+              with the snapshot from {new Date(restoreTarget.createdAt).toLocaleString()}. A
+              pre-restore snapshot is saved automatically first.
+            </p>
+            <div className="space-y-1.5 text-left text-xs">
+              <label className="text-slate-400 font-bold block">Type RESTORE to confirm</label>
+              <input
+                type="text"
+                value={restoreConfirmText}
+                onChange={(e) => setRestoreConfirmText(e.target.value)}
+                placeholder="RESTORE"
+                className="w-full bg-slate-950 border border-slate-800 py-2.5 px-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500 text-slate-200 font-mono"
+              />
+            </div>
+            <div className="flex justify-end space-x-2 pt-2 text-xs">
+              <button
+                type="button"
+                disabled={restoreBusy}
+                onClick={() => {
+                  setRestoreTarget(null);
+                  setRestoreConfirmText("");
+                }}
+                className="px-4 py-2 border border-slate-800 text-slate-400 hover:text-white rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={restoreBusy || restoreConfirmText !== "RESTORE"}
+                onClick={() => void handleRestore()}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white font-bold rounded-xl transition-colors"
+              >
+                {restoreBusy ? "Restoring…" : "Restore now"}
               </button>
             </div>
           </div>
