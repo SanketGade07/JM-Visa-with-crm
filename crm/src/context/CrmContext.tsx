@@ -386,6 +386,14 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     if (users.length === 0) return;
+    // Never mass-unassign when roster looks wiped to seed-only Admin+Priya.
+    // That race was the post-deploy wipe that cleared Prachi/Siddharth leads.
+    if (
+      users.length <= 2 &&
+      users.every((u) => u.id === "user-admin" || u.id === "user-counselor")
+    ) {
+      return;
+    }
 
     const currentLeads = leadsRef.current;
     if (currentLeads.length === 0) return;

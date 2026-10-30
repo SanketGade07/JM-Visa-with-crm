@@ -2,17 +2,34 @@ import { NextRequest, NextResponse } from "next/server";
 import { readUsers, writeUsers } from "@/utils/db";
 import { CrmUser } from "@/context/CrmContext";
 import { normalizeAllowedTabs, normalizePermissions } from "@/utils/crmConstants";
-import { hashPassword } from "@/utils/session";
+import {
+  requireAdmin,
+  requireLoggedIn,
+  unauthorizedResponse,
+  forbiddenResponse,
+} from "@/utils/driveAuth";
 
-// GET /api/users — Retrieve all user accounts
+async function requireAdminOrReject(req: NextRequest) {
+  if (await requireAdmin(req)) return null;
+  return (await requireLoggedIn(req)) ? forbiddenResponse() : unauthorizedResponse();
+}
+
+// GET /api/users — staff directory for all logged-in users; passwords only for ADMIN
 export async function GET(req: NextRequest) {
   try {
+    const role = await requireLoggedIn(req);
+    if (!role) return unauthorizedResponse();
+    const isAdmin = role === "ADMIN";
+
     const users = (await readUsers()).map((user) => {
-      return {
+      const normalized = {
         ...user,
         allowedTabs: normalizeAllowedTabs(user.allowedTabs),
         permissions: normalizePermissions(user.permissions, user.role),
       };
+      if (isAdmin) return normalized;
+      const { password: _omit, ...safe } = normalized;
+      return safe;
     });
     return NextResponse.json(users);
   } catch (error) {
@@ -21,14 +38,20 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/users — Create, Update, or Delete user accounts
+// POST /api/users — Create, Update, or Delete user accounts (admin only)
 export async function POST(req: NextRequest) {
   try {
+    const denied = await requireAdminOrReject(req);
+    if (denied) return denied;
+
     const body = await req.json();
     const existingUsers = await readUsers();
 
     // 1. Bulk sync/overwrite users
     if (Array.isArray(body.users)) {
+      if (body.users.length === 0) {
+        return NextResponse.json({ error: "Refusing empty staff overwrite" }, { status: 400 });
+      }
       const existingById = new Map(existingUsers.map((u) => [u.id, u]));
       const normalizedUsers = body.users.map((user: CrmUser) => {
         const prev = existingById.get(user.id);
@@ -84,15 +107,18 @@ export async function POST(req: NextRequest) {
       if (userId === "user-admin") {
         return NextResponse.json({ error: "Cannot delete the primary admin account" }, { status: 400 });
       }
-      
+
       const updatedUsers = existingUsers.filter((u) => u.id !== userId);
+      if (updatedUsers.length === 0) {
+        return NextResponse.json({ error: "Refusing to delete last staff account" }, { status: 400 });
+      }
       const ok = await writeUsers(updatedUsers);
       return ok
         ? NextResponse.json({ success: true })
         : NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
     }
 
-    // 3. Create or Update single user
+    // 4. Create or Update single user
     const userId = body.id || `user-${Date.now()}`;
     const userEmail = body.email;
     const userName = body.name || "Unnamed User";
@@ -135,7 +161,6 @@ export async function POST(req: NextRequest) {
     if (isExisting) {
       updatedUsersList = existingUsers.map((u) => (u.id === userId ? updatedUser : u));
     } else {
-      // Check duplicate email for new user
       const isEmailTaken = existingUsers.some((u) => u.email.toLowerCase() === userEmail.toLowerCase());
       if (isEmailTaken) {
         return NextResponse.json({ error: "Email is already in use" }, { status: 400 });

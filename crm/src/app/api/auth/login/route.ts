@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readUsers, writeUsers } from "@/utils/db";
+import { readUsers } from "@/utils/db";
 import { normalizePermissions } from "@/utils/crmConstants";
-import { signSession, verifyPassword, hashPassword } from "@/utils/session";
+import { signSession, verifyPassword } from "@/utils/session";
 
 export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json();
 
-    // Read dynamic user accounts from Supabase storage
+    // Read staff accounts from Postgres `staff_users` (mirrored to Storage as backup)
     const users = await readUsers();
     const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
 

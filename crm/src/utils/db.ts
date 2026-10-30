@@ -266,7 +266,13 @@ export const deleteDocument = async (id: string): Promise<boolean> => {
   return true;
 };
 
-// ── Users (Dynamic Staff Accounts in Storage) ───────────────────────────────
+// ── Users (staff directory in Postgres `staff_users`) ───────────────────────
+// Leads link by counselor *name* string, not staff id — renaming a staff member
+// can orphan assignments; ids/emails can change freely.
+
+const SEED_ONLY_IDS = new Set(["user-admin", "user-counselor"]);
+
+/** Hardcoded fallbacks for local/dev bootstrap only — never auto-written over production. */
 export const getSeedUsers = (): CrmUser[] => [
   {
     id: "user-admin",
@@ -274,7 +280,7 @@ export const getSeedUsers = (): CrmUser[] => [
     email: "admin@jmvisa.com",
     password: "admin123",
     role: "ADMIN",
-    allowedTabs: ["Dashboard", "Leads", "USASlots", "Submissions", "Payments", "DropLeads", "Staff", "Drive", "LeadDetails_Details", "LeadDetails_Checklist", "LeadDetails_Drive", "LeadDetails_Settings"],
+    allowedTabs: ROLE_TABS.ADMIN,
     permissions: ["assignLeads"],
     createdAt: new Date().toISOString()
   },
@@ -284,61 +290,165 @@ export const getSeedUsers = (): CrmUser[] => [
     email: "counselor@jmvisa.com",
     password: "counselor123",
     role: "COUNSELOR",
-    allowedTabs: ["Dashboard", "Leads", "DropLeads", "LeadDetails_Details", "LeadDetails_Checklist", "LeadDetails_Drive", "LeadDetails_Settings"],
+    allowedTabs: ROLE_TABS.COUNSELOR,
     permissions: [],
     createdAt: new Date().toISOString()
   }
 ];
 
-export const readUsers = async (): Promise<CrmUser[]> => {
+/** True when roster looks like wiped seed-only state — orphan reconciler must no-op. */
+export const isSeedOnlyStaffRoster = (users: CrmUser[]): boolean =>
+  users.length > 0 && users.every((user) => SEED_ONLY_IDS.has(user.id));
+
+type StaffUserRow = {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+  allowedTabs: string[] | null;
+  permissions: string[] | null;
+  createdAt: string;
+};
+
+function rowToCrmUser(row: StaffUserRow): CrmUser {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    password: row.password ?? "",
+    role: row.role,
+    allowedTabs: Array.isArray(row.allowedTabs) ? row.allowedTabs : [],
+    permissions: Array.isArray(row.permissions) ? row.permissions : [],
+    createdAt: row.createdAt || new Date().toISOString(),
+  };
+}
+
+async function mirrorUsersToStorage(users: CrmUser[]): Promise<void> {
   const supabase = getSupabase();
   const bucket = process.env.SUPABASE_BUCKET || "crm-documents";
-  
-  try {
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .download("system/users.json");
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const payload = Buffer.from(JSON.stringify(users, null, 2));
 
-    if (error) {
-      console.log("Could not read users from storage, checking/seeding defaults...", error.message);
-      // Try to write default seed users if it wasn't found
-      const seeds = getSeedUsers();
-      await writeUsers(seeds);
-      return seeds;
-    }
-    
-    const text = await data.text();
-    const parsed = JSON.parse(text) as CrmUser[];
-    const { users: migrated, changed } = migrateUsers(parsed);
-    if (changed) {
-      await writeUsers(migrated);
-    }
-    return migrated;
-  } catch (err) {
-    console.error("Failed to read/parse users.json:", err);
-    return getSeedUsers();
+  // Best-effort mirrors — Postgres is source of truth; failures must not block writes.
+  await supabase.storage
+    .from(bucket)
+    .upload("system/users.json", payload, { contentType: "application/json", upsert: true })
+    .catch((err) => console.warn("users.json mirror failed:", err));
+
+  await supabase.storage
+    .from(bucket)
+    .upload(`system/backups/users-${stamp}.json`, payload, {
+      contentType: "application/json",
+      upsert: false,
+    })
+    .catch((err) => console.warn("users.json storage backup failed:", err));
+}
+
+export const readUsers = async (): Promise<CrmUser[]> => {
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase
+    .from("staff_users")
+    .select("id, name, email, password, role, allowedTabs, permissions, createdAt")
+    .order("createdAt", { ascending: true });
+
+  if (error) {
+    console.error("Error reading staff_users from Postgres:", error);
+    // Fail closed: do NOT seed/overwrite. Callers (login) treat empty as auth failure.
+    return [];
   }
+
+  if (!data || data.length === 0) {
+    console.warn("staff_users is empty — refusing auto-seed (prevents wiping production roster)");
+    return [];
+  }
+
+  const parsed = (data as StaffUserRow[]).map(rowToCrmUser);
+  const { users: migrated, changed } = migrateUsers(parsed);
+  if (changed) {
+    await writeUsers(migrated);
+  }
+  return migrated;
 };
 
 export const writeUsers = async (users: CrmUser[]): Promise<boolean> => {
   const supabase = getSupabase();
-  const bucket = process.env.SUPABASE_BUCKET || "crm-documents";
-  
-  try {
-    const { error } = await supabase.storage
-      .from(bucket)
-      .upload("system/users.json", Buffer.from(JSON.stringify(users, null, 2)), {
-        contentType: "application/json",
-        upsert: true,
-      });
 
-    if (error) {
-      console.error("Error writing users to Supabase storage:", error);
+  if (!users.length) {
+    console.error("Refusing to write empty staff roster");
+    return false;
+  }
+
+  try {
+    const { data: current, error: readError } = await supabase.from("staff_users").select("*");
+    if (readError) {
+      console.error("Error reading staff_users before write:", readError);
       return false;
     }
+
+    if (current && current.length > 0) {
+      const { error: backupError } = await supabase.from("staff_users_backups").insert({
+        snapshot: current,
+        reason: "writeUsers",
+      });
+      if (backupError) {
+        console.warn("staff_users_backups insert failed:", backupError);
+      }
+
+      // Keep last 30 DB backups
+      const { data: oldBackups } = await supabase
+        .from("staff_users_backups")
+        .select("id")
+        .order("created_at", { ascending: false })
+        .range(30, 1000);
+      if (oldBackups && oldBackups.length > 0) {
+        await supabase
+          .from("staff_users_backups")
+          .delete()
+          .in(
+            "id",
+            oldBackups.map((row: { id: number }) => row.id)
+          );
+      }
+    }
+
+    const rows = users.map((user) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      password: user.password || "",
+      role: user.role,
+      allowedTabs: user.allowedTabs ?? [],
+      permissions: user.permissions ?? [],
+      createdAt: user.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }));
+
+    const { error: upsertError } = await supabase.from("staff_users").upsert(rows, {
+      onConflict: "id",
+    });
+    if (upsertError) {
+      console.error("Error upserting staff_users:", upsertError);
+      return false;
+    }
+
+    const keepIds = new Set(users.map((user) => user.id));
+    const toDelete = (current || [])
+      .map((row: { id: string }) => row.id)
+      .filter((id: string) => !keepIds.has(id));
+    if (toDelete.length > 0) {
+      const { error: deleteError } = await supabase.from("staff_users").delete().in("id", toDelete);
+      if (deleteError) {
+        console.error("Error deleting removed staff_users:", deleteError);
+        return false;
+      }
+    }
+
+    void mirrorUsersToStorage(users);
     return true;
   } catch (err) {
-    console.error("Exception writing users to storage:", err);
+    console.error("Exception writing staff_users:", err);
     return false;
   }
 };
