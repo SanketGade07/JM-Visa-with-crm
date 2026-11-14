@@ -1,4 +1,5 @@
 import { getSupabase } from "@/utils/supabase";
+import { readAllFromTable } from "@/utils/db";
 import {
   getRootFolderId,
   getOrCreateFolder,
@@ -68,6 +69,8 @@ export function computeCounts(payload: CrmSnapshotPayload): CrmSnapshotCounts {
 
 export async function buildSnapshotPayload(): Promise<CrmSnapshotPayload> {
   const supabase = getSupabase();
+  // Activities exceed PostgREST's default 1000-row page — use paginated reader.
+  // Other tables are well under the limit today; keep parallel selects for speed.
   const [
     leads,
     activities,
@@ -78,7 +81,7 @@ export async function buildSnapshotPayload(): Promise<CrmSnapshotPayload> {
     staffUsers,
   ] = await Promise.all([
     supabase.from("leads").select("*"),
-    supabase.from("activities").select("*"),
+    readAllFromTable("activities"),
     supabase.from("meetings").select("*"),
     supabase.from("documents").select("*"),
     supabase.from("expenses").select("*"),
@@ -88,7 +91,6 @@ export async function buildSnapshotPayload(): Promise<CrmSnapshotPayload> {
 
   const firstError =
     leads.error ||
-    activities.error ||
     meetings.error ||
     documents.error ||
     expenses.error ||
@@ -102,7 +104,7 @@ export async function buildSnapshotPayload(): Promise<CrmSnapshotPayload> {
     version: 1,
     capturedAt: new Date().toISOString(),
     leads: leads.data ?? [],
-    activities: activities.data ?? [],
+    activities,
     meetings: meetings.data ?? [],
     documents: documents.data ?? [],
     expenses: expenses.data ?? [],

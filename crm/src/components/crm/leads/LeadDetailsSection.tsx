@@ -200,6 +200,7 @@ const sendBtnClass =
 export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSectionProps) {
   const {
     getLeadActivities,
+    refreshLeadActivities,
     postLeadDiscussionMessage,
     showToast,
     currentUser,
@@ -235,6 +236,29 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
   useEffect(() => {
     setDescriptionDraft(lead.notes ?? "");
   }, [lead.id, lead.notes]);
+
+  // Keep discussion in sync across users: fetch on open, poll while viewing, refetch on tab focus.
+  useEffect(() => {
+    let cancelled = false;
+
+    const refresh = () => {
+      if (!cancelled) void refreshLeadActivities(lead.id);
+    };
+
+    refresh();
+    const intervalId = window.setInterval(refresh, 15_000);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [lead.id, refreshLeadActivities]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -446,7 +470,7 @@ export function LeadDetailsSection({ lead, highlighted = false }: LeadDetailsSec
               />
             </div>
 
-            <DiscussionDivider />
+            {discussionMessages.length > 0 && <DiscussionDivider />}
 
             <div className="flex flex-col gap-3.5 pb-2">
               {discussionMessages.length === 0 ? (

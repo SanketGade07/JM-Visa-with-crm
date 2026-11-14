@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readLeads, writeLeads, readActivities, appendActivity } from "@/utils/db";
+import { readLeads, writeLeads, readActivitiesByLeadId, appendActivity } from "@/utils/db";
 import { Activity, VisaStatus } from "@/context/CrmContext";
 import { normalizeLeadStatus } from "@/utils/leadStatusConfig";
 import { getSupabase } from "@/utils/supabase";
@@ -38,7 +38,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     }
   }
 
-  const activities = (await readActivities()).filter((a) => a.leadId === id);
+  const activities = await readActivitiesByLeadId(id);
   return NextResponse.json({ lead, activities });
 }
 

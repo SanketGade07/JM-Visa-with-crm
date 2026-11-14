@@ -222,6 +222,8 @@ interface CrmContextType {
   setLeadDriveFolder: (leadId: string, driveFolderId: string | null) => Promise<boolean>;
   patchLeadDriveFolder: (leadId: string, driveFolderId: string) => void;
   refreshLeads: () => Promise<void>;
+  refreshActivities: () => Promise<void>;
+  refreshLeadActivities: (leadId: string) => Promise<void>;
   getLeadActivities: (leadId: string) => Activity[];
   postLeadDiscussionMessage: (leadId: string, content: string) => Promise<void>;
   uploadDocument: (leadId: string, docType: string, fileOrUrl: File | string) => Promise<{ ok: boolean; error?: string }>;
@@ -518,7 +520,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const logActivity = async (entry: Omit<Activity, "id" | "createdAt">) => {
+  const logActivity = async (entry: Omit<Activity, "id" | "createdAt">): Promise<boolean> => {
     const activity: Activity = {
       ...entry,
       id: generateId("act"),
@@ -526,13 +528,19 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setActivities((prev) => [...prev, activity]);
     try {
-      await fetch("/api/activities", {
+      const res = await fetch("/api/activities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(activity),
       });
+      if (!res.ok) {
+        throw new Error(`Failed to log activity (${res.status})`);
+      }
+      return true;
     } catch (error) {
+      setActivities((prev) => prev.filter((a) => a.id !== activity.id));
       console.error("Failed to log activity:", error);
+      return false;
     }
   };
 
@@ -1047,12 +1055,15 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const postLeadDiscussionMessage = async (leadId: string, content: string) => {
     const trimmed = content.trim();
     if (!trimmed) return;
-    await logActivity({
+    const ok = await logActivity({
       leadId,
       type: "discussion",
       content: trimmed,
       createdBy: currentUser?.name ?? String(currentRole),
     });
+    if (!ok) {
+      throw new Error("Failed to send discussion message");
+    }
   };
 
   const getLeadDocuments = (leadId: string) =>
@@ -1521,6 +1532,46 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const refreshActivities = useCallback(async (): Promise<void> => {
+    try {
+      const res = await fetch("/api/activities", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data)) setActivities(data);
+    } catch (err) {
+      console.error("Failed to refresh activities:", err);
+    }
+  }, []);
+
+  const refreshLeadActivities = useCallback(async (leadId: string): Promise<void> => {
+    if (!leadId) return;
+    try {
+      const res = await fetch(`/api/activities?leadId=${encodeURIComponent(leadId)}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!Array.isArray(data)) return;
+
+      setActivities((prev) => {
+        const others = prev.filter((a) => a.leadId !== leadId);
+        const byId = new Map<string, Activity>();
+        for (const activity of data as Activity[]) {
+          byId.set(activity.id, activity);
+        }
+        // Keep any optimistic local rows for this lead that are not yet on the server response
+        for (const activity of prev) {
+          if (activity.leadId === leadId && !byId.has(activity.id)) {
+            byId.set(activity.id, activity);
+          }
+        }
+        return [...others, ...byId.values()];
+      });
+    } catch (err) {
+      console.error("Failed to refresh lead activities:", err);
+    }
+  }, []);
+
   return (
     <CrmContext.Provider
       value={{
@@ -1559,6 +1610,8 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setLeadDriveFolder,
         patchLeadDriveFolder,
         refreshLeads,
+        refreshActivities,
+        refreshLeadActivities,
         getLeadActivities,
         postLeadDiscussionMessage,
         uploadDocument,
