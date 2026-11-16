@@ -157,14 +157,58 @@ export const writeMeetings = async (meetings: Meeting[]): Promise<boolean> => {
 };
 
 // ── Activity Log ──────────────────────────────────────────────────────────────
-export const readActivities = async (): Promise<Activity[]> => {
+/** PostgREST defaults to max 1000 rows per request — page past that limit. */
+const SUPABASE_PAGE_SIZE = 1000;
+
+export const readAllFromTable = async <T>(table: string): Promise<T[]> => {
   const supabase = getSupabase();
-  const { data, error } = await supabase.from("activities").select("*");
-  if (error) {
-    console.error("Error reading activities from Supabase:", error);
-    return [];
+  const all: T[] = [];
+  let from = 0;
+
+  for (;;) {
+    const to = from + SUPABASE_PAGE_SIZE - 1;
+    const { data, error } = await supabase.from(table).select("*").range(from, to);
+    if (error) {
+      console.error(`Error reading ${table} from Supabase:`, error);
+      return all;
+    }
+    const page = (data || []) as T[];
+    all.push(...page);
+    if (page.length < SUPABASE_PAGE_SIZE) break;
+    from += SUPABASE_PAGE_SIZE;
   }
-  return (data || []) as Activity[];
+
+  return all;
+};
+
+export const readActivities = async (): Promise<Activity[]> => {
+  return readAllFromTable<Activity>("activities");
+};
+
+export const readActivitiesByLeadId = async (leadId: string): Promise<Activity[]> => {
+  const supabase = getSupabase();
+  const all: Activity[] = [];
+  let from = 0;
+
+  for (;;) {
+    const to = from + SUPABASE_PAGE_SIZE - 1;
+    const { data, error } = await supabase
+      .from("activities")
+      .select("*")
+      .eq("leadId", leadId)
+      .order("createdAt", { ascending: false })
+      .range(from, to);
+    if (error) {
+      console.error("Error reading activities by leadId from Supabase:", error);
+      return all;
+    }
+    const page = (data || []) as Activity[];
+    all.push(...page);
+    if (page.length < SUPABASE_PAGE_SIZE) break;
+    from += SUPABASE_PAGE_SIZE;
+  }
+
+  return all;
 };
 
 export const writeActivities = async (activities: Activity[]): Promise<boolean> => {
