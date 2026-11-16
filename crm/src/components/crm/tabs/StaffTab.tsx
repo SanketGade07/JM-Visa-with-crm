@@ -81,6 +81,8 @@ export function StaffTab() {
     createdAt: string;
   };
 
+  const isLocalDev = process.env.NODE_ENV !== "production";
+
   const [backups, setBackups] = useState<BackupRow[]>([]);
   const [backupsLoading, setBackupsLoading] = useState(false);
   const [backupBusy, setBackupBusy] = useState(false);
@@ -89,7 +91,7 @@ export function StaffTab() {
   const [restoreBusy, setRestoreBusy] = useState(false);
 
   const loadBackups = useCallback(async () => {
-    if (currentRole !== "ADMIN") return;
+    if (currentRole !== "ADMIN" || !isLocalDev) return;
     setBackupsLoading(true);
     try {
       const res = await fetch("/api/admin/backups", { cache: "no-store" });
@@ -104,11 +106,13 @@ export function StaffTab() {
     } finally {
       setBackupsLoading(false);
     }
-  }, [currentRole, showToast]);
+  }, [currentRole, isLocalDev, showToast]);
 
   useEffect(() => {
-    void loadBackups();
-  }, [loadBackups]);
+    if (isLocalDev) {
+      void loadBackups();
+    }
+  }, [isLocalDev, loadBackups]);
 
   const handleBackupNow = useCallback(async () => {
     setBackupBusy(true);
@@ -195,7 +199,7 @@ export function StaffTab() {
                 )}
               </div>
 
-              {currentRole === "ADMIN" && (
+              {currentRole === "ADMIN" && isLocalDev && (
                 <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-4">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>
@@ -456,7 +460,7 @@ export function StaffTab() {
         </div>
       )}
 
-      {restoreTarget && (
+      {restoreTarget && isLocalDev && (
         <div className="fixed inset-0 z-50 bg-[#020207]/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="w-full max-w-md bg-[#0a0a1a] border border-amber-500/30 rounded-2xl p-6 shadow-2xl space-y-4">
             <h3 className="text-sm font-bold text-white border-b border-slate-900 pb-3">
