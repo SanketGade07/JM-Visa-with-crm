@@ -9,25 +9,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Email is required" }, { status: 400 });
     }
 
+    const resendApiKey = process.env.RESEND_API_KEY;
     const emailUser = process.env.NEXT_PUBLIC_EMAIL_USER;
     const emailAppPass = process.env.NEXT_PUBLIC_EMAIL_APP_PASS;
 
-    if (!emailUser || !emailAppPass) {
+    if (!resendApiKey && (!emailUser || !emailAppPass)) {
       console.error("Email environment variables are missing in CRM .env");
       return NextResponse.json(
-        { ok: false, error: "Mail server credentials are not configured on the CRM server." },
+        { ok: false, error: "Mail server credentials (RESEND_API_KEY or SMTP) are not configured on the CRM server." },
         { status: 500 }
       );
     }
-
-    // Setup Nodemailer transporter using Gmail
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: emailUser,
-        pass: emailAppPass,
-      },
-    });
 
     // Email HTML template from jm-visa termsform route.js
     const emailContent = `
@@ -168,6 +160,40 @@ export async function POST(req: Request) {
 </body>
 </html>
     `;
+
+    // 1. Send via Resend if API key is present
+    if (resendApiKey) {
+      const resendRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey.trim()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "JM Visa Services <info@jmvisaservices.com>",
+          to: [email.trim()],
+          subject: "Consent for Visa Application Services",
+          html: emailContent,
+        }),
+      });
+
+      const resendData = await resendRes.json();
+      if (!resendRes.ok) {
+        console.error("Resend API error:", resendData);
+        throw new Error(resendData.message || resendData.error || "Failed to send email via Resend");
+      }
+
+      return NextResponse.json({ ok: true, id: resendData.id });
+    }
+
+    // 2. Fallback: Send via Nodemailer (Gmail SMTP)
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: emailUser,
+        pass: emailAppPass,
+      },
+    });
 
     const mailOptions = {
       from: `"JM Visa Services" <${emailUser}>`,
