@@ -31,7 +31,7 @@ import {
 import { isCanadaCountry, isUsaCountry, parseCountries, getCountryDisplayName } from "@/utils/countryUtils";
 import { getCountryFlag } from "@/components/CountryFlags";
 import { CreateLeadReviewStep } from "./CreateLeadReviewStep";
-import { useCounselorSelectOptions } from "@/hooks/useCounselorOptions";
+import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
 
 const DAYS_OPTIONS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 
@@ -159,16 +159,12 @@ function CreateLeadWizardInner({
   const showUsaFields = isUsaCountry(state.immigrationCountry) && (isFromUsaSlotsTab || isEdit);
   const showCanadaFields = isCanadaCountry(state.immigrationCountry) && isEdit;
   const showStep2Creds = showUsaFields || showCanadaFields;
-  const caseOfficerOptions = useCounselorSelectOptions(state.caseOfficer);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Staff who can't assign leads (everyone except admins) always create leads
   // assigned to themselves — never "Unassigned". The Case Officer field is locked
   // to the creator, and we force the form value so the saved lead matches.
   const selfAssign = !canAssignLeads && !!currentUser?.name;
-  const caseOfficerSelectOptions = selfAssign
-    ? [{ value: currentUser!.name, label: `${currentUser!.name} (You)` }]
-    : caseOfficerOptions;
 
   const parsedIssue = parseIsoDate(state.passportIssueDate);
   const parsedExpiry = parseIsoDate(state.passportExpiryDate);
@@ -540,22 +536,20 @@ function CreateLeadWizardInner({
                     htmlFor="create-lead-case-officer"
                     error={caseOfficerError}
                   >
-                    <select
+                    <CounselorSelectPill
                       id="create-lead-case-officer"
+                      variant="field"
                       value={selfAssign ? currentUser!.name : state.caseOfficer}
-                      onChange={(e) => updateField("caseOfficer", e.target.value)}
-                      onBlur={() => markFieldTouched("caseOfficer")}
                       disabled={!canAssignLeads}
-                      className={`${FORM_SELECT_CLASS}${
-                        caseOfficerError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
-                      } disabled:opacity-60 disabled:cursor-not-allowed`}
-                    >
-                      {caseOfficerSelectOptions.map((officer) => (
-                        <option key={officer.value} value={officer.value}>
-                          {officer.label}
-                        </option>
-                      ))}
-                    </select>
+                      portalId="create-lead-case-officer-menu"
+                      className={`!h-10 !rounded-xl !bg-slate-50 dark:!bg-slate-950 !border-slate-200 dark:!border-slate-800 !text-xs !font-normal !shadow-none${
+                        caseOfficerError ? " !border-red-500" : ""
+                      }`}
+                      onChange={(value) => {
+                        updateField("caseOfficer", value);
+                        markFieldTouched("caseOfficer");
+                      }}
+                    />
                   </FormSection>
                 </FormSectionGrid>
                 <FormSectionGrid>
@@ -613,22 +607,20 @@ function CreateLeadWizardInner({
                     htmlFor="create-lead-case-officer"
                     error={caseOfficerError}
                   >
-                    <select
+                    <CounselorSelectPill
                       id="create-lead-case-officer"
+                      variant="field"
                       value={selfAssign ? currentUser!.name : state.caseOfficer}
-                      onChange={(e) => updateField("caseOfficer", e.target.value)}
-                      onBlur={() => markFieldTouched("caseOfficer")}
                       disabled={!canAssignLeads}
-                      className={`${FORM_SELECT_CLASS}${
-                        caseOfficerError ? ` ${FORM_FIELD_ERROR_CLASS}` : ""
-                      } disabled:opacity-60 disabled:cursor-not-allowed`}
-                    >
-                      {caseOfficerSelectOptions.map((officer) => (
-                        <option key={officer.value} value={officer.value}>
-                          {officer.label}
-                        </option>
-                      ))}
-                    </select>
+                      portalId="create-lead-case-officer-menu"
+                      className={`!h-10 !rounded-xl !bg-slate-50 dark:!bg-slate-950 !border-slate-200 dark:!border-slate-800 !text-xs !font-normal !shadow-none${
+                        caseOfficerError ? " !border-red-500" : ""
+                      }`}
+                      onChange={(value) => {
+                        updateField("caseOfficer", value);
+                        markFieldTouched("caseOfficer");
+                      }}
+                    />
                   </FormSection>
                   <FormSection
                     label="Lead Source"

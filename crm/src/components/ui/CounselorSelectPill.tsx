@@ -14,6 +14,8 @@ type CounselorSelectPillProps = {
   onChange: (value: string) => void;
   portalId: string;
   variant?: "pill" | "field";
+  id?: string;
+  className?: string;
 };
 
 export function CounselorSelectPill({
@@ -22,6 +24,8 @@ export function CounselorSelectPill({
   onChange,
   portalId,
   variant = "pill",
+  id,
+  className,
 }: CounselorSelectPillProps) {
   const options = useCounselorSelectOptions(value);
   const displayValue = useMemo(() => {
@@ -38,6 +42,8 @@ export function CounselorSelectPill({
       disabled={disabled}
       portalId={portalId}
       variant={variant}
+      id={id}
+      triggerClassName={className}
       getPillClassName={getCounselorPillClass}
       ariaLabel={`Counselor: ${displayValue}`}
       searchPlaceholder="Search counselor..."

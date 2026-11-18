@@ -9,15 +9,19 @@ import {
 } from "@/utils/counselorOptions";
 
 export function useCounselorSelectOptions(
-  _currentValue?: string | null,
+  currentValue?: string | null,
   options?: { includeUnassigned?: boolean }
 ): CounselorOption[] {
   const { users } = useCrm();
 
-  return useMemo(
-    () => buildCounselorSelectOptions(users, options),
-    [users, options?.includeUnassigned]
-  );
+  return useMemo(() => {
+    const built = buildCounselorSelectOptions(users, options);
+    const extra = currentValue?.trim() ?? "";
+    if (extra && !built.some((option) => option.value === extra)) {
+      built.push({ value: extra, label: extra });
+    }
+    return built;
+  }, [users, options?.includeUnassigned, currentValue]);
 }
 
 export function useCounselorFilterOptions(): CounselorOption[] {

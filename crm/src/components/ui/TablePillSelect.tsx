@@ -27,6 +27,8 @@ type TablePillSelectProps = {
   maxMenuHeight?: number;
   /** Compact pill for table rows; full-width field for settings forms. */
   variant?: "pill" | "field";
+  id?: string;
+  triggerClassName?: string;
 };
 
 type MenuPosition = {
@@ -94,6 +96,8 @@ export function TablePillSelect({
   showSearch = true,
   maxMenuHeight = TABLE_PILL_DROPDOWN_MAX_HEIGHT,
   variant = "pill",
+  id,
+  triggerClassName = "",
 }: TablePillSelectProps) {
   const [open, setOpen] = useState(false);
   const [menuSearch, setMenuSearch] = useState("");
@@ -278,6 +282,7 @@ export function TablePillSelect({
       <style>{FORM_SELECT_THEME_CSS}</style>
       <button
         ref={triggerRef}
+        id={id}
         type="button"
         disabled={disabled}
         aria-label={ariaLabel ?? `Select ${value}`}
@@ -291,7 +296,7 @@ export function TablePillSelect({
         }}
         className={
           isField
-            ? `${FIELD_TRIGGER_CLS} flex items-center justify-between gap-2 text-left ${
+            ? `${FIELD_TRIGGER_CLS} flex items-center justify-between gap-2 text-left ${triggerClassName} ${
                 open ? "border-blue-500 ring-2 ring-inset ring-blue-500/20" : ""
               } ${disabled ? "" : "cursor-pointer"}`
             : `inline-flex max-w-full items-center gap-0.5 rounded-full border-0 bg-transparent p-0 ${

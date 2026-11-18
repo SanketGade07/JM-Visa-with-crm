@@ -325,60 +325,93 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch {}
       }
 
-      try {
-        const [leadsRes, meetingsRes, activitiesRes, documentsRes, usersRes] = await Promise.all([
-          fetch("/api/leads?limit=1000&includeDeleted=true", { cache: "no-store" }),
-          fetch("/api/meetings", { cache: "no-store" }),
-          fetch("/api/activities", { cache: "no-store" }),
-          fetch("/api/documents", { cache: "no-store" }),
-          fetch("/api/users", { cache: "no-store" }),
-        ]);
-
-        if (leadsRes.ok) {
-          const data = await leadsRes.json();
-          setLeads(Array.isArray(data) ? data : (data.leads ?? []));
+      const readJson = async (res: Response, label: string): Promise<unknown | null> => {
+        if (!res.ok) {
+          console.error(`Failed to load ${label}:`, res.status);
+          return null;
         }
-        if (meetingsRes.ok) setMeetings(await meetingsRes.json());
-        if (activitiesRes.ok) setActivities(await activitiesRes.json());
-        if (documentsRes.ok) setDocuments(await documentsRes.json());
-        if (usersRes.ok) {
-          const data = await usersRes.json();
-          const normalizedUsers = Array.isArray(data)
-            ? data.map((user: CrmUser) => ({
-                ...user,
-                allowedTabs: normalizeAllowedTabs(user.allowedTabs),
-                permissions: normalizePermissions(user.permissions, user.role),
-              }))
-            : [];
-          setUsers(normalizedUsers);
-          
-          // Seed initial user object structure in state if matching email was stored
-          if (savedUserStr) {
-            try {
-              const parsed = JSON.parse(savedUserStr);
-              const matched = normalizedUsers.find((u: CrmUser) => u.id === parsed.id || u.email === parsed.email);
-              if (matched) {
-                setCurrentUser(matched);
-                setCurrentRole(matched.role);
-              }
-            } catch {}
-          }
-
-          // Re-match the authenticated identity against the live directory so its
-          // role/permissions reflect the latest staff record (admin gate source of truth).
-          if (savedAuthUserStr) {
-            try {
-              const parsedAuth = JSON.parse(savedAuthUserStr);
-              const matchedAuth = normalizedUsers.find(
-                (u: CrmUser) => u.id === parsedAuth.id || u.email === parsedAuth.email
-              );
-              if (matchedAuth) setAuthUser(matchedAuth);
-            } catch {}
-          }
+        try {
+          return await res.json();
+        } catch (error) {
+          console.error(`Failed to parse ${label}:`, error);
+          return null;
         }
-      } catch (error) {
-        console.error("Failed to load CRM data:", error);
-      }
+      };
+
+      // Each request applies on its own. A slow or broken activities/leads
+      // response must not leave the staff directory empty — that is what
+      // fills the Case Officer and Assign to menus.
+      const applyUsers = (data: unknown) => {
+        const list = Array.isArray(data)
+          ? data
+          : data && typeof data === "object" && Array.isArray((data as { users?: unknown }).users)
+            ? (data as { users: CrmUser[] }).users
+            : null;
+        if (!list) return;
+
+        const normalizedUsers = list.map((user: CrmUser) => ({
+          ...user,
+          allowedTabs: normalizeAllowedTabs(user.allowedTabs),
+          permissions: normalizePermissions(user.permissions, user.role),
+        }));
+        setUsers(normalizedUsers);
+
+        if (savedUserStr) {
+          try {
+            const parsed = JSON.parse(savedUserStr);
+            const matched = normalizedUsers.find((u: CrmUser) => u.id === parsed.id || u.email === parsed.email);
+            if (matched) {
+              setCurrentUser(matched);
+              setCurrentRole(matched.role);
+            }
+          } catch {}
+        }
+
+        if (savedAuthUserStr) {
+          try {
+            const parsedAuth = JSON.parse(savedAuthUserStr);
+            const matchedAuth = normalizedUsers.find(
+              (u: CrmUser) => u.id === parsedAuth.id || u.email === parsedAuth.email
+            );
+            if (matchedAuth) setAuthUser(matchedAuth);
+          } catch {}
+        }
+      };
+
+      await Promise.all([
+        fetch("/api/leads?limit=1000&includeDeleted=true", { cache: "no-store" })
+          .then((res) => readJson(res, "leads"))
+          .then((data) => {
+            if (!data) return;
+            const list = Array.isArray(data)
+              ? data
+              : (data as { leads?: Lead[] }).leads;
+            if (Array.isArray(list)) setLeads(list);
+          })
+          .catch((error) => console.error("Failed to load leads:", error)),
+        fetch("/api/meetings", { cache: "no-store" })
+          .then((res) => readJson(res, "meetings"))
+          .then((data) => {
+            if (Array.isArray(data)) setMeetings(data);
+          })
+          .catch((error) => console.error("Failed to load meetings:", error)),
+        fetch("/api/activities", { cache: "no-store" })
+          .then((res) => readJson(res, "activities"))
+          .then((data) => {
+            if (Array.isArray(data)) setActivities(data);
+          })
+          .catch((error) => console.error("Failed to load activities:", error)),
+        fetch("/api/documents", { cache: "no-store" })
+          .then((res) => readJson(res, "documents"))
+          .then((data) => {
+            if (Array.isArray(data)) setDocuments(data);
+          })
+          .catch((error) => console.error("Failed to load documents:", error)),
+        fetch("/api/users", { cache: "no-store" })
+          .then((res) => readJson(res, "staff"))
+          .then((data) => applyUsers(data))
+          .catch((error) => console.error("Failed to load staff:", error)),
+      ]);
     };
 
 
