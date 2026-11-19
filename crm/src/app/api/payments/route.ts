@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readLeads, writeLeads, appendActivity } from "@/utils/db";
+import { readLeads, appendActivity } from "@/utils/db";
+import { getSupabase } from "@/utils/supabase";
+import { createInvoiceNumber } from "@/utils/invoiceNumber";
 import { Activity, PaymentDetails } from "@/context/CrmContext";
 
 // GET /api/payments — all payments across all leads with optional filters
@@ -55,14 +57,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "leadId and amountPaid are required" }, { status: 400 });
     }
 
-    const leads = await readLeads();
-    const index = leads.findIndex((l) => l.id === leadId);
-    if (index === -1) {
+    const supabase = getSupabase();
+    const { data: leadRow, error: leadError } = await supabase
+      .from("leads")
+      .select("id, payments")
+      .eq("id", leadId)
+      .maybeSingle();
+    if (leadError || !leadRow) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 
     const today = new Date().toISOString().split("T")[0];
-    const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+    const invoiceNumber = createInvoiceNumber();
+    const existingPayments = Array.isArray(leadRow.payments) ? leadRow.payments : [];
 
     const payment: PaymentDetails = {
       invoiceNumber,
@@ -73,13 +80,12 @@ export async function POST(req: NextRequest) {
       paymentMethod: paymentMethod || "Cash",
     };
 
-    leads[index] = {
-      ...leads[index],
-      payments: [...(leads[index].payments || []), payment],
-      lastUpdated: today,
-    };
-
-    const ok = await writeLeads(leads);
+    const { error: updateError } = await supabase
+      .from("leads")
+      .update({ payments: [...existingPayments, payment], lastUpdated: today })
+      .eq("id", leadId);
+    if (updateError) console.error("Error saving payment:", updateError);
+    const ok = !updateError;
     if (!ok) return NextResponse.json({ error: "Failed to save payment" }, { status: 500 });
 
     const activity: Activity = {

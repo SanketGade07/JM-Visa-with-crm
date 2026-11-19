@@ -52,27 +52,32 @@ function migrateUsers(users: CrmUser[]): { users: CrmUser[]; changed: boolean } 
 // ── Leads ────────────────────────────────────────────────────────────────────
 export const readLeads = async (): Promise<Lead[]> => {
   const supabase = getSupabase();
-  const { data, error } = await supabase.from("leads").select("*");
+  const data: Record<string, unknown>[] = [];
+  let error: { message?: string } | null = null;
+  const pageSize = 1000;
+  let from = 0;
+  for (;;) {
+    const to = from + pageSize - 1;
+    const page = await supabase
+      .from("leads")
+      .select("*")
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (page.error) {
+      error = page.error;
+      break;
+    }
+    const rows = (page.data || []) as Record<string, unknown>[];
+    data.push(...rows);
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
   if (error) {
     console.error("Error reading leads from Supabase:", error);
     return [];
   }
   
   const leadsData = (data || []).map((row: Record<string, unknown>) => normalizeLead(row));
-  
-  // Log sample credential data for debugging
-  const leadsWithCreds = leadsData.filter(l => l.visaCredentials);
-  console.log(`📊 readLeads() returned ${leadsData.length} total leads`);
-  console.log(`✓ ${leadsWithCreds.length} leads have visaCredentials`);
-  if (leadsWithCreds.length > 0) {
-    console.log(`📌 Sample credential (first lead with creds):`, leadsWithCreds[0].visaCredentials);
-  } else {
-    console.log(`⚠️ No leads with credentials found`);
-    if (leadsData.length > 0) {
-      console.log(`📌 Sample lead structure:`, leadsData[0]);
-    }
-  }
-  
   return leadsData;
 };
 
@@ -137,13 +142,7 @@ export const updateLeadDriveFolderId = async (
 
 // ── Meetings ─────────────────────────────────────────────────────────────────
 export const readMeetings = async (): Promise<Meeting[]> => {
-  const supabase = getSupabase();
-  const { data, error } = await supabase.from("meetings").select("*");
-  if (error) {
-    console.error("Error reading meetings from Supabase:", error);
-    return [];
-  }
-  return (data || []) as Meeting[];
+  return readAllFromTable<Meeting>("meetings");
 };
 
 export const writeMeetings = async (meetings: Meeting[]): Promise<boolean> => {
@@ -167,7 +166,11 @@ export const readAllFromTable = async <T>(table: string): Promise<T[]> => {
 
   for (;;) {
     const to = from + SUPABASE_PAGE_SIZE - 1;
-    const { data, error } = await supabase.from(table).select("*").range(from, to);
+    const { data, error } = await supabase
+      .from(table)
+      .select("*")
+      .order("id", { ascending: true })
+      .range(from, to);
     if (error) {
       console.error(`Error reading ${table} from Supabase:`, error);
       return all;
@@ -233,13 +236,7 @@ export const appendActivity = async (activity: Activity): Promise<boolean> => {
 
 // ── Expenses ──────────────────────────────────────────────────────────────────
 export const readExpenses = async (): Promise<Expense[]> => {
-  const supabase = getSupabase();
-  const { data, error } = await supabase.from("expenses").select("*");
-  if (error) {
-    console.error("Error reading expenses from Supabase:", error);
-    return [];
-  }
-  return (data || []) as Expense[];
+  return readAllFromTable<Expense>("expenses");
 };
 
 export const writeExpenses = async (expenses: Expense[]): Promise<boolean> => {
@@ -254,13 +251,7 @@ export const writeExpenses = async (expenses: Expense[]): Promise<boolean> => {
 
 // ── Documents ─────────────────────────────────────────────────────────────────
 export const readDocuments = async (): Promise<Document[]> => {
-  const supabase = getSupabase();
-  const { data, error } = await supabase.from("documents").select("*");
-  if (error) {
-    console.error("Error reading documents from Supabase:", error);
-    return [];
-  }
-  return (data || []) as Document[];
+  return readAllFromTable<Document>("documents");
 };
 
 export const writeDocuments = async (documents: Document[]): Promise<boolean> => {

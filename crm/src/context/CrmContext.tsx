@@ -17,6 +17,8 @@ import {
 import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
 import { isUsaCountry } from "@/utils/countryUtils";
 import { getStatusLabel, type LeadStatus } from "@/utils/leadStatusConfig";
+import { createInvoiceNumber } from "@/utils/invoiceNumber";
+import { leadPatch } from "@/utils/leadPatch";
 
 export type { EmploymentCategory } from "@/utils/documentChecklistConfig";
 
@@ -379,16 +381,45 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
 
       await Promise.all([
-        fetch("/api/leads?limit=1000&includeDeleted=true", { cache: "no-store" })
-          .then((res) => readJson(res, "leads"))
-          .then((data) => {
-            if (!data) return;
-            const list = Array.isArray(data)
-              ? data
-              : (data as { leads?: Lead[] }).leads;
-            if (Array.isArray(list)) setLeads(list);
-          })
-          .catch((error) => console.error("Failed to load leads:", error)),
+        (async () => {
+            const all: Lead[] = [];
+            let page = 1;
+            for (;;) {
+              const res = await fetch(
+                `/api/leads?limit=1000&page=${page}&includeDeleted=true`,
+                { cache: "no-store" }
+              );
+              const data = await readJson(res, "leads");
+              if (!data) {
+                if (all.length) {
+                  leadsRef.current = all;
+                  setLeads(all);
+                }
+                return;
+              }
+              const list = Array.isArray(data)
+                ? data
+                : (data as { leads?: Lead[] }).leads;
+              if (!Array.isArray(list)) {
+                if (all.length) {
+                  leadsRef.current = all;
+                  setLeads(all);
+                }
+                return;
+              }
+              const reportedTotal =
+                data && typeof data === "object" && "total" in data
+                  ? (data as { total?: number }).total ?? null
+                  : null;
+              all.push(...list);
+              if (list.length < 1000) break;
+              if (reportedTotal != null && all.length >= reportedTotal) break;
+              page += 1;
+              if (page > 100) break;
+            }
+            leadsRef.current = all;
+            setLeads(all);
+          })().catch((error) => console.error("Failed to load leads:", error)),
         fetch("/api/meetings", { cache: "no-store" })
           .then((res) => readJson(res, "meetings"))
           .then((data) => {
@@ -445,17 +476,22 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const syncLeads = async (updated: Lead[]): Promise<boolean> => {
     const previousLeads = leadsRef.current;
-    let merged = updated;
-    setLeads((prev) => {
-      merged = updated.map((lead) => {
-        if (lead.driveFolderId) return lead;
-        const fromPrev = prev.find((l) => l.id === lead.id);
-        return fromPrev?.driveFolderId
-          ? { ...lead, driveFolderId: fromPrev.driveFolderId }
-          : lead;
-      });
-      return merged;
+    const merged = updated.map((lead) => {
+      if (lead.driveFolderId) return lead;
+      const fromPrev = previousLeads.find((l) => l.id === lead.id);
+      return fromPrev?.driveFolderId
+        ? { ...lead, driveFolderId: fromPrev.driveFolderId }
+        : lead;
     });
+    leadsRef.current = merged;
+    setLeads(merged);
+
+    const rollback = () => {
+      if (leadsRef.current === merged) {
+        leadsRef.current = previousLeads;
+        setLeads(previousLeads);
+      }
+    };
 
     try {
       const changed = merged.filter((lead) => {
@@ -466,9 +502,18 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (changed.length === 0) return true;
 
+      const payloads = changed.map((lead) => {
+        const prev = previousLeads.find((l) => l.id === lead.id);
+        if (!prev) return lead;
+        return leadPatch(
+          prev as unknown as Record<string, unknown>,
+          lead as unknown as Record<string, unknown>
+        ) as Lead;
+      });
+
       let res: Response;
-      if (changed.length === 1) {
-        const target = changed[0];
+      if (payloads.length === 1) {
+        const target = payloads[0];
         const isNew = !previousLeads.some((l) => l.id === target.id);
         if (isNew) {
           res = await fetch("/api/leads", {
@@ -487,13 +532,13 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         res = await fetch("/api/leads", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ leads: merged }),
+          body: JSON.stringify({ leads: payloads }),
         });
       }
 
       if (!res.ok) {
         console.error("Failed to sync leads:", await res.text());
-        setLeads(previousLeads);
+        rollback();
         if (typeof window !== "undefined") {
           window.dispatchEvent(
             new CustomEvent("crm-toast", {
@@ -512,11 +557,13 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const serverDriveFolderId = data?.driveFolderId || data?.lead?.driveFolderId;
         if (serverDriveFolderId && changed.length === 1) {
           const targetId = changed[0].id;
-          setLeads((current) =>
-            current.map((l) =>
+          setLeads((current) => {
+            const next = current.map((l) =>
               l.id === targetId ? { ...l, driveFolderId: serverDriveFolderId } : l
-            )
-          );
+            );
+            leadsRef.current = next;
+            return next;
+          });
         }
       } catch {
         // Safe fallback if response has no JSON body or already consumed
@@ -525,7 +572,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return true;
     } catch (error) {
       console.error("Failed to sync leads:", error);
-      setLeads(previousLeads);
+      rollback();
       if (typeof window !== "undefined") {
         window.dispatchEvent(
           new CustomEvent("crm-toast", {
@@ -596,7 +643,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...(isCounselorAssigned(newLeadData.counselor) ? { assignedAt: now } : {}),
       isDeleted: false,
     };
-    const success = await syncLeads([...leads, newLead]);
+    const success = await syncLeads([...leadsRef.current, newLead]);
     if (!success) return null;
     logActivity({
       leadId: newLead.id,
@@ -609,7 +656,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateLeadStatus = (leadId: string, status: VisaStatus) => {
     const today = new Date().toISOString().split("T")[0];
-    const prev = leads.find((l) => l.id === leadId);
+    const prev = leadsRef.current.find((l) => l.id === leadId);
 
     // Mandatory Document Checklist gate: a lead can only advance into the
     // "documents verified" zone — Application Processed and everything after it —
@@ -636,7 +683,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    const updated = leads.map((lead) =>
+    const updated = leadsRef.current.map((lead) =>
       lead.id === leadId ? { ...lead, status, lastUpdated: today } : lead
     );
     syncLeads(updated);
@@ -652,7 +699,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateLeadNotes = (leadId: string, notes: string) => {
     const today = new Date().toISOString().split("T")[0];
-    const updated = leads.map((lead) =>
+    const updated = leadsRef.current.map((lead) =>
       lead.id === leadId ? { ...lead, notes, lastUpdated: today } : lead
     );
     syncLeads(updated);
@@ -677,10 +724,10 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     >
   ) => {
     const today = new Date().toISOString().split("T")[0];
-    const prev = leads.find((l) => l.id === leadId);
+    const prev = leadsRef.current.find((l) => l.id === leadId);
     if (!prev) return;
 
-    const updated = leads.map((lead) =>
+    const updated = leadsRef.current.map((lead) =>
       lead.id === leadId ? { ...lead, ...patch, lastUpdated: today } : lead
     );
     syncLeads(updated);
@@ -749,10 +796,10 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     payload: Partial<Lead>
   ): Promise<boolean> => {
     const today = new Date().toISOString().split("T")[0];
-    const prev = leads.find((l) => l.id === leadId);
+    const prev = leadsRef.current.find((l) => l.id === leadId);
     if (!prev) return false;
 
-    const updated = leads.map((lead) => {
+    const updated = leadsRef.current.map((lead) => {
       if (lead.id === leadId) {
         return {
           ...lead,
@@ -787,9 +834,9 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const assignCounselor = (leadId: string, counselor: string) => {
     const today = new Date().toISOString().split("T")[0];
     const now = new Date().toISOString();
-    const prev = leads.find((l) => l.id === leadId);
+    const prev = leadsRef.current.find((l) => l.id === leadId);
     const counselorChanged = prev && prev.counselor !== counselor;
-    const updated = leads.map((lead) => {
+    const updated = leadsRef.current.map((lead) => {
       if (lead.id !== leadId) return lead;
       return {
         ...lead,
@@ -813,8 +860,8 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateEmploymentCategory = (leadId: string, category: EmploymentCategory) => {
     const today = new Date().toISOString().split("T")[0];
-    const prev = leads.find((l) => l.id === leadId);
-    const updated = leads.map((lead) => {
+    const prev = leadsRef.current.find((l) => l.id === leadId);
+    const updated = leadsRef.current.map((lead) => {
       if (lead.id !== leadId) return lead;
       const checklist = mergeChecklist(lead.checklist, category);
       const status = resolveStatusAfterChecklistChange(
@@ -851,7 +898,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const toggleChecklistItem = (leadId: string, item: string) => {
     const today = new Date().toISOString().split("T")[0];
-    const updated = leads.map((lead) => {
+    const updated = leadsRef.current.map((lead) => {
       if (lead.id !== leadId) return lead;
 
       const updatedChecklist = { ...lead.checklist, [item]: !lead.checklist[item] };
@@ -879,7 +926,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateUsaSlots = (leadId: string, slotsData: Partial<UsaSlotTracking>) => {
     const today = new Date().toISOString().split("T")[0];
-    const updated = leads.map((lead) => {
+    const updated = leadsRef.current.map((lead) => {
       if (lead.id !== leadId || !isUsaCountry(lead.country)) return lead;
       return {
         ...lead,
@@ -891,7 +938,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addPayment = (leadId: string, paymentData: Omit<PaymentDetails, "invoiceNumber" | "date">) => {
-    const lead = leads.find((item) => item.id === leadId);
+    const lead = leadsRef.current.find((item) => item.id === leadId);
     if (!lead) return;
 
     const total = lead.payments[0]?.totalPackage || 0;
@@ -900,9 +947,9 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (paymentData.amountPaid <= 0 || paymentData.amountPaid > outstanding) return;
 
     const today = new Date().toISOString().split("T")[0];
-    const invoiceNum = `INV-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+    const invoiceNum = createInvoiceNumber();
     const newPayment: PaymentDetails = { ...paymentData, invoiceNumber: invoiceNum, date: today };
-    const updated = leads.map((lead) =>
+    const updated = leadsRef.current.map((lead) =>
       lead.id === leadId
         ? { ...lead, payments: [...(lead.payments || []), newPayment], lastUpdated: today }
         : lead
@@ -922,7 +969,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let previousPackage = 0;
     let didUpdate = false;
 
-    const updated = leads.map((lead) => {
+    const updated = leadsRef.current.map((lead) => {
       if (lead.id !== leadId) return lead;
       const payments = lead.payments || [];
       previousPackage = payments[0]?.totalPackage || 0;
@@ -933,7 +980,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       didUpdate = true;
 
       if (payments.length === 0) {
-        const invoiceNum = `INV-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+        const invoiceNum = createInvoiceNumber();
         return {
           ...lead,
           payments: [
@@ -981,7 +1028,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let previousReceived = 0;
     let didUpdate = false;
 
-    const updated = leads.map((lead) => {
+    const updated = leadsRef.current.map((lead) => {
       if (lead.id !== leadId) return lead;
       const payments = lead.payments || [];
       const totalPackage = payments[0]?.totalPackage || 0;
@@ -991,21 +1038,60 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const newTotalPackage = Math.max(totalPackage, amount);
       const pendingAmount = Math.max(0, newTotalPackage - amount);
       didUpdate = true;
+      const delta = amount - previousReceived;
 
-      const invoiceNum = `INV-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+      const withPackage = payments.map((payment, index) => ({
+        ...payment,
+        totalPackage: newTotalPackage,
+        pendingAmount: index === 0 ? pendingAmount : payment.pendingAmount,
+      }));
+
+      if (payments.length === 0) {
+        return {
+          ...lead,
+          payments: [
+            {
+              totalPackage: newTotalPackage,
+              amountPaid: amount,
+              pendingAmount,
+              paymentMethod: "Direct Entry",
+              invoiceNumber: createInvoiceNumber(),
+              date: today,
+            },
+          ],
+          lastUpdated: today,
+        };
+      }
+
+      if (delta > 0) {
+        return {
+          ...lead,
+          payments: [
+            ...withPackage,
+            {
+              totalPackage: newTotalPackage,
+              amountPaid: delta,
+              pendingAmount,
+              paymentMethod: "Direct Entry",
+              invoiceNumber: createInvoiceNumber(),
+              date: today,
+            },
+          ],
+          lastUpdated: today,
+        };
+      }
+
+      let remaining = -delta;
+      const reduced = withPackage.map((payment) => ({ ...payment }));
+      for (let index = reduced.length - 1; index >= 0 && remaining > 0; index -= 1) {
+        const cut = Math.min(reduced[index].amountPaid, remaining);
+        reduced[index] = { ...reduced[index], amountPaid: reduced[index].amountPaid - cut };
+        remaining -= cut;
+      }
 
       return {
         ...lead,
-        payments: [
-          {
-            totalPackage: newTotalPackage,
-            amountPaid: amount,
-            pendingAmount,
-            paymentMethod: "Direct Entry",
-            invoiceNumber: invoiceNum,
-            date: today,
-          },
-        ],
+        payments: reduced,
         lastUpdated: today,
       };
     });
@@ -1068,7 +1154,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const restoreLead = (leadId: string) => {
     const today = new Date().toISOString().split("T")[0];
-    const updated = leads.map((lead) =>
+    const updated = leadsRef.current.map((lead) =>
       lead.id === leadId
         ? { ...lead, status: "NEW_LEAD" as VisaStatus, isDeleted: false, lastUpdated: today }
         : lead
@@ -1105,7 +1191,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Recompute auto status after a checklist value is forced to a given value
   const applyChecklistValue = (leadId: string, item: string, value: boolean) => {
     const today = new Date().toISOString().split("T")[0];
-    const updated = leads.map((lead) => {
+    const updated = leadsRef.current.map((lead) => {
       if (lead.id !== leadId) return lead;
       const updatedChecklist = { ...lead.checklist, [item]: value };
       const newStatus = resolveStatusAfterChecklistChange(lead, updatedChecklist);
@@ -1256,7 +1342,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Now update the lead's payment array
       const today = new Date().toISOString().split("T")[0];
-      const updated = leads.map((lead) => {
+      const updated = leadsRef.current.map((lead) => {
         if (lead.id !== leadId) return lead;
         const updatedPayments = (lead.payments || []).map((pay) => {
           if (pay.invoiceNumber === invoiceNumber) {
@@ -1352,13 +1438,13 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (deletedName) {
         const today = new Date().toISOString().split("T")[0];
         const nameLower = deletedName.toLowerCase();
-        const affected = leads.filter(
+        const affected = leadsRef.current.filter(
           (lead) => (lead.counselor?.trim() ?? "").toLowerCase() === nameLower
         );
 
         if (affected.length > 0) {
           const affectedIds = new Set(affected.map((lead) => lead.id));
-          const updated = leads.map((lead) => {
+          const updated = leadsRef.current.map((lead) => {
             if (!affectedIds.has(lead.id)) return lead;
             return { ...lead, counselor: UNASSIGNED_COUNSELOR, lastUpdated: today };
           });
@@ -1448,9 +1534,11 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLeads((prev) => {
       const existing = prev.find((lead) => lead.id === leadId);
       if (existing?.driveFolderId === driveFolderId) return prev;
-      return prev.map((lead) =>
+      const next = prev.map((lead) =>
         lead.id === leadId ? { ...lead, driveFolderId, lastUpdated: today } : lead
       );
+      leadsRef.current = next;
+      return next;
     });
   }, []);
 
@@ -1459,12 +1547,13 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     driveFolderId: string | null
   ): Promise<boolean> => {
     const today = new Date().toISOString().split("T")[0];
-    const previousLeads = leads;
-    const optimistic = leads.map((lead) =>
+    const previousLeads = leadsRef.current;
+    const optimistic = leadsRef.current.map((lead) =>
       lead.id === leadId
         ? { ...lead, driveFolderId: driveFolderId ?? undefined, lastUpdated: today }
         : lead
     );
+    leadsRef.current = optimistic;
     setLeads(optimistic);
 
     try {
@@ -1474,13 +1563,18 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         body: JSON.stringify({ driveFolderId }),
       });
       if (!res.ok) {
+        leadsRef.current = previousLeads;
         setLeads(previousLeads);
         return false;
       }
 
       const data = (await res.json()) as { lead?: Lead };
       if (data.lead) {
-        setLeads((prev) => prev.map((l) => (l.id === leadId ? data.lead! : l)));
+        setLeads((prev) => {
+          const next = prev.map((l) => (l.id === leadId ? data.lead! : l));
+          leadsRef.current = next;
+          return next;
+        });
       }
 
       logActivity({
@@ -1493,6 +1587,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       return true;
     } catch {
+      leadsRef.current = previousLeads;
       setLeads(previousLeads);
       return false;
     }
@@ -1504,8 +1599,8 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     countryApplications?: Record<string, CountryApplication>
   ): Promise<boolean> => {
     const today = new Date().toISOString().split("T")[0];
-    const previousLeads = leads;
-    const optimistic = leads.map((lead) =>
+    const previousLeads = leadsRef.current;
+    const optimistic = leadsRef.current.map((lead) =>
       lead.id === leadId
         ? {
             ...lead,
@@ -1517,6 +1612,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         : lead
     );
+    leadsRef.current = optimistic;
     setLeads(optimistic);
 
     try {
@@ -1530,6 +1626,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }),
       });
       if (!res.ok) {
+        leadsRef.current = previousLeads;
         setLeads(previousLeads);
         return false;
       }
@@ -1546,6 +1643,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return true;
     } catch (err) {
       console.error("Failed to set lead credentials:", err);
+      leadsRef.current = previousLeads;
       setLeads(previousLeads);
       return false;
     }
@@ -1553,13 +1651,26 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const refreshLeads = async (): Promise<void> => {
     try {
-      const leadsRes = await fetch("/api/leads?limit=1000&includeDeleted=true", { cache: "no-store" });
-      if (leadsRes.ok) {
+      const leadsData: Lead[] = [];
+      let page = 1;
+      for (;;) {
+        const leadsRes = await fetch(
+          `/api/leads?limit=1000&page=${page}&includeDeleted=true`,
+          { cache: "no-store" }
+        );
+        if (!leadsRes.ok) break;
         const data = await leadsRes.json();
-        const leadsData = Array.isArray(data.leads) ? data.leads : (data.leads ?? []);
-        setLeads(leadsData);
-        console.log(`✓ Refreshed ${leadsData.length} leads from Supabase`);
+        const batch = Array.isArray(data.leads) ? data.leads : [];
+        leadsData.push(...batch);
+        const reportedTotal = typeof data.total === "number" ? data.total : null;
+        if (batch.length < 1000) break;
+        if (reportedTotal != null && leadsData.length >= reportedTotal) break;
+        page += 1;
+        if (page > 100) break;
       }
+      leadsRef.current = leadsData;
+      setLeads(leadsData);
+      console.log(`✓ Refreshed ${leadsData.length} leads from Supabase`);
     } catch (err) {
       console.error("Failed to refresh leads:", err);
     }

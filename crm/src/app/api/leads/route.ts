@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readLeads, writeLeads, appendActivity } from "@/utils/db";
 import { Lead, Activity } from "@/context/CrmContext";
 import { provisionLeadDriveFolder } from "@/lib/provisionLeadDriveFolder";
-import { DEFAULT_USA_SLOTS, normalizeLead } from "@/utils/normalizeLead";
+import { DEFAULT_USA_SLOTS, LEAD_DB_COLUMNS, normalizeLead } from "@/utils/normalizeLead";
 import { normalizeLeadStatus } from "@/utils/leadStatusConfig";
 import { isCounselorAssigned } from "@/utils/counselorOptions";
 import {
@@ -39,12 +39,12 @@ export async function GET(req: NextRequest) {
     if (country) leads = leads.filter((l) => l.country === country);
     if (assigned) leads = leads.filter((l) => l.counselor === assigned);
     if (search) {
-      leads = leads.filter(
-        (l) =>
-          l.name.toLowerCase().includes(search) ||
-          l.phone.includes(search) ||
-          l.email?.toLowerCase().includes(search)
-      );
+      leads = leads.filter((l) => {
+        const name = (l.name || "").toLowerCase();
+        const phone = l.phone || "";
+        const email = (l.email || "").toLowerCase();
+        return name.includes(search) || phone.includes(search) || email.includes(search);
+      });
     }
 
     const total = leads.length;
@@ -60,32 +60,50 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const existingLeads = await readLeads();
 
-    // Bulk sync from CRM frontend
+    // Bulk sync from CRM frontend. Each item is a full new lead or a patch merged onto the stored row.
     if (Array.isArray(body.leads)) {
       const incoming = body.leads as Lead[];
-      const existingById = new Map(existingLeads.map((l) => [l.id, l]));
-      const merged = incoming.map((lead) => {
-        const normalized = normalizeLead(lead as unknown as Record<string, unknown>);
-        if ("driveFolderId" in lead && lead.driveFolderId !== undefined) {
-          return normalized.driveFolderId !== undefined
-            ? normalized
-            : { ...normalized, driveFolderId: lead.driveFolderId };
-        }
-        const prev = existingById.get(lead.id);
-        return prev?.driveFolderId
-          ? { ...normalized, driveFolderId: prev.driveFolderId }
-          : normalized;
-      });
-      const ok = await writeLeads(merged);
-      if (!ok) {
-        return NextResponse.json({ error: "Failed to write leads" }, { status: 500 });
+      const ids = incoming.map((lead) => lead.id).filter(Boolean);
+      if (ids.length === 0) {
+        return NextResponse.json({ success: true });
+      }
+      const { getSupabase } = await import("@/utils/supabase");
+      const supabase = getSupabase();
+      const { data: existingRows, error: existingError } = await supabase
+        .from("leads")
+        .select("id")
+        .in("id", ids);
+      if (existingError) {
+        console.error("POST /api/leads bulk read error:", existingError);
+        return NextResponse.json({ error: "Failed to read leads" }, { status: 500 });
+      }
+      const existingIds = new Set((existingRows || []).map((row) => String(row.id)));
+      const today = new Date().toISOString().split("T")[0];
+      const creates = incoming.filter((lead) => !existingIds.has(lead.id));
+      const updates = incoming.filter((lead) => existingIds.has(lead.id));
+
+      if (creates.length > 0) {
+        const ok = await writeLeads(creates.map((lead) => normalizeLead(lead as unknown as Record<string, unknown>)));
+        if (!ok) return NextResponse.json({ error: "Failed to write leads" }, { status: 500 });
       }
 
-      const existingIds = new Set(existingLeads.map((l) => l.id));
-      const newlyCreated = merged.filter((l) => !existingIds.has(l.id));
-      for (const lead of newlyCreated) {
+      for (const lead of updates) {
+        const patch: Record<string, unknown> = { lastUpdated: today };
+        for (const key of LEAD_DB_COLUMNS) {
+          if (key === "id" || key === "lastUpdated") continue;
+          if (Object.prototype.hasOwnProperty.call(lead, key)) {
+            patch[key] = lead[key as keyof Lead];
+          }
+        }
+        const { error: updateError } = await supabase.from("leads").update(patch).eq("id", lead.id);
+        if (updateError) {
+          console.error("POST /api/leads bulk update error:", updateError);
+          return NextResponse.json({ error: "Failed to write leads" }, { status: 500 });
+        }
+      }
+
+      for (const lead of creates) {
         try {
           await provisionLeadDriveFolder(lead.id);
         } catch (e) {
@@ -186,10 +204,17 @@ export async function DELETE(req: NextRequest) {
     const supabase = getSupabase();
 
     // Get driveFolderIds for matching leads before deleting them
-    const leadsList = await readLeads();
-    const driveFolderIds = leadsList
-      .filter((l) => ids.includes(l.id) && l.driveFolderId)
-      .map((l) => l.driveFolderId) as string[];
+    const { data: leadRows, error: leadReadError } = await supabase
+      .from("leads")
+      .select("id, driveFolderId")
+      .in("id", ids);
+    if (leadReadError) {
+      console.error("Error reading leads before delete:", leadReadError);
+      return NextResponse.json({ error: "Failed to delete leads from database" }, { status: 500 });
+    }
+    const driveFolderIds = (leadRows || [])
+      .map((lead) => lead.driveFolderId)
+      .filter((folderId): folderId is string => Boolean(folderId));
 
     const { error: dbError } = await supabase.from("leads").delete().in("id", ids);
     if (dbError) {

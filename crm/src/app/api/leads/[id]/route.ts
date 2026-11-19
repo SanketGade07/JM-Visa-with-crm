@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readLeads, writeLeads, readActivitiesByLeadId, appendActivity } from "@/utils/db";
-import { Activity, VisaStatus } from "@/context/CrmContext";
-import { normalizeLeadStatus } from "@/utils/leadStatusConfig";
+import { readActivitiesByLeadId, appendActivity } from "@/utils/db";
+import { Activity } from "@/context/CrmContext";
 import { getSupabase } from "@/utils/supabase";
 import { verifySession } from "@/utils/session";
-import { normalizeLead } from "@/utils/normalizeLead";
+import { LEAD_DB_COLUMNS, normalizeLead } from "@/utils/normalizeLead";
 import { isGoogleDriveConfigured } from "@/lib/googleDrive";
 import { provisionLeadDriveFolder } from "@/lib/provisionLeadDriveFolder";
 
@@ -61,15 +60,21 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const prev = normalizeLead(dbLead);
   const today = new Date().toISOString().split("T")[0];
 
-  const updated = {
-    ...prev,
-    ...body, // Overwrite with any updated properties sent by the client
-    id,      // Force identity consistency
-    lastUpdated: today,
-  };
+  const patch: Record<string, unknown> = { lastUpdated: today };
+  for (const key of LEAD_DB_COLUMNS) {
+    if (key === "id" || key === "lastUpdated") continue;
+    if (Object.prototype.hasOwnProperty.call(body, key)) {
+      patch[key] = body[key];
+    }
+  }
 
-  const ok = await writeLeads([updated]);
-  if (!ok) return NextResponse.json({ error: "Failed to update lead" }, { status: 500 });
+  const { error: updateError } = await supabase.from("leads").update(patch).eq("id", id);
+  if (updateError) {
+    console.error("PUT /api/leads error:", updateError);
+    return NextResponse.json({ error: "Failed to update lead" }, { status: 500 });
+  }
+
+  const updated = normalizeLead({ ...prev, ...patch, id } as Record<string, unknown>);
 
   // Log status change activity if status changed
   if (body.status && body.status !== prev.status) {
@@ -97,18 +102,20 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   }
 
   const { id } = await params;
-  const leads = await readLeads();
-  const index = leads.findIndex((l) => l.id === id);
+  const supabase = getSupabase();
+  const { data: leadRow, error: leadReadError } = await supabase
+    .from("leads")
+    .select("id, driveFolderId")
+    .eq("id", id)
+    .maybeSingle();
 
-  if (index === -1) {
+  if (leadReadError || !leadRow) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
-  const lead = leads[index];
-  const driveFolderId = lead.driveFolderId;
+  const driveFolderId = leadRow.driveFolderId as string | undefined;
 
   // Hard delete from database
-  const supabase = getSupabase();
   const { error: dbError } = await supabase.from("leads").delete().eq("id", id);
   if (dbError) {
     console.error("Error deleting lead from Supabase:", dbError);

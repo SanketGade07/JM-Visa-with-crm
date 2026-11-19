@@ -6,6 +6,7 @@ import {
 import { DEFAULT_USA_SLOTS } from "@/utils/normalizeLead";
 import { isCanadaCountry, isUsaCountry, normalizeCrmCountry, parseCountries } from "@/utils/countryUtils";
 import { isCounselorAssigned, UNASSIGNED_COUNSELOR } from "@/utils/counselorOptions";
+import { createInvoiceNumber } from "@/utils/invoiceNumber";
 import type { CreateLeadFormState } from "@/types/createLeadForm";
 
 export type CreateLeadPayload = Omit<
@@ -46,7 +47,7 @@ export function buildCreateLeadPayload(state: CreateLeadFormState): CreateLeadPa
               amountPaid: 0,
               pendingAmount: totalPackage,
               paymentMethod: "Pending",
-              invoiceNumber: `INV-2026-${Math.floor(100 + Math.random() * 900)}`,
+              invoiceNumber: createInvoiceNumber(),
               date: new Date().toISOString().split("T")[0],
             },
           ]

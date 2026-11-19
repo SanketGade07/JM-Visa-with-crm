@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import env from "../../../config/env";
 import { enforceRateLimit, attachRateLimitCookie } from "../../../utils/rateLimit";
 import { verifyRecaptchaToken } from "../../../utils/verifyRecaptcha";
+import { sendLeadToCrm } from "../../../utils/sendToCrm";
 
 export const POST = async (req) => {
   const rateLimit = enforceRateLimit(req);
@@ -200,28 +201,17 @@ export const POST = async (req) => {
       console.error('Error sending visa form data to Google Sheets:', sheetError);
     }
 
-    // Send to CRM Webhook
-    try {
-      const webhookUrl = process.env.CRM_WEBHOOK_URL || 'http://localhost:3001/api/webhook/website';
-      const webhookSecret = process.env.CRM_WEBHOOK_SECRET || 'test_webhook_secret';
-
-      await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          secret: webhookSecret,
-          name: firstName || '',
-          email: email || '',
-          phone: phoneNumber || '',
-          countryInterest: travellingTo || '', // The webhook endpoint handles normalization
-          service: category || 'Visa Application',
-          source: 'WEBSITE',
-          message: `Visa application for travelling to: ${travellingTo} (Citizen of: ${citizen || 'N/A'}) [Location: ${userLocation || 'Unknown'} | Pincode: ${userPincode || 'Unknown'} | IP: ${userIp || 'Unknown'}]`
-        }),
-      });
-      console.log('Visa form data sent to CRM Webhook successfully');
-    } catch (crmError) {
-      console.error('Error sending visa form data to CRM Webhook:', crmError);
+    const crmResult = await sendLeadToCrm({
+      name: firstName || '',
+      email: email || '',
+      phone: phoneNumber || '',
+      countryInterest: travellingTo || '',
+      service: category || 'Visa Application',
+      source: 'WEBSITE',
+      message: `Visa application for travelling to: ${travellingTo} (Citizen of: ${citizen || 'N/A'}) [Location: ${userLocation || 'Unknown'} | Pincode: ${userPincode || 'Unknown'} | IP: ${userIp || 'Unknown'}]`
+    });
+    if (!crmResult.ok) {
+      console.error('Visa form was emailed, but the CRM did not accept the lead');
     }
 
     const response = new Response(

@@ -4,7 +4,9 @@ import {
   isGoogleDriveConfigured,
   validateFolderAccess,
 } from "@/lib/googleDrive";
-import { appendActivity, readLeads, updateLeadDriveFolderId } from "@/utils/db";
+import { appendActivity, updateLeadDriveFolderId } from "@/utils/db";
+import { getSupabase } from "@/utils/supabase";
+import { normalizeLead } from "@/utils/normalizeLead";
 
 export type ProvisionLeadDriveFolderResult =
   | { ok: true; driveFolderId: string; folderName: string }
@@ -18,11 +20,15 @@ export async function provisionLeadDriveFolder(
     return { ok: false, code: "not_configured" };
   }
 
-  const leads = await readLeads();
-  const lead = leads.find((l) => l.id === leadId);
-  if (!lead) {
+  const { data: leadRow, error } = await getSupabase()
+    .from("leads")
+    .select("*")
+    .eq("id", leadId)
+    .maybeSingle();
+  if (error || !leadRow) {
     return { ok: false, code: "lead_not_found" };
   }
+  const lead = normalizeLead(leadRow as Record<string, unknown>);
 
   if (lead.driveFolderId) {
     const existing = await validateFolderAccess(lead.driveFolderId);

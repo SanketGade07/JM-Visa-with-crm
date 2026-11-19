@@ -1,10 +1,6 @@
 import React from 'react';
 
 const FAQSchema = ({ faqs = [] }) => {
-  // #region agent log
-  fetch('http://127.0.0.1:7245/ingest/b161290b-2626-49f8-9c2e-f26bf491be27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FAQSchema.jsx:3',message:'FAQSchema component entry',data:{faqsType:typeof faqs,faqsIsNull:faqs===null,faqsIsUndefined:faqs===undefined,faqsIsArray:Array.isArray(faqs),faqsValue:faqs},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-
   // Default FAQ data for visa-related topics if no FAQs are provided
   const defaultFAQs = [
     {
@@ -29,17 +25,9 @@ const FAQSchema = ({ faqs = [] }) => {
     }
   ];
 
-  // #region agent log
-  fetch('http://127.0.0.1:7245/ingest/b161290b-2626-49f8-9c2e-f26bf491be27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FAQSchema.jsx:29',message:'Before accessing faqs.length',data:{faqsType:typeof faqs,faqsIsNull:faqs===null,faqsIsUndefined:faqs===undefined,faqsIsArray:Array.isArray(faqs)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
-
   // Use provided FAQs or default ones - handle null case
   const safeFaqs = faqs === null || faqs === undefined ? [] : faqs;
   const faqData = (Array.isArray(safeFaqs) && safeFaqs.length > 0) ? safeFaqs : defaultFAQs;
-
-  // #region agent log
-  fetch('http://127.0.0.1:7245/ingest/b161290b-2626-49f8-9c2e-f26bf491be27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FAQSchema.jsx:32',message:'After faqData assignment',data:{faqDataLength:faqData?.length,usingDefault:faqData===defaultFAQs},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-  // #endregion
 
   // Only render if we have FAQ data
   if (!faqData || faqData.length === 0) {

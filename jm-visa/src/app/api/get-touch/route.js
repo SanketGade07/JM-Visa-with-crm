@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import env from "../../../config/env";
 import { enforceRateLimit, attachRateLimitCookie } from "../../../utils/rateLimit";
 import { verifyRecaptchaToken } from "../../../utils/verifyRecaptcha";
+import { sendLeadToCrm } from "../../../utils/sendToCrm";
 
 export const POST = async (req) => {
   const rateLimit = enforceRateLimit(req);
@@ -213,29 +214,17 @@ export const POST = async (req) => {
       console.error('Error sending data to Google Sheets:', sheetError);
     }
 
-    // Send to CRM Webhook
-    try {
-      const cleanPhone = phone ? phone.replace(/\+/g, '') : '';
-      const webhookUrl = process.env.CRM_WEBHOOK_URL || 'http://localhost:3001/api/webhook/website';
-      const webhookSecret = process.env.CRM_WEBHOOK_SECRET || 'test_webhook_secret';
-
-      await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          secret: webhookSecret,
-          name: name || '',
-          email: email || '',
-          phone: cleanPhone,
-          countryInterest: 'UK', // Default country department
-          service: other || 'General Inquiry', // Visa category or inquiry interest
-          source: 'WEBSITE',
-          message: `Get-in-Touch request - Inquiry about: ${other || 'N/A'} [Location: ${userLocation || 'Unknown'} | Pincode: ${userPincode || 'Unknown'} | IP: ${userIp || 'Unknown'}]`
-        }),
-      });
-      console.log('Get-touch data sent to CRM Webhook successfully');
-    } catch (crmError) {
-      console.error('Error sending get-touch data to CRM Webhook:', crmError);
+    const crmResult = await sendLeadToCrm({
+      name: name || '',
+      email: email || '',
+      phone: phone ? phone.replace(/\+/g, '') : '',
+      countryInterest: 'UK',
+      service: other || 'General Inquiry',
+      source: 'WEBSITE',
+      message: `Get-in-Touch request - Inquiry about: ${other || 'N/A'} [Location: ${userLocation || 'Unknown'} | Pincode: ${userPincode || 'Unknown'} | IP: ${userIp || 'Unknown'}]`
+    });
+    if (!crmResult.ok) {
+      console.error('Get-in-touch form was emailed, but the CRM did not accept the lead');
     }
 
     // Success response
