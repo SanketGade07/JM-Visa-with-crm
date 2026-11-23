@@ -2,6 +2,7 @@ import type { Lead } from "@/context/CrmContext";
 import type { CrmUser } from "@/context/CrmContext";
 import { buildCounselorFilterOptions } from "@/utils/counselorOptions";
 import { destinationFilterOptions } from "@/components/ui/FormInputs";
+import { USA_VISA_CATEGORIES } from "@/utils/countryUtils";
 
 export type LeadFilterOption = { value: string; label: string };
 
@@ -15,8 +16,15 @@ export function getCountryFilterOptions(): LeadFilterOption[] {
 
 export function getVisaServiceSelectOptions(
   _leads?: Lead[],
-  _currentValue?: string
+  _currentValue?: string,
+  isUsa?: boolean
 ): LeadFilterOption[] {
+  if (isUsa) {
+    return [
+      ...USA_VISA_CATEGORIES.map((cat) => ({ value: cat, label: cat })),
+      { value: "Other", label: "Other" },
+    ];
+  }
   return [
     { value: "Business Visa", label: "Business Visa" },
     { value: "Residence Visa", label: "Residence Visa" },

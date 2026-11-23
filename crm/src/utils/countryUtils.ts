@@ -139,3 +139,25 @@ export function countryMatches(leadCountry: string | string[], filterCountry: st
   });
 }
 
+export const USA_VISA_CATEGORIES = [
+  "B1/B2",
+  "F1",
+  "H1B",
+  "H4",
+  "J1",
+  "L1",
+  "L2",
+  "M1",
+  "O1",
+  "Other",
+] as const;
+
+export type UsaVisaCategory = (typeof USA_VISA_CATEGORIES)[number];
+
+export function isUsaVisaCategory(value: unknown): value is UsaVisaCategory {
+  if (typeof value !== "string" || !value.trim()) return false;
+  const trimmed = value.trim().toUpperCase();
+  return USA_VISA_CATEGORIES.some((cat) => cat.toUpperCase() === trimmed);
+}
+
+

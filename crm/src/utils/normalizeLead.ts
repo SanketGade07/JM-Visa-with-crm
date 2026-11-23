@@ -1,6 +1,6 @@
 import type { Lead, UsaSlotTracking } from "@/context/CrmContext";
 import { normalizeLeadStatus } from "./leadStatusConfig";
-import { isUsaCountry, normalizeCrmCountry } from "./countryUtils";
+import { isUsaCountry, isUsaVisaCategory, normalizeCrmCountry } from "./countryUtils";
 import {
   DEFAULT_EMPLOYMENT_CATEGORY,
   EMPLOYMENT_CATEGORIES,
@@ -23,6 +23,7 @@ export const DEFAULT_USA_SLOTS: UsaSlotTracking = {
   securityCar: "",
   securityFood: "",
   securityCity: "",
+  category: "",
   securityQuestions: [],
 };
 
@@ -54,6 +55,7 @@ export function normalizeUsaSlots(raw: unknown): UsaSlotTracking {
     securityCar: slots.securityCar ?? "",
     securityFood: slots.securityFood ?? "",
     securityCity: slots.securityCity ?? "",
+    category: slots.category ?? "",
     slotPortalUsername: slots.slotPortalUsername ?? "",
     slotPortalPassword: slots.slotPortalPassword ?? "",
     securityQuestions: questions,
@@ -124,10 +126,26 @@ export function normalizeLead(raw: Record<string, unknown>): Lead {
   const countryRaw = typeof raw.country === "string" ? raw.country : "";
   const country = normalizeCrmCountry(countryRaw);
   const usaSlotsRaw = raw.usaSlots ?? raw.usaslots;
+  const isUsa = isUsaCountry(country) || !!usaSlotsRaw;
+  const usaSlots = isUsa ? normalizeUsaSlots(usaSlotsRaw) : undefined;
   const rawStatus = typeof raw.status === "string" ? raw.status : "NEW_LEAD";
+
+  let visaType = (raw.visaType as string) ?? (raw.visatype as string) ?? "";
+  if (isUsa && usaSlots) {
+    const rawCategory = (usaSlotsRaw as any)?.category;
+    if (isUsaVisaCategory(rawCategory)) {
+      visaType = rawCategory;
+      usaSlots.category = rawCategory;
+    } else if (isUsaVisaCategory(visaType)) {
+      usaSlots.category = visaType;
+    } else {
+      usaSlots.category = "";
+    }
+  }
 
   return {
     ...raw,
+    visaType,
     status: normalizeLeadStatus(rawStatus),
     country,
     assignedAt:
@@ -151,10 +169,7 @@ export function normalizeLead(raw: Record<string, unknown>): Lead {
       (raw.drivefolderid as Lead["driveFolderId"]),
     employmentCategory,
     checklist: mergeChecklist(storedChecklist, employmentCategory),
-    usaSlots:
-      isUsaCountry(country) || usaSlotsRaw
-        ? normalizeUsaSlots(usaSlotsRaw)
-        : undefined,
+    usaSlots,
     passportNumber: (raw.passportNumber as string) ?? (raw.passportnumber as string) ?? "",
     passportIssueDate: (raw.passportIssueDate as string) ?? (raw.passportissuedate as string) ?? "",
     passportExpiryDate: (raw.passportExpiryDate as string) ?? (raw.passportexpirydate as string) ?? "",

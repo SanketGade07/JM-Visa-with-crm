@@ -36,6 +36,7 @@ export function CreateLeadFormProvider({ children }: { children: React.ReactNode
         isFromUsaSlotsTab: true,
         leadType: "visa",
         visaSubtype: "USA Visa",
+        usaCategory: "",
       });
     } else if (createLeadSession !== prevSessionsRef.current.createLeadSession) {
       formRef.current.reset({ isFromUsaSlotsTab: false });

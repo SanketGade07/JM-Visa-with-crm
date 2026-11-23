@@ -18,6 +18,7 @@ export type CountryApplicationState = {
   usaSecurityCar: string;
   usaSecurityFood: string;
   usaSecurityCity: string;
+  usaCategory?: string;
   securityQuestions: Array<{ question: string; answer: string }>;
 };
 
@@ -51,6 +52,7 @@ export function getDefaultCountryApplicationState(country?: string): CountryAppl
     usaSecurityCar: "",
     usaSecurityFood: "",
     usaSecurityCity: "",
+    usaCategory: "",
     securityQuestions: getDefaultSecurityQuestions(country),
   };
 }
@@ -65,6 +67,7 @@ export const DEFAULT_COUNTRY_APPLICATION_STATE: CountryApplicationState = {
   usaSecurityCar: "",
   usaSecurityFood: "",
   usaSecurityCity: "",
+  usaCategory: "",
   securityQuestions: [
     { question: "Car", answer: "" },
     { question: "Food", answer: "" },
@@ -91,6 +94,7 @@ export type CreateLeadFormState = {
   usaSecurityCar: string;
   usaSecurityFood: string;
   usaSecurityCity: string;
+  usaCategory?: string;
   securityQuestions: Array<{ question: string; answer: string }>;
   slotStatus: CreateLeadSlotStatus;
   countryApplications: Record<string, CountryApplicationState>;
@@ -125,6 +129,7 @@ export const CREATE_LEAD_INITIAL_STATE: CreateLeadFormState = {
   usaSecurityCar: "",
   usaSecurityFood: "",
   usaSecurityCity: "",
+  usaCategory: "",
   securityQuestions: [
     { question: "Car", answer: "" },
     { question: "Food", answer: "" },

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import type { Lead } from "@/context/CrmContext";
 import { FaTimes, FaTrash, FaCar, FaUtensils, FaCity, FaWhatsapp, FaRegStar } from "react-icons/fa";
 import { FiSettings, FiPhone, FiMail, FiCopy, FiUser, FiLock, FiSmartphone, FiKey, FiChevronDown, FiCheck } from "react-icons/fi";
@@ -37,6 +37,37 @@ import { applyColumnSearch } from "@/utils/columnSearch";
 //     ? "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
 //     : "bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20";
 // }
+
+import { USA_VISA_CATEGORIES, type UsaVisaCategory, isUsaVisaCategory } from "@/utils/countryUtils";
+export { USA_VISA_CATEGORIES, type UsaVisaCategory, isUsaVisaCategory };
+
+export function getUsaSlotCategory(lead: Lead): string {
+  const cat = lead.usaSlots?.category;
+  if (isUsaVisaCategory(cat)) return cat;
+  const vt = (lead.visaType || "").trim();
+  if (isUsaVisaCategory(vt)) return vt;
+  return "";
+}
+
+function getCategoryBadgeStyle(category: string): string {
+  switch (category.toUpperCase()) {
+    case "F1":
+      return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30";
+    case "B1/B2":
+      return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30";
+    case "H1B":
+      return "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-500/30";
+    case "H4":
+      return "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30";
+    case "J1":
+      return "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/30";
+    case "L1":
+    case "L2":
+      return "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-300 dark:border-indigo-500/30";
+    default:
+      return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
+  }
+}
 
 function CopyableCredentialCell({
   value,
@@ -121,8 +152,10 @@ function UsaSlotSettingsModal({
   const [savingSlotPortal, setSavingSlotPortal] = useState(false);
   const [securityQuestions, setSecurityQuestions] = useState<Array<{ question: string; answer: string }>>([]);
   const [trackingMobile, setTrackingMobile] = useState(lead.usaSlots?.trackingMobile ?? "");
+  const [category, setCategory] = useState(lead.usaSlots?.category || getUsaSlotCategory(lead));
 
   useEffect(() => {
+    setCategory(lead.usaSlots?.category || getUsaSlotCategory(lead));
     setCredUsername(lead.visaCredentials?.username ?? "");
     setCredPassword(lead.visaCredentials?.password ?? "");
     setTrackingMobile(lead.usaSlots?.trackingMobile ?? "");
@@ -132,7 +165,7 @@ function UsaSlotSettingsModal({
       { question: "City", answer: lead.usaSlots?.securityCity ?? "" }
     ];
     setSecurityQuestions(questions);
-  }, [lead.id, lead.visaCredentials, lead.usaSlots]);
+  }, [lead.id, lead.visaCredentials, lead.usaSlots, lead.visaType]);
 
   useEffect(() => {
     setSlotPortalUsername(lead.usaSlots?.slotPortalUsername ?? "");
@@ -241,6 +274,37 @@ function UsaSlotSettingsModal({
             USA Visa
           </span>
         </div>
+
+        {/* Category */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-[10px] font-bold uppercase tracking-wider text-violet-400">
+              Visa Category
+            </h4>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-slate-500 font-bold uppercase text-[9px] tracking-wider block">
+              Category
+            </label>
+            <select
+              value={category}
+              onChange={(e) => {
+                const val = e.target.value;
+                setCategory(val);
+                updateUsaSlots(lead.id, { category: val });
+                showToast(val ? `Category updated to ${val}` : "Category cleared", "success");
+              }}
+              className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl py-2 px-3 focus:outline-none focus:ring-1 focus:ring-violet-500 cursor-pointer"
+            >
+              <option value="">Select</option>
+              {USA_VISA_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+        </section>
 
         {/* Paid Dates */}
         {/* <section className="space-y-3">
@@ -776,14 +840,20 @@ function UsaSlotStatusDropdownCell({
 
   useEffect(() => {
     if (!isOpen) return;
-    const handleClose = () => setIsOpen(false);
-    window.addEventListener("scroll", handleClose, true);
-    window.addEventListener("resize", handleClose);
-    return () => {
-      window.removeEventListener("scroll", handleClose, true);
-      window.removeEventListener("resize", handleClose);
+    const handleScroll = (event: Event) => {
+      const portal = document.getElementById(`slot-status-portal-${lead.id}`);
+      if (portal && (portal === event.target || portal.contains(event.target as Node))) {
+        return;
+      }
+      setIsOpen(false);
     };
-  }, [isOpen]);
+    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", () => setIsOpen(false));
+    return () => {
+      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", () => setIsOpen(false));
+    };
+  }, [isOpen, lead.id]);
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -921,6 +991,219 @@ function UsaSlotStatusDropdownCell({
   );
 }
 
+function UsaSlotCategoryDropdownCell({
+  lead,
+  updateUsaSlots,
+  canModifyLeads,
+  showToast,
+}: {
+  lead: Lead;
+  updateUsaSlots: ReturnType<typeof useCrmLayoutContext>["updateUsaSlots"];
+  canModifyLeads: boolean;
+  showToast: ReturnType<typeof useCrmLayoutContext>["showToast"];
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 });
+
+  const currentCategory = getUsaSlotCategory(lead);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        const portalPopover = document.getElementById(`slot-category-portal-${lead.id}`);
+        if (portalPopover && portalPopover.contains(event.target as Node)) {
+          return;
+        }
+        setIsOpen(false);
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, lead.id]);
+
+  const updatePosition = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const popoverHeight = 260;
+    const popoverWidth = 150;
+    const spaceBelow = window.innerHeight - rect.bottom;
+
+    let top = 0;
+    if (spaceBelow < popoverHeight + 10) {
+      top = rect.top - popoverHeight - 4;
+    } else {
+      top = rect.bottom + 4;
+    }
+
+    let left = rect.left;
+    if (left + popoverWidth > window.innerWidth) {
+      left = window.innerWidth - popoverWidth - 16;
+    }
+
+    setPopoverPos({ top, left });
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    updatePosition();
+
+    const handleScroll = (event: Event) => {
+      const portal = document.getElementById(`slot-category-portal-${lead.id}`);
+      if (portal && (portal === event.target || portal.contains(event.target as Node))) {
+        // Scrolling inside the category dropdown list — DO NOT close or reposition!
+        return;
+      }
+      updatePosition();
+    };
+
+    const handleResize = () => updatePosition();
+
+    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [isOpen, lead.id, updatePosition]);
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!canModifyLeads) return;
+
+    if (!isOpen) {
+      updatePosition();
+    }
+    setIsOpen(!isOpen);
+  };
+
+  const handleSelect = (cat: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (cat !== (lead.usaSlots?.category ?? "")) {
+      updateUsaSlots(lead.id, { category: cat });
+      showToast(cat ? `Category updated to ${cat}` : "Category cleared", "success");
+    }
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative inline-block text-left whitespace-nowrap" ref={containerRef}>
+      <button
+        ref={buttonRef}
+        type="button"
+        disabled={!canModifyLeads}
+        onClick={handleToggle}
+        className={`slot-category-pill inline-flex items-center justify-between gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-xl border whitespace-nowrap transition-all duration-200 shadow-sm min-w-[76px] ${
+          !canModifyLeads
+            ? "cursor-not-allowed opacity-60"
+            : "cursor-pointer hover:shadow-md"
+        } ${
+          currentCategory
+            ? getCategoryBadgeStyle(currentCategory)
+            : "bg-slate-100 hover:bg-slate-200 text-slate-500 border-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 dark:text-slate-400 dark:border-slate-800"
+        }`}
+        aria-label={`Category: ${currentCategory || "None"}`}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+      >
+        <span className="whitespace-nowrap font-bold text-[11px]">
+          {currentCategory || "Select"}
+        </span>
+        {canModifyLeads && (
+          <FiChevronDown
+            className={`text-[10px] shrink-0 opacity-70 transition-transform duration-200 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        )}
+      </button>
+
+      {isOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            id={`slot-category-portal-${lead.id}`}
+            style={{
+              position: "fixed",
+              top: `${popoverPos.top}px`,
+              left: `${popoverPos.left}px`,
+              zIndex: 99999,
+            }}
+            className="w-38 min-w-[148px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl p-1.5 z-[99999] transition-all animate-fadeIn"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            role="listbox"
+          >
+            <div className="px-2 py-1 border-b border-slate-100 dark:border-slate-800/80 mb-1">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                Visa Category
+              </span>
+            </div>
+            <div
+              className="space-y-0.5 max-h-[260px] overflow-y-auto crm-slim-scrollbar"
+              onScroll={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                role="option"
+                aria-selected={!currentCategory}
+                onClick={(e) => handleSelect("", e)}
+                className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-colors cursor-pointer text-left ${
+                  !currentCategory
+                    ? "bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300 font-bold"
+                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/80"
+                }`}
+              >
+                <span>Select</span>
+                {!currentCategory && (
+                  <FiCheck className="text-[12px] text-violet-600 dark:text-violet-400 shrink-0" />
+                )}
+              </button>
+              {USA_VISA_CATEGORIES.map((cat) => {
+                const isSelected = currentCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={(e) => handleSelect(cat, e)}
+                    className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-colors cursor-pointer text-left ${
+                      isSelected
+                        ? "bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300 font-bold"
+                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/80"
+                    }`}
+                  >
+                    <span>{cat}</span>
+                    {isSelected && (
+                      <FiCheck className="text-[12px] text-violet-600 dark:text-violet-400 shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+}
+
 export function USASlotsTab() {
   const {
     updateUsaSlots,
@@ -963,6 +1246,12 @@ export function USASlotsTab() {
         [
           { searchKey: "client", getSearchValue: clientSearchGetter },
           {
+            searchKey: "category",
+            getSearchValue: (l: Lead) => l.usaSlots?.category || getUsaSlotCategory(l) || "",
+            filterMode: "exact",
+            filterClearValue: "All",
+          },
+          {
             searchKey: "status",
             getSearchValue: (l: Lead) => (l.usaSlots?.slotsBooked ? "Booked" : "Not Booked"),
             filterMode: "exact",
@@ -978,9 +1267,10 @@ export function USASlotsTab() {
     registerUsaSlotsExport(() =>
       exportRowsToCsv(
         "usa-slots",
-        ["Client", "Phone", "Visa User", "Visa Pass", "Slot User", "Slot Pass", "Mobile", "Car", "Food", "City", "Status"],
+        ["Client", "Category", "Phone", "Visa User", "Visa Pass", "Slot User", "Slot Pass", "Mobile", "Car", "Food", "City", "Status"],
         usaLeads.map((l) => [
           l.name,
+          l.usaSlots?.category || getUsaSlotCategory(l) || "",
           l.phone ?? "",
           l.visaCredentials?.username ?? "",
           l.visaCredentials?.password ?? "",
@@ -1096,6 +1386,25 @@ export function USASlotsTab() {
           background-color: #10b981 !important;
         }
         .booked-row .slot-status-pill svg {
+          color: #64748b !important;
+        }
+
+        /* Category pill - match Security Answers / Status button elevation and visibility */
+        .booked-row .slot-category-pill {
+          background-color: #ffffff !important;
+          color: #0f172a !important;
+          border-color: rgba(0, 0, 0, 0.12) !important;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+          font-weight: 700 !important;
+        }
+        .booked-row .slot-category-pill:hover {
+          background-color: #f8fafc !important;
+        }
+        .booked-row .slot-category-pill span {
+          color: #0f172a !important;
+          font-weight: 700 !important;
+        }
+        .booked-row .slot-category-pill svg {
           color: #64748b !important;
         }
 
@@ -1242,6 +1551,28 @@ export function USASlotsTab() {
           color: #64748b !important;
         }
 
+        html.dark .booked-row .slot-category-pill,
+        .dark .booked-row .slot-category-pill {
+          background-color: #ffffff !important;
+          color: #0f172a !important;
+          border-color: rgba(0, 0, 0, 0.12) !important;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+          font-weight: 700 !important;
+        }
+        html.dark .booked-row .slot-category-pill:hover,
+        .dark .booked-row .slot-category-pill:hover {
+          background-color: #f8fafc !important;
+        }
+        html.dark .booked-row .slot-category-pill span,
+        .dark .booked-row .slot-category-pill span {
+          color: #0f172a !important;
+          font-weight: 700 !important;
+        }
+        html.dark .booked-row .slot-category-pill svg,
+        .dark .booked-row .slot-category-pill svg {
+          color: #64748b !important;
+        }
+
         html.dark .booked-row td:last-child button[data-tooltip*="Slot settings"],
         .dark .booked-row td:last-child button[data-tooltip*="Slot settings"] {
           color: #334155 !important;
@@ -1328,6 +1659,28 @@ export function USASlotsTab() {
                 </button>
                 <span className="text-gray-500 dark:text-slate-400 text-[11px]">{lead.phone || "—"}</span>
               </div>
+            ),
+          },
+          {
+            header: "Category",
+            searchKey: "category",
+            searchLabel: "Category",
+            filterSelectOptions: [
+              { value: "All", label: "All" },
+              ...USA_VISA_CATEGORIES.map((c) => ({ value: c, label: c })),
+            ],
+            filterSelectPlaceholder: "All",
+            filterSelectPortalId: "usa-slots-category-filter-portal",
+            filterSelectClearValue: "All",
+            filterSelectShowSearch: false,
+            getSearchValue: (l: Lead) => l.usaSlots?.category || getUsaSlotCategory(l) || "",
+            render: (lead) => (
+              <UsaSlotCategoryDropdownCell
+                lead={lead}
+                updateUsaSlots={updateUsaSlots}
+                canModifyLeads={canModifyLeads}
+                showToast={showToast}
+              />
             ),
           },
           {

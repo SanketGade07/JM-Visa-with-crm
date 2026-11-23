@@ -32,6 +32,7 @@ import { isCanadaCountry, isUsaCountry, parseCountries, getCountryDisplayName } 
 import { getCountryFlag } from "@/components/CountryFlags";
 import { CreateLeadReviewStep } from "./CreateLeadReviewStep";
 import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
+import { USA_VISA_CATEGORIES } from "@/components/crm/tabs/USASlotsTab";
 
 const DAYS_OPTIONS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 
@@ -603,6 +604,30 @@ function CreateLeadWizardInner({
               <>
                 <FormSectionGrid>
                   <FormSection
+                    label="Visa Category"
+                    htmlFor="create-lead-usa-category"
+                  >
+                    <select
+                      id="create-lead-usa-category"
+                      value={state.usaCategory || (USA_VISA_CATEGORIES.includes(state.visaSubtype as any) ? state.visaSubtype : "")}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        updateField("usaCategory", val);
+                        if (isFromUsaSlotsTab) {
+                          updateField("visaSubtype", val);
+                        }
+                      }}
+                      className={FORM_SELECT_CLASS}
+                    >
+                      <option value="">Select</option>
+                      {USA_VISA_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </FormSection>
+                  <FormSection
                     label="Case Officer (Assignee)"
                     htmlFor="create-lead-case-officer"
                     error={caseOfficerError}
@@ -622,6 +647,8 @@ function CreateLeadWizardInner({
                       }}
                     />
                   </FormSection>
+                </FormSectionGrid>
+                <FormSectionGrid>
                   <FormSection
                     label="Lead Source"
                     htmlFor="create-lead-lead-source"
@@ -645,10 +672,7 @@ function CreateLeadWizardInner({
                       <option value="SOCIAL_MEDIA">Social Media</option>
                     </select>
                   </FormSection>
-                </FormSectionGrid>
-                {state.leadSource === "REFERRAL" && (
-                  <FormSectionGrid>
-                    <div />
+                  {state.leadSource === "REFERRAL" ? (
                     <FormSection
                       label="Referred By"
                       htmlFor="create-lead-referred-by"
@@ -666,8 +690,10 @@ function CreateLeadWizardInner({
                         }`}
                       />
                     </FormSection>
-                  </FormSectionGrid>
-                )}
+                  ) : (
+                    <div />
+                  )}
+                </FormSectionGrid>
               </>
             )}
 

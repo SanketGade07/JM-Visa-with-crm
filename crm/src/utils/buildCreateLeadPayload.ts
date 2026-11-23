@@ -92,12 +92,15 @@ export function buildCreateLeadPayload(state: CreateLeadFormState): CreateLeadPa
       const legacyFood = (appState.securityQuestions.find(q => q.question.toLowerCase().includes("food"))?.answer || "").trim();
       const legacyCity = (appState.securityQuestions.find(q => q.question.toLowerCase().includes("city"))?.answer || "").trim();
 
+      const chosenCategory = (state.usaCategory || appState.usaCategory || "").trim();
+
       countryApp.usaSlots = {
         ...DEFAULT_USA_SLOTS,
         slotLocation: "Delhi",
         slotsAvailable: appState.slotStatus === "available",
         slotsPaid: appState.slotStatus === "paid",
         credentialsProvided: cHasCreds,
+        category: chosenCategory,
         ...(cHasSlotCreds && {
           slotPortalUsername: cSlotLogin,
           slotPortalPassword: cSlotPass,
@@ -113,6 +116,9 @@ export function buildCreateLeadPayload(state: CreateLeadFormState): CreateLeadPa
       };
 
       payload.usaSlots = countryApp.usaSlots;
+      if (chosenCategory) {
+        payload.visaType = chosenCategory;
+      }
     }
 
     if (isCanadaCountry(cName)) {

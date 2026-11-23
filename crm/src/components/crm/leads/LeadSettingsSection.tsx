@@ -14,7 +14,7 @@ import {
 import { CounselorSelectPill } from "@/components/ui/CounselorSelectPill";
 import { SearchableCountrySelect, SearchableFilterSelect } from "@/components/ui/FormInputs";
 import { CompactRadioGroup } from "@/components/crm/leads/create/CompactRadioGroup";
-import { isCanadaCountry, isUsaCountry, parseCountries, getCountryDisplayName } from "@/utils/countryUtils";
+import { isCanadaCountry, isUsaCountry, parseCountries, getCountryDisplayName, USA_VISA_CATEGORIES, isUsaVisaCategory } from "@/utils/countryUtils";
 import { getCountryFlag } from "@/components/CountryFlags";
 import { getLeadPaymentSummary } from "@/utils/leadPaymentUtils";
 import {
@@ -416,8 +416,8 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
 
   const countryOptions = useMemo(() => getCountrySelectOptions(), []);
   const visaServiceOptions = useMemo(
-    () => getVisaServiceSelectOptions(leads, lead.visaType),
-    [leads, lead.visaType]
+    () => getVisaServiceSelectOptions(leads, lead.visaType, isUsa),
+    [leads, lead.visaType, isUsa]
   );
 
   const [emailDraft, setEmailDraft] = useState(lead.email);
@@ -436,14 +436,19 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const predefinedServices = useMemo(() => [
-    "Study Abroad",
-    "Work Visa",
-    "Business Visa",
-    "Student Visa",
-    "Residence Visa",
-    "Tourist Visa",
-  ], []);
+  const predefinedServices = useMemo(() => {
+    if (isUsa) {
+      return [...USA_VISA_CATEGORIES];
+    }
+    return [
+      "Study Abroad",
+      "Work Visa",
+      "Business Visa",
+      "Student Visa",
+      "Residence Visa",
+      "Tourist Visa",
+    ];
+  }, [isUsa]);
 
   const isPredefined = lead.visaType ? predefinedServices.includes(lead.visaType) : true;
 
@@ -1668,7 +1673,34 @@ export function LeadSettingsSection({ lead }: LeadSettingsSectionProps) {
                     autoComplete="off"
                   />
                 </div>
-                <div />
+                <div className="space-y-1.5">
+                  <label className={fieldLabelCls}>
+                    Visa Category
+                  </label>
+                  <select
+                    value={
+                      isUsaVisaCategory(lead.usaSlots?.category)
+                        ? lead.usaSlots.category
+                        : isUsaVisaCategory(lead.visaType)
+                          ? lead.visaType
+                          : ""
+                    }
+                    disabled={!canModifyLeads}
+                    onChange={(e) => {
+                      const newCat = e.target.value;
+                      updateUsaSlots(lead.id, { category: newCat });
+                      showToast(newCat ? `Category updated to ${newCat}` : "Category cleared", "success");
+                    }}
+                    className={fieldInputCls}
+                  >
+                    <option value="">Select Category</option>
+                    {USA_VISA_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
                 <div className="flex items-center justify-between">

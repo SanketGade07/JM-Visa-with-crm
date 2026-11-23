@@ -85,6 +85,7 @@ export interface UsaSlotTracking {
   securityCar: string;
   securityFood: string;
   securityCity: string;
+  category?: string;
   slotPortalUsername?: string;
   slotPortalPassword?: string;
   securityQuestions?: Array<{ question: string; answer: string; }>;
@@ -508,7 +509,7 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return leadPatch(
           prev as unknown as Record<string, unknown>,
           lead as unknown as Record<string, unknown>
-        ) as Lead;
+        ) as unknown as Lead;
       });
 
       let res: Response;
@@ -727,9 +728,20 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const prev = leadsRef.current.find((l) => l.id === leadId);
     if (!prev) return;
 
-    const updated = leadsRef.current.map((lead) =>
-      lead.id === leadId ? { ...lead, ...patch, lastUpdated: today } : lead
-    );
+    const updated = leadsRef.current.map((lead) => {
+      if (lead.id !== leadId) return lead;
+      const isUsa = isUsaCountry(patch.country ?? lead.country);
+      const nextUsaSlots =
+        isUsa && patch.visaType !== undefined
+          ? { ...(lead.usaSlots || DEFAULT_USA_SLOTS), category: patch.visaType }
+          : lead.usaSlots;
+      return {
+        ...lead,
+        ...patch,
+        usaSlots: nextUsaSlots,
+        lastUpdated: today,
+      };
+    });
     syncLeads(updated);
 
     if (patch.passportNumber !== undefined && patch.passportNumber !== prev.passportNumber) {
@@ -801,15 +813,28 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const updated = leadsRef.current.map((lead) => {
       if (lead.id === leadId) {
+        const isUsa = isUsaCountry(payload.country ?? lead.country);
+        let nextUsaSlots = payload.usaSlots
+          ? { ...lead.usaSlots, ...payload.usaSlots }
+          : lead.usaSlots;
+        let nextVisaType = payload.visaType ?? lead.visaType;
+
+        if (isUsa) {
+          if (payload.usaSlots?.category !== undefined) {
+            nextVisaType = payload.usaSlots.category;
+          } else if (payload.visaType !== undefined && nextUsaSlots) {
+            nextUsaSlots = { ...nextUsaSlots, category: payload.visaType };
+          }
+        }
+
         return {
           ...lead,
           ...payload,
+          visaType: nextVisaType,
           visaCredentials: payload.visaCredentials 
             ? { ...lead.visaCredentials, ...payload.visaCredentials }
             : lead.visaCredentials,
-          usaSlots: payload.usaSlots
-            ? { ...lead.usaSlots, ...payload.usaSlots }
-            : lead.usaSlots,
+          usaSlots: nextUsaSlots,
           payments: payload.payments && payload.payments.length > 0
             ? payload.payments
             : lead.payments,
@@ -928,9 +953,12 @@ export const CrmProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const today = new Date().toISOString().split("T")[0];
     const updated = leadsRef.current.map((lead) => {
       if (lead.id !== leadId || !isUsaCountry(lead.country)) return lead;
+      const nextUsaSlots = { ...DEFAULT_USA_SLOTS, ...lead.usaSlots, ...slotsData };
+      const nextCategory = slotsData.category;
       return {
         ...lead,
-        usaSlots: { ...DEFAULT_USA_SLOTS, ...lead.usaSlots, ...slotsData },
+        ...(nextCategory !== undefined ? { visaType: nextCategory } : {}),
+        usaSlots: nextUsaSlots,
         lastUpdated: today,
       };
     });
